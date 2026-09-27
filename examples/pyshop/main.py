@@ -338,18 +338,24 @@ class PyShopApp(Component):
                 ], main_axis_alignment="center")
             )
 
-        # Categories filter bar
+        # Categories filter bar (horizontally scrollable)
         categories = ["Tous", "electronics", "jewelery", "men's clothing", "women's clothing"]
-        chips = [
-            CategoryChip(
-                label=cat.capitalize(),
-                selected=(self.selected_category == cat),
-                on_select=lambda target=cat: self.set_category(target),
+        chips = []
+        for cat in categories:
+            chips.append(
+                CategoryChip(
+                    label=cat.capitalize(),
+                    selected=(self.selected_category == cat),
+                    on_select=lambda target=cat: self.set_category(target),
+                )
             )
-            for cat in categories
-        ]
+            chips.append(SizedBox(width=8))
+
         chips_row = Padding(
-            Row(chips, main_axis_alignment="space_between"),
+            SingleChildScrollView(
+                Row(chips),
+                scroll_direction="horizontal",
+            ),
             horizontal=8,
             vertical=6,
         )
@@ -482,7 +488,7 @@ class PyShopApp(Component):
                     color=Colors.GREY_700,
                 ),
                 SizedBox(height=12),
-                Row([
+                Wrap([
                     Button(
                         "Appeler Support",
                         icon=Icons.PHONE,
@@ -498,7 +504,7 @@ class PyShopApp(Component):
                             subject="Question sur ma commande PyShop",
                         ),
                     ),
-                ], main_axis_alignment="space_between"),
+                ], spacing=10, run_spacing=10),
             ]),
             padding=14,
             margin=8,
