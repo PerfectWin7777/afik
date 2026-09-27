@@ -1,0 +1,27 @@
+name: pyflutter_dart_runtime
+description: >
+  Minimal Flutter shell for the PyFlutter POC. Connects to the Rust
+  bridge's relay mode over a local TCP socket, renders whatever
+  RenderTree it receives, and sends CallbackEvent back on taps.
+  See ../README.md and ../PYFLUTTER_VISION.md for context.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  url_launcher: ^6.3.2
+  # Deliberately no external packages: the Protobuf wire format for
+  # this POC's 3 message types is hand-decoded/encoded in
+  # lib/ir_codec.dart (no protoc-gen-dart, no `protobuf` pub package —
+  # see that file's docstring for why).
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

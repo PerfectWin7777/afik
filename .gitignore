@@ -1,0 +1,39 @@
+# Git ignore file for PyFlutter repository
+
+# Python
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+
+# Rust
+target/
+rust_bridge/target/
+**/*.rs.bk
+
+# Flutter / Dart
+.dart_tool/
+.packages
+dart_runtime/build/
+dart_runtime/.flutter-plugins
+dart_runtime/.flutter-plugins-dependencies
+dart_runtime/android/.gradle/
+dart_runtime/android/local.properties
+dart_runtime/ios/.symlinks/
+dart_runtime/ios/Pods/
+dart_runtime/macos/Pods/
+dart_runtime/.metadata
+*.lockfile
+
+# Logs & temp
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

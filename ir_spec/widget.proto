@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package pyflutter.ir;
+
+// A single node in the widget tree. Generic on purpose (see
+// PYFLUTTER_VISION.md section 3.2): adding a new widget type or
+// property does not require touching this schema.
+message Widget {
+  // Widget kind, e.g. "Text", "Button", "Column", "Row", "Container",
+  // "TextField". The Rust codegen / runtime bridge dispatches on this.
+  string type = 1;
+
+  // String-encoded properties (text, color, width, ...). Numbers and
+  // booleans are encoded as strings and parsed on the receiving side;
+  // this keeps the schema stable while props evolve.
+  map<string, string> props = 2;
+
+  // Child widgets, for container-like types (Column, Row, Container).
+  repeated Widget children = 3;
+
+  // Opaque id resolved by the Python runtime when the callback fires.
+  // Empty if this widget has no callback.
+  string callback_id = 4;
+}
+
+// The root message sent from Python to the Rust bridge: a full tree
+// snapshot. Used both for the initial render and for every hot-reload
+// push in dev mode (no diffing in the POC — see vision doc §6).
+message RenderTree {
+  Widget root = 1;
+}
+
+// Sent from Rust to the embedded Python runtime when a widget's
+// callback fires (e.g. a button was pressed).
+message CallbackEvent {
+  string callback_id = 1;
+  map<string, string> event_data = 2; // e.g. new text value for a TextField
+}

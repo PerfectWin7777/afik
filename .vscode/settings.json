@@ -1,0 +1,92 @@
+{
+    "python.createEnvironment.contentButton": "show",
+    "terminal.integrated.scrollback": 1000000,
+    "python.languageServer": "Pylance",
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.autoComplete.extraPaths": [],
+    "files.autoSave": "afterDelay",
+    "editor.autoClosingQuotes": "always",
+    "editor.autoClosingDelete": "always",
+    "editor.autoClosingOvertype": "always",
+    "python.defaultInterpreterPath": "D:\\Projets\\HEVRA\\backend\\venv\\Scripts\\python.exe",
+    "python.analysis.completeFunctionSignatures": true,
+    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticMode": "openFilesOnly",
+    
+    "editor.formatOnSave": true,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true
+    },
+    "python.analysis.extraPaths": [
+        "./backend/src"
+    ],
+    "python.envFile": "${workspaceFolder}/backend/.env",
+    "editor.hover.enabled": "on",
+    "editor.fontFamily": "Fira Code",
+    "editor.fontLigatures": true,
+    "editor.semanticHighlighting.enabled": true,
+    "editor.parameterHints.enabled": true,
+    "editor.suggest.showReferences": true,
+    "editor.suggestSelection": "first",
+    "editor.quickSuggestions": {
+        "other": "on",
+        "comments": "off",
+        "strings": "on"
+    },
+    "better-comments.multilineComments": true,
+    "better-comments.highlightPlainText": true,
+    "better-comments.tags": [
+        {
+            "tag": "!",
+            "color": "#FF2D00",
+            "strikethrough": false,
+            "underline": false,
+            "bold": true,
+            "italic": false
+        },
+        {
+            "tag": "?",
+            "color": "#3498DB",
+            "bold": false
+        },
+        {
+            "tag": "//",
+            "color": "#AAAAAA"
+        },
+        {
+            "tag": "*",
+            "color": "#10C200",
+            "italic": true
+        },
+        {
+            "tag": "TODO",
+            "color": "#FF8C00",
+            "bold": true
+        },
+        {
+            "tag": "NOTE",
+            "color": "#f112d0ff",
+            "bold": true
+        },
+        {
+            "tag": "DEPRECATED",
+            "color": "#10def1ff",
+            "bold": true
+        },
+        {
+            "tag": "ATTENTION",
+            "color": "#1010f1ff",
+            "bold": true
+        },
+        {
+            "tag": "FIXME",
+            "color": "#e8e80fff",
+            "bold": true
+        }
+    ],
+    "editor.defaultColorDecorators": "always",
+    "editor.guides.indentation": true,
+    "editor.guides.highlightActiveIndentation": true
+}

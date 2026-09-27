@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyflutter"
+version = "0.1.0"
+description = "High-performance Python to Flutter bridge with static UI compilation and embedded runtime"
+requires-python = ">=3.10"
+dependencies = [
+    "protobuf>=4.21.0",
+    "loguru>=0.7.0",
+]
+
+[project.optional-dependencies]
+pydantic = ["pydantic>=2.0.0"]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+pyflutter = "pyflutter.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pyflutter*"]
