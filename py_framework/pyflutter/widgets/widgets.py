@@ -172,6 +172,34 @@ class Row(Widget):
         self.children = list(children) if children else []
 
 
+class Wrap(Widget):
+    """
+    A widget that displays its children in multiple horizontal or vertical runs.
+    Unlike Row or Column, Wrap automatically breaks onto a new line when it runs out of space,
+    completely preventing RenderFlex overflow errors!
+
+    Parameters:
+        children: List of child widgets.
+        spacing: How much space to place between children in a run.
+        run_spacing: How much space to place between the runs themselves.
+        alignment: How children within a run should be placed ('start', 'center', 'end', 'space_between', 'space_around', 'space_evenly').
+    """
+    widget_type = "Wrap"
+
+    def __init__(self, children: Optional[Sequence[Widget]] = None, *,
+                 spacing: Optional[int | float] = 8.0,
+                 run_spacing: Optional[int | float] = 8.0,
+                 alignment: Optional[str] = "start",
+                 raw_props: Optional[dict[str, Any]] = None):
+        super().__init__(
+            spacing=spacing,
+            run_spacing=run_spacing,
+            alignment=alignment,
+            raw_props=raw_props,
+        )
+        self.children = list(children) if children else []
+
+
 class Stack(Widget):
     """
     Overlays children on top of each other. Use with `Positioned` to place widgets at exact coordinates.
@@ -335,6 +363,35 @@ class Expanded(Widget):
         self.children = [child]
 
 
+class Flexible(Widget):
+    """
+    Controls how a child of a Row, Column, or Flex flexes.
+    Unlike Expanded, Flexible does not require the child to fill the available space.
+    """
+    widget_type = "Flexible"
+
+    def __init__(self, child: Widget, *,
+                 flex: int = 1,
+                 fit: str = "loose",
+                 raw_props: Optional[dict[str, Any]] = None):
+        super().__init__(flex=flex, fit=fit, raw_props=raw_props)
+        self.children = [child]
+
+
+class FittedBox(Widget):
+    """
+    Scales and positions its child within itself according to fit.
+    Useful for ensuring long text or cards fit without overflowing ('scale_down', 'contain', 'cover').
+    """
+    widget_type = "FittedBox"
+
+    def __init__(self, child: Widget, *,
+                 fit: str = "scale_down",
+                 raw_props: Optional[dict[str, Any]] = None):
+        super().__init__(fit=fit, raw_props=raw_props)
+        self.children = [child]
+
+
 class Spacer(Widget):
     """
     Takes up space proportional to flex in a Row or Column.
@@ -383,13 +440,23 @@ class ListView(Widget):
 class SingleChildScrollView(Widget):
     """
     A box in which a single widget can be scrolled.
+
+    Parameters:
+        child: The single widget to scroll.
+        scroll_direction: Direction of scroll ('vertical' or 'horizontal'). Default is 'vertical'.
+        padding: Padding inside the scroll view.
     """
     widget_type = "SingleChildScrollView"
 
     def __init__(self, child: Widget, *,
+                 scroll_direction: str = "vertical",
                  padding: Optional[int | float] = None,
                  raw_props: Optional[dict[str, Any]] = None):
-        super().__init__(padding=padding, raw_props=raw_props)
+        super().__init__(
+            scroll_direction=scroll_direction,
+            padding=padding,
+            raw_props=raw_props,
+        )
         self.children = [child]
 
 

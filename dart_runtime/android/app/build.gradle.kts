@@ -8,7 +8,17 @@ plugins {
 android {
     namespace = "com.example.pyflutter_dart_runtime"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    // Auto-detect the highest installed NDK version to automatically satisfy plugin requirements
+    val ndkFolder = file("${android.sdkDirectory}/ndk")
+    val highestNdk = if (ndkFolder.exists()) {
+        ndkFolder.listFiles()
+            ?.filter { it.isDirectory && !it.name.startsWith(".") }
+            ?.map { it.name }
+            ?.sorted()
+            ?.lastOrNull()
+    } else null
+
+    ndkVersion = highestNdk ?: "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

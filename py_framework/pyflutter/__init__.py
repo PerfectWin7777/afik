@@ -39,8 +39,11 @@ from pyflutter.widgets.widgets import (
     SafeArea,
     Row,
     Column,
+    Wrap,
     Stack,
     Positioned,
+    Flexible,
+    FittedBox,
 
     # Basic UI & Media
     Text,
@@ -94,8 +97,11 @@ __all__ = [
     # Layout Widgets
     "Row",
     "Column",
+    "Wrap",
     "Stack",
     "Positioned",
+    "Flexible",
+    "FittedBox",
     "Container",
     "Card",
     "Padding",

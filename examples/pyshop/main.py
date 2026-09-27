@@ -56,6 +56,7 @@ from pyflutter import (
     SingleChildScrollView,
     SizedBox,
     Text,
+    Wrap,
     run,
 )
 from pyflutter.core.logger import logger
@@ -481,7 +482,7 @@ class PyShopApp(Component):
                     color=Colors.GREY_700,
                 ),
                 SizedBox(height=12),
-                Row([
+                Wrap([
                     Button(
                         "Appeler Support",
                         icon=Icons.PHONE,
@@ -497,7 +498,7 @@ class PyShopApp(Component):
                             subject="Question sur ma commande PyShop",
                         ),
                     ),
-                ], main_axis_alignment="space_between"),
+                ], spacing=10, run_spacing=10),
             ]),
             padding=14,
             margin=8,

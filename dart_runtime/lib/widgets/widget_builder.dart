@@ -134,6 +134,25 @@ Widget buildFromNode(
       );
       break;
 
+    case 'Wrap':
+      final spacing = double.tryParse(node.props['spacing'] ?? '') ?? 8.0;
+      final runSpacing = double.tryParse(node.props['run_spacing'] ?? '') ?? 8.0;
+      final alignStr = node.props['alignment'] ?? 'start';
+      WrapAlignment align = WrapAlignment.start;
+      if (alignStr == 'center') align = WrapAlignment.center;
+      else if (alignStr == 'end') align = WrapAlignment.end;
+      else if (alignStr == 'space_between') align = WrapAlignment.spaceBetween;
+      else if (alignStr == 'space_around') align = WrapAlignment.spaceAround;
+      else if (alignStr == 'space_evenly') align = WrapAlignment.spaceEvenly;
+
+      widget = Wrap(
+        spacing: spacing,
+        runSpacing: runSpacing,
+        alignment: align,
+        children: node.children.map((c) => buildFromNode(c, sendEvent)).toList(),
+      );
+      break;
+
     case 'Stack':
       widget = Stack(
         children: node.children.map((c) => buildFromNode(c, sendEvent)).toList(),
@@ -336,6 +355,33 @@ Widget buildFromNode(
       );
       break;
 
+    case 'Flexible':
+      final flex = int.tryParse(node.props['flex'] ?? '') ?? 1;
+      final fitStr = node.props['fit'] ?? 'loose';
+      final fit = fitStr == 'tight' ? FlexFit.tight : FlexFit.loose;
+      widget = Flexible(
+        flex: flex,
+        fit: fit,
+        child: node.children.isNotEmpty
+            ? buildFromNode(node.children.first, sendEvent)
+            : const SizedBox.shrink(),
+      );
+      break;
+
+    case 'FittedBox':
+      final fitStr = node.props['fit'] ?? 'scale_down';
+      BoxFit fit = BoxFit.scaleDown;
+      if (fitStr == 'contain') fit = BoxFit.contain;
+      else if (fitStr == 'cover') fit = BoxFit.cover;
+      else if (fitStr == 'fill') fit = BoxFit.fill;
+      widget = FittedBox(
+        fit: fit,
+        child: node.children.isNotEmpty
+            ? buildFromNode(node.children.first, sendEvent)
+            : null,
+      );
+      break;
+
     case 'Spacer':
       final flex = int.tryParse(node.props['flex'] ?? '') ?? 1;
       widget = Spacer(flex: flex);
@@ -351,7 +397,9 @@ Widget buildFromNode(
 
     case 'SingleChildScrollView':
       final pad = double.tryParse(node.props['padding'] ?? '') ?? 0.0;
+      final isHorizontal = node.props['scroll_direction'] == 'horizontal';
       widget = SingleChildScrollView(
+        scrollDirection: isHorizontal ? Axis.horizontal : Axis.vertical,
         padding: EdgeInsets.all(pad),
         child: node.children.isNotEmpty
             ? buildFromNode(node.children.first, sendEvent)
