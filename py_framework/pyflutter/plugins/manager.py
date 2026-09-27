@@ -72,7 +72,50 @@ def add_flutter_package(package_name: str) -> bool:
             shell=(sys.platform == "win32"),
         )
         logger.success(f"✅ Successfully installed '{package_name}' into dart_runtime!")
+
+        # Sync with pyflutter.yaml
+        from pyflutter.core.config import PyFlutterConfig
+        config = PyFlutterConfig.find_and_load()
+        config.add_flutter_dependency(package_name)
+        logger.info(f"📝 Recorded '{package_name}' in pyflutter.yaml.")
         return True
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to install package '{package_name}':\n{e.stdout}")
+        return False
+
+
+def remove_flutter_package(package_name: str) -> bool:
+    """
+    Removes a Flutter package from the PyFlutter runtime using `flutter pub remove`
+    and updates pyflutter.yaml.
+    """
+    current = Path(__file__).resolve()
+    repo_root = current.parents[3]
+    dart_runtime_dir = repo_root / "dart_runtime"
+
+    if not dart_runtime_dir.exists():
+        logger.error(f"Cannot find dart_runtime at: {dart_runtime_dir}")
+        return False
+
+    logger.info(f"🗑️  Removing Flutter package '{package_name}'...")
+    try:
+        subprocess.run(
+            ["flutter", "pub", "remove", package_name],
+            cwd=str(dart_runtime_dir),
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            shell=(sys.platform == "win32"),
+        )
+        logger.success(f"✅ Successfully removed '{package_name}'.")
+
+        from pyflutter.core.config import PyFlutterConfig
+        config = PyFlutterConfig.find_and_load()
+        config.remove_flutter_dependency(package_name)
+        logger.info(f"📝 Removed '{package_name}' from pyflutter.yaml.")
+        return True
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to remove package '{package_name}':\n{e.stdout}")
         return False

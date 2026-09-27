@@ -215,6 +215,12 @@ class PyFlutterRunner:
         self.tree_lock = threading.Lock()
         atexit.register(self.quit, exit_sys=False)
 
+        # Load project configuration if pyflutter.yaml exists
+        from pyflutter.core.config import PyFlutterConfig
+        self.config = PyFlutterConfig.find_and_load(self.entrypoint.parent)
+        if self.config.config_path:
+            logger.info(f"Loaded project manifest: {self.config.config_path.name} ({self.config.name} v{self.config.version})")
+
     def _build_and_tag_tree(self):
         """Builds the UI tree and applies app-level configurations like debug_banner."""
         tree = self.app.build()
@@ -343,27 +349,20 @@ class PyFlutterRunner:
                         continue
                     elif "For a more detailed help message" in line_str or "Application finished." in line_str:
                         continue
-                    elif "A RenderFlex overflowed by" in line_str or ("overflowed by" in line_str and "pixels" in line_str):
-                        logger.warning(
-                            f"\n⚠️  [PyFlutter Layout Overflow Détecté]\n"
-                            f"   ➔ {line_str}\n"
-                            f"   💡 Solutions en Python pour le développeur :\n"
-                            f"      1. Remplacer `Row(...)` par `Wrap(children=[...], spacing=8)` pour passer à la ligne automatiquement.\n"
-                            f"      2. Envelopper les boutons ou widgets dans `Expanded(...)` ou `Flexible(...)` pour partager l'espace.\n"
-                            f"      3. Envelopper le Row dans `SingleChildScrollView(child, scroll_direction='horizontal')` pour le rendre défilable.\n"
-                            f"      4. Envelopper dans `FittedBox(child, fit='scale_down')` pour ajuster la taille automatiquement.\n"
-                        )
-                        continue
-                    elif any(k in line_str for k in [
-                        "◢◤◢◤", "════════", "EXCEPTION CAUGHT BY RENDERING LIBRARY",
-                        "The following assertion was thrown during layout:",
-                        "parentData: offset=", "constraints: BoxConstraints(",
-                        "mainAxisSize:", "crossAxisAlignment:", "verticalDirection:",
-                        "creator: ", "package:flutter/",
-                    ]):
-                        continue
-
+                    # Always stream the authentic Flutter log so developers see the complete native diagnostics
                     logger.info(f"[flutter] {line_str}")
+
+                    # When a layout overflow occurs, append actionable English guidance for the Python developer
+                    if "A RenderFlex overflowed by" in line_str or ("overflowed by" in line_str and "pixels" in line_str):
+                        logger.warning(
+                            "\n💡 [PyFlutter Developer Guidance]\n"
+                            f"   Flutter layout overflow: {line_str}\n"
+                            "   Children widgets exceeded the parent constraints. How to resolve in Python:\n"
+                            "   1. Replace `Row(...)` with `Wrap(children=[...], spacing=8, run_spacing=8)` to auto-wrap items onto new lines.\n"
+                            "   2. Wrap children in `Expanded(child)` or `Flexible(child, fit=FlexFit.LOOSE)` so they share available space.\n"
+                            "   3. Wrap the Row in `SingleChildScrollView(child, scroll_direction=Axis.HORIZONTAL)` to enable horizontal scrolling.\n"
+                            "   4. Wrap in `FittedBox(child, fit=BoxFit.SCALE_DOWN)` to scale down child contents automatically to fit."
+                        )
             except Exception as e:
                 logger.debug(f"Stream output stopped: {e}")
 

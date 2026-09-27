@@ -1,0 +1,19 @@
+name: pyshop
+description: "PyFlutter Mobile E-Commerce Application powered by Flutter, Python 3, and Rust"
+version: 1.0.0
+
+# PyFlutter project configuration
+pyflutter:
+  entrypoint: main.py
+  port: 7879
+
+# Native Flutter packages (identical to pubspec.yaml dependencies)
+dependencies:
+  flutter:
+    url_launcher: ^6.3.0
+
+# Device permissions automatically mapped to Android / iOS
+permissions:
+  - internet
+  - phone
+  - email

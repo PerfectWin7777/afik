@@ -64,6 +64,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Name of the Flutter package to install (e.g. url_launcher, shared_preferences)",
     )
 
+    # `pyflutter remove <package>`
+    remove_parser = subparsers.add_parser("remove", help="Uninstall a native Flutter package from the runtime")
+    remove_parser.add_argument(
+        "package",
+        help="Name of the Flutter package to remove",
+    )
+
+    # `pyflutter init`
+    subparsers.add_parser("init", help="Initialize a new pyflutter.yaml project manifest in current directory")
+
     return parser.parse_args(argv)
 
 
@@ -93,6 +103,28 @@ def main(argv: list[str] | None = None):
         from pyflutter.plugins.manager import add_flutter_package
         success = add_flutter_package(args.package)
         sys.exit(0 if success else 1)
+
+    if args.command == "remove":
+        from pyflutter.plugins.manager import remove_flutter_package
+        success = remove_flutter_package(args.package)
+        sys.exit(0 if success else 1)
+
+    if args.command == "init":
+        from pyflutter.core.config import PyFlutterConfig
+        target = Path.cwd() / "pyflutter.yaml"
+        if target.exists():
+            print(f"pyflutter.yaml already exists at {target}")
+            sys.exit(0)
+        config = PyFlutterConfig(
+            name=Path.cwd().name.lower().replace("-", "_"),
+            description="A new PyFlutter application",
+            version="0.1.0",
+            entrypoint="main.py",
+            config_path=target,
+        )
+        config.save()
+        print(f"✅ Created pyflutter.yaml project manifest at {target}")
+        sys.exit(0)
 
     if args.command == "run":
         entrypoint_path = Path(args.entrypoint).resolve()
