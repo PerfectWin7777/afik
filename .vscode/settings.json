@@ -8,7 +8,7 @@
     "editor.autoClosingQuotes": "always",
     "editor.autoClosingDelete": "always",
     "editor.autoClosingOvertype": "always",
-    "python.defaultInterpreterPath": "D:\\Projets\\HEVRA\\backend\\venv\\Scripts\\python.exe",
+    "python.defaultInterpreterPath": "${workspaceFolder}\\py_framework\\.venv\\Scripts\\python.exe",
     "python.analysis.completeFunctionSignatures": true,
     "python.analysis.typeCheckingMode": "off",
     "python.analysis.autoImportCompletions": true,
@@ -20,9 +20,8 @@
         "editor.formatOnSave": true
     },
     "python.analysis.extraPaths": [
-        "./backend/src"
+        "${workspaceFolder}/py_framework"
     ],
-    "python.envFile": "${workspaceFolder}/backend/.env",
     "editor.hover.enabled": "on",
     "editor.fontFamily": "Fira Code",
     "editor.fontLigatures": true,

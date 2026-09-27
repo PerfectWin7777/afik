@@ -13,10 +13,18 @@ Demonstrates:
 from __future__ import annotations
 
 import json
+import sys
 import threading
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
+
+# Auto-detect framework root so script can run seamlessly from any interpreter or directory
+_repo_root = Path(__file__).resolve().parents[2]
+_framework_path = _repo_root / "py_framework"
+if _framework_path.exists() and str(_framework_path) not in sys.path:
+    sys.path.insert(0, str(_framework_path))
 
 from pyflutter import (
     AppBar,
