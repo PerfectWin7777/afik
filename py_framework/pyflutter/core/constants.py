@@ -6,7 +6,18 @@ Provides full IDE autocomplete for icons, colors, alignments, font weights, and 
 from __future__ import annotations
 
 
-class Icons:
+class _IconsMeta(type):
+    """
+    Metaclass providing graceful dynamic fallback for any Material icon.
+    If an icon attribute is not explicitly defined in the class, it automatically
+    resolves the uppercase attribute to lowercase snake_case (e.g. Icons.OPEN_IN_NEW -> 'open_in_new'),
+    preventing any unexpected AttributeError crashes while preserving IDE autocomplete.
+    """
+    def __getattr__(cls, name: str) -> str:
+        return name.lower()
+
+
+class Icons(metaclass=_IconsMeta):
     """
     Standard Material Design icon identifiers supported natively by the PyFlutter runtime.
     Using these constants enables full VS Code auto-completion and prevents runtime typos.
@@ -58,6 +69,8 @@ class Icons:
     ERROR_OUTLINE = "error_outline"
     LOCK = "lock"
     LOCK_OPEN = "lock_open"
+    OPEN_IN_NEW = "open_in_new"
+    LAUNCH = "open_in_new"
 
     # Social & Communication
     THUMB_UP = "thumb_up"

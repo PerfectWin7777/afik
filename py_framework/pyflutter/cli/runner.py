@@ -355,11 +355,17 @@ class PyFlutterRunner:
         while self.is_running and self.session:
             try:
                 event = self.session.next_event()
-                if event is None:
-                    if self.is_running:
-                        logger.warning("Bridge stream ended or Flutter disconnected.")
-                    break
+            except Exception as e:
+                if self.is_running:
+                    logger.error(f"Bridge stream error: {e}")
+                break
 
+            if event is None:
+                if self.is_running:
+                    logger.warning("Bridge stream ended or Flutter disconnected.")
+                break
+
+            try:
                 logger.debug(f"Event received: {event.callback_id}")
                 invoke_callback(event.callback_id, dict(event.event_data))
 
@@ -369,8 +375,7 @@ class PyFlutterRunner:
                     self.session.send_tree(new_tree)
             except Exception as e:
                 if self.is_running:
-                    logger.error(f"Error in event loop: {e}")
-                break
+                    logger.error(f"Error handling callback event {event.callback_id}: {e}")
 
     def push_update(self):
         """Pushes an asynchronous tree update to the bridge and connected device."""
