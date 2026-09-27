@@ -482,7 +482,7 @@ class PyShopApp(Component):
                     color=Colors.GREY_700,
                 ),
                 SizedBox(height=12),
-                Wrap([
+                Row([
                     Button(
                         "Appeler Support",
                         icon=Icons.PHONE,
@@ -498,7 +498,7 @@ class PyShopApp(Component):
                             subject="Question sur ma commande PyShop",
                         ),
                     ),
-                ], spacing=10, run_spacing=10),
+                ], main_axis_alignment="space_between"),
             ]),
             padding=14,
             margin=8,

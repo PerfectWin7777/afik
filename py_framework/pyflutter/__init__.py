@@ -21,6 +21,9 @@ from pyflutter.core.constants import (
     FontWeight,
     TextAlign,
     BoxFit,
+    FlexFit,
+    WrapAlignment,
+    Axis,
 )
 
 # ============================================================================
@@ -93,6 +96,9 @@ __all__ = [
     "FontWeight",
     "TextAlign",
     "BoxFit",
+    "FlexFit",
+    "WrapAlignment",
+    "Axis",
 
     # Layout Widgets
     "Row",

@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any, Callable, Optional, Sequence
 
 from pyflutter.core.widget_base import Widget, _register_callback
+from pyflutter.core.constants import Axis, BoxFit, FlexFit, WrapAlignment
 
 
 # --- 1. Typography & Display --------------------------------------------------
@@ -189,7 +190,7 @@ class Wrap(Widget):
     def __init__(self, children: Optional[Sequence[Widget]] = None, *,
                  spacing: Optional[int | float] = 8.0,
                  run_spacing: Optional[int | float] = 8.0,
-                 alignment: Optional[str] = "start",
+                 alignment: Optional[str] = WrapAlignment.START,
                  raw_props: Optional[dict[str, Any]] = None):
         super().__init__(
             spacing=spacing,
@@ -372,7 +373,7 @@ class Flexible(Widget):
 
     def __init__(self, child: Widget, *,
                  flex: int = 1,
-                 fit: str = "loose",
+                 fit: str = FlexFit.LOOSE,
                  raw_props: Optional[dict[str, Any]] = None):
         super().__init__(flex=flex, fit=fit, raw_props=raw_props)
         self.children = [child]
@@ -386,7 +387,7 @@ class FittedBox(Widget):
     widget_type = "FittedBox"
 
     def __init__(self, child: Widget, *,
-                 fit: str = "scale_down",
+                 fit: str = BoxFit.SCALE_DOWN,
                  raw_props: Optional[dict[str, Any]] = None):
         super().__init__(fit=fit, raw_props=raw_props)
         self.children = [child]
@@ -449,7 +450,7 @@ class SingleChildScrollView(Widget):
     widget_type = "SingleChildScrollView"
 
     def __init__(self, child: Widget, *,
-                 scroll_direction: str = "vertical",
+                 scroll_direction: str = Axis.VERTICAL,
                  padding: Optional[int | float] = None,
                  raw_props: Optional[dict[str, Any]] = None):
         super().__init__(

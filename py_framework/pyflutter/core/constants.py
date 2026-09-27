@@ -250,11 +250,33 @@ class TextAlign:
 
 
 class BoxFit:
-    """How an image should fit within its allocated box."""
+    """How an image or fitted box should fit within its allocated space."""
     CONTAIN = "contain"
     COVER = "cover"
     FILL = "fill"
-    FIT_WIDTH = "fitWidth"
-    FIT_HEIGHT = "fitHeight"
-    SCALE_DOWN = "scaleDown"
+    FIT_WIDTH = "fit_width"
+    FIT_HEIGHT = "fit_height"
+    SCALE_DOWN = "scale_down"
     NONE = "none"
+
+
+class FlexFit:
+    """How the child of a Flexible widget should flex."""
+    TIGHT = "tight"
+    LOOSE = "loose"
+
+
+class WrapAlignment:
+    """How children within a run of a Wrap widget should be placed."""
+    START = "start"
+    CENTER = "center"
+    END = "end"
+    SPACE_BETWEEN = "space_between"
+    SPACE_AROUND = "space_around"
+    SPACE_EVENLY = "space_evenly"
+
+
+class Axis:
+    """The two cardinal directions in 2D coordinate spaces."""
+    HORIZONTAL = "horizontal"
+    VERTICAL = "vertical"

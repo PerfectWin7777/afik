@@ -345,16 +345,22 @@ class PyFlutterRunner:
                         continue
                     elif "A RenderFlex overflowed by" in line_str or ("overflowed by" in line_str and "pixels" in line_str):
                         logger.warning(
-                            f"\n⚠️  [PyFlutter Layout Overflow Detected]\n"
-                            f"   {line_str}\n"
-                            f"   💡 Solutions en Python :\n"
+                            f"\n⚠️  [PyFlutter Layout Overflow Détecté]\n"
+                            f"   ➔ {line_str}\n"
+                            f"   💡 Solutions en Python pour le développeur :\n"
                             f"      1. Remplacer `Row(...)` par `Wrap(children=[...], spacing=8)` pour passer à la ligne automatiquement.\n"
                             f"      2. Envelopper les boutons ou widgets dans `Expanded(...)` ou `Flexible(...)` pour partager l'espace.\n"
                             f"      3. Envelopper le Row dans `SingleChildScrollView(child, scroll_direction='horizontal')` pour le rendre défilable.\n"
                             f"      4. Envelopper dans `FittedBox(child, fit='scale_down')` pour ajuster la taille automatiquement.\n"
                         )
                         continue
-                    elif "◢◤◢◤" in line_str or "EXCEPTION CAUGHT BY RENDERING LIBRARY" in line_str or "The following assertion was thrown during layout:" in line_str:
+                    elif any(k in line_str for k in [
+                        "◢◤◢◤", "════════", "EXCEPTION CAUGHT BY RENDERING LIBRARY",
+                        "The following assertion was thrown during layout:",
+                        "parentData: offset=", "constraints: BoxConstraints(",
+                        "mainAxisSize:", "crossAxisAlignment:", "verticalDirection:",
+                        "creator: ", "package:flutter/",
+                    ]):
                         continue
 
                     logger.info(f"[flutter] {line_str}")
