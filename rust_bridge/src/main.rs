@@ -152,8 +152,8 @@ fn relay_mode(port: u16) {
             let (msg_type, payload) = match read_frame(&mut stdin) {
                 Ok(v) => v,
                 Err(e) => {
-                    eprintln!("[bridge] stdin closed or read error: {e}");
-                    break;
+                    eprintln!("[bridge] stdin closed ({e}). Parent Python process exited. Shutting down.");
+                    std::process::exit(0);
                 }
             };
             if msg_type == MSG_RENDER_TREE {

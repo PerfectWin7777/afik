@@ -5,11 +5,13 @@ Orchestrates Flutter runtime, Rust bridge relay, Python event loop, and develope
 
 from __future__ import annotations
 
+import atexit
 import importlib
 import importlib.util
 import os
 import queue
 import shutil
+import socket
 import subprocess
 import sys
 import threading
@@ -47,6 +49,50 @@ def find_bridge_binary(root: Path) -> Path:
         f"pyflutter-bridge binary not found in {root / 'rust_bridge' / 'target'}. "
         "Please build it with `cargo build` in rust_bridge/."
     )
+
+
+def is_port_in_use(port: int) -> bool:
+    """Checks if a local TCP port is already open/in use."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.3)
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
+def ensure_port_free(port: int) -> None:
+    """Terminates any stale process listening on the bridge port."""
+    if not is_port_in_use(port):
+        return
+    logger.info(f"Port {port} is occupied. Cleaning up stale bridge process...")
+    if sys.platform == "win32":
+        try:
+            output = subprocess.check_output(
+                f"netstat -ano | findstr :{port}", shell=True, text=True, errors="ignore"
+            )
+            for line in output.strip().splitlines():
+                parts = line.split()
+                if len(parts) >= 5 and f":{port}" in parts[1] and parts[3] == "LISTENING":
+                    pid = int(parts[4])
+                    if pid != os.getpid() and pid > 0:
+                        logger.info(f"Terminating stale process (PID {pid}) on port {port}...")
+                        subprocess.run(
+                            f"taskkill /F /PID {pid}",
+                            shell=True,
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                        )
+        except Exception as e:
+            logger.debug(f"Could not kill process on port {port}: {e}")
+    else:
+        try:
+            subprocess.run(
+                f"fuser -k {port}/tcp",
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+    time.sleep(0.5)
 
 
 def load_app_from_file(file_path: Path):
@@ -167,6 +213,7 @@ class PyFlutterRunner:
         self.app = None
         self.is_running = False
         self.tree_lock = threading.Lock()
+        atexit.register(self.quit, exit_sys=False)
 
     def _build_and_tag_tree(self):
         """Builds the UI tree and applies app-level configurations like debug_banner."""
@@ -206,11 +253,15 @@ class PyFlutterRunner:
                 logger.warning("Failed to configure ADB reverse automatically. Run `adb reverse tcp:7879 tcp:7879` if needed.")
 
         # 3. Load Python app
-        logger.info(f"Loading Python entrypoint: {self.entrypoint.name}...")
-        self.app_module, self.app = load_app_from_file(self.entrypoint)
-        logger.success(f"Loaded {self.app.__class__.__name__} successfully.")
+        if self.app is None:
+            logger.info(f"Loading Python entrypoint: {self.entrypoint.name}...")
+            self.app_module, self.app = load_app_from_file(self.entrypoint)
+            logger.success(f"Loaded {self.app.__class__.__name__} successfully.")
+        else:
+            logger.success(f"Using {self.app.__class__.__name__} application instance.")
 
         # 4. Start Rust Bridge relay
+        ensure_port_free(self.port)
         logger.info(f"Starting Rust Bridge relay on port {self.port}...")
         self.session = BridgeSession(
             str(self.bridge_bin),
@@ -384,8 +435,10 @@ class PyFlutterRunner:
         except Exception as e:
             logger.error(f"Hot Restart failed: {e}")
 
-    def quit(self):
+    def quit(self, exit_sys: bool = True):
         """Shuts down all processes cleanly."""
+        if not self.is_running and self.session is None and self.flutter_process is None:
+            return
         logger.info("\n👋 [PyFlutter] Quitting...")
         self.is_running = False
 
@@ -397,15 +450,21 @@ class PyFlutterRunner:
                 self.flutter_process.terminate()
             except Exception:
                 pass
+            self.flutter_process = None
 
         if self.session:
             try:
                 self.session.close()
             except Exception:
                 pass
+            self.session = None
 
         logger.info("Session ended cleanly.")
-        sys.exit(0)
+        if exit_sys:
+            try:
+                sys.exit(0)
+            except SystemExit:
+                pass
 
     def _print_banner(self, device_name: str):
         banner = f"""

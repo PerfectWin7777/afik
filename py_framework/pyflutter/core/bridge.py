@@ -51,8 +51,15 @@ class BridgeSession:
         )
 
     def send_tree(self, root: Widget) -> None:
-        self.process.stdin.write(render_tree_frame(root))
-        self.process.stdin.flush()
+        if self.process.poll() is not None:
+            raise RuntimeError(
+                f"Rust bridge process exited prematurely (exit code: {self.process.returncode})."
+            )
+        try:
+            self.process.stdin.write(render_tree_frame(root))
+            self.process.stdin.flush()
+        except (BrokenPipeError, OSError) as e:
+            raise RuntimeError(f"Failed to communicate with Rust bridge: {e}")
 
     def next_event(self):
         """Blocks until the next CallbackEvent arrives, or returns None
@@ -67,9 +74,22 @@ class BridgeSession:
         return decode_callback_event(payload)
 
     def close(self) -> None:
-        self.process.stdin.close()
-        self.process.terminate()
-        self.process.wait(timeout=2)
+        if self.process.poll() is None:
+            try:
+                self.process.stdin.close()
+            except Exception:
+                pass
+            try:
+                self.process.terminate()
+                self.process.wait(timeout=1)
+            except Exception:
+                try:
+                    self.process.kill()
+                except Exception:
+                    pass
+
+    def __del__(self):
+        self.close()
 
 
 def run_loop(bridge_binary: str, build_tree: Callable[[], Widget],
