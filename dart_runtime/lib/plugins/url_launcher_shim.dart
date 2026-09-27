@@ -9,21 +9,30 @@ class UrlLauncherShim extends PyFlutterPlugin {
       case 'open_url':
         final urlStr = args['url'] ?? '';
         final uri = Uri.parse(urlStr);
-        if (await canLaunchUrl(uri)) {
+        try {
           return await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } catch (_) {
+          return await launchUrl(uri, mode: LaunchMode.platformDefault);
         }
-        return false;
 
       case 'make_call':
         final phone = args['phone'] ?? '';
         final uri = Uri.parse('tel:$phone');
-        return await launchUrl(uri);
+        try {
+          return await launchUrl(uri);
+        } catch (_) {
+          return false;
+        }
 
       case 'send_email':
         final email = args['email'] ?? '';
         final subject = args['subject'] ?? '';
         final uri = Uri.parse('mailto:$email?subject=${Uri.encodeComponent(subject)}');
-        return await launchUrl(uri);
+        try {
+          return await launchUrl(uri);
+        } catch (_) {
+          return false;
+        }
 
       default:
         throw UnsupportedError('Method "$method" is not supported by url_launcher shim.');
