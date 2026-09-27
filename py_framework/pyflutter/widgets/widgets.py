@@ -397,16 +397,18 @@ class SingleChildScrollView(Widget):
 
 class Button(Widget):
     """
-    An elevated Material button with label and click callback.
+    An elevated Material button with optional icon, label, and click callback.
     """
     widget_type = "Button"
 
     def __init__(self, label: Any = "", *,
+                 icon: Optional[str] = None,
                  on_click: Optional[Callable] = None,
                  color: Optional[str] = None,
                  raw_props: Optional[dict[str, Any]] = None):
         super().__init__(
             label=str(label),
+            icon=icon,
             color=color,
             raw_props=raw_props,
         )
