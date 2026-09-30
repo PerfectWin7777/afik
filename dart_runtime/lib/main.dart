@@ -9,14 +9,16 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import 'core/color_parser.dart';
 import 'frame_buffer.dart';
 import 'ir_codec.dart';
+import 'plugins/overlay_shim.dart';
 import 'plugins/plugin_registry.dart';
 import 'plugins/url_launcher_shim.dart';
 import 'widgets/widget_builder.dart';
 
 void main() {
-  // Register native plugin shims
+  // Register default static shims
   PluginRegistry.register('url_launcher', UrlLauncherShim());
 
   runApp(const PyFlutterShellApp());
@@ -30,12 +32,73 @@ class PyFlutterShellApp extends StatefulWidget {
 }
 
 class _PyFlutterShellAppState extends State<PyFlutterShellApp> {
-  bool _showDebugBanner = false;
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
-  void _onDebugBannerChanged(bool show) {
-    if (_showDebugBanner != show) {
-      setState(() {
-        _showDebugBanner = show;
+  String _title = 'PyFlutter';
+  bool _showDebugBanner = false;
+  ThemeMode _themeMode = ThemeMode.system;
+  Color _seedColor = const Color(0xFF1877F2);
+  bool _useMaterial3 = true;
+  Color? _scaffoldBackgroundColor;
+
+  void _onAppConfigChanged(Map<String, String> props) {
+    bool changed = false;
+    String newTitle = _title;
+    bool newBanner = _showDebugBanner;
+    ThemeMode newMode = _themeMode;
+    Color newSeed = _seedColor;
+    Color? newScaffoldBg = _scaffoldBackgroundColor;
+
+    if (props.containsKey('title') && props['title']! != _title) {
+      newTitle = props['title']!;
+      changed = true;
+    }
+    if (props.containsKey('debug_banner')) {
+      final b = props['debug_banner'] == 'true';
+      if (b != _showDebugBanner) {
+        newBanner = b;
+        changed = true;
+      }
+    }
+    if (props.containsKey('theme_mode')) {
+      final modeStr = props['theme_mode'];
+      ThemeMode m = ThemeMode.system;
+      if (modeStr == 'light') m = ThemeMode.light;
+      else if (modeStr == 'dark') m = ThemeMode.dark;
+      if (m != _themeMode) {
+        newMode = m;
+        changed = true;
+      }
+    }
+    final seedStr = props['seed_color'] ?? props['theme_seed_color'];
+    if (seedStr != null) {
+      final parsed = parseHexColor(seedStr);
+      if (parsed != null && parsed != _seedColor) {
+        newSeed = parsed;
+        changed = true;
+      }
+    }
+    if (props.containsKey('theme_scaffold_background_color')) {
+      final parsed = parseHexColor(props['theme_scaffold_background_color']!);
+      if (parsed != _scaffoldBackgroundColor) {
+        newScaffoldBg = parsed;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _title = newTitle;
+            _showDebugBanner = newBanner;
+            _themeMode = newMode;
+            _seedColor = newSeed;
+            _scaffoldBackgroundColor = newScaffoldBg;
+          });
+        }
       });
     }
   }
@@ -43,17 +106,48 @@ class _PyFlutterShellAppState extends State<PyFlutterShellApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'PyFlutter',
+      title: _title,
+      navigatorKey: _navigatorKey,
+      scaffoldMessengerKey: _scaffoldMessengerKey,
       debugShowCheckedModeBanner: _showDebugBanner,
-      home: BridgeConnectionScreen(onDebugBannerChanged: _onDebugBannerChanged),
+      themeMode: _themeMode,
+      theme: ThemeData(
+        useMaterial3: _useMaterial3,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: _seedColor,
+          brightness: Brightness.light,
+        ),
+        scaffoldBackgroundColor: _scaffoldBackgroundColor,
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: _useMaterial3,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: _seedColor,
+          brightness: Brightness.dark,
+        ),
+      ),
+      home: BridgeConnectionScreen(
+        key: const ValueKey('bridge_screen_root'),
+        onAppConfigChanged: _onAppConfigChanged,
+        scaffoldMessengerKey: _scaffoldMessengerKey,
+        navigatorKey: _navigatorKey,
+      ),
     );
   }
 }
 
 /// Manages TCP socket communication with the Rust bridge and holds the active widget tree.
 class BridgeConnectionScreen extends StatefulWidget {
-  final void Function(bool show)? onDebugBannerChanged;
-  const BridgeConnectionScreen({super.key, this.onDebugBannerChanged});
+  final void Function(Map<String, String> config) onAppConfigChanged;
+  final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey;
+  final GlobalKey<NavigatorState> navigatorKey;
+
+  const BridgeConnectionScreen({
+    super.key,
+    required this.onAppConfigChanged,
+    required this.scaffoldMessengerKey,
+    required this.navigatorKey,
+  });
 
   @override
   State<BridgeConnectionScreen> createState() => _BridgeConnectionScreenState();
@@ -71,6 +165,17 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
   void initState() {
     super.initState();
     _frameBuffer = FrameBuffer(_handleFrame);
+
+    // Register native Overlay plugin shim bound to active Messenger and Navigator keys
+    PluginRegistry.register(
+      'overlay',
+      OverlayShim(
+        scaffoldMessengerKey: widget.scaffoldMessengerKey,
+        navigatorKey: widget.navigatorKey,
+        sendEvent: _sendCallbackEvent,
+      ),
+    );
+
     _connect();
   }
 
@@ -124,8 +229,8 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
   void _handleFrame(int msgType, Uint8List payload) {
     if (msgType == msgRenderTree) {
       final root = decodeRenderTree(payload);
-      if (root != null && root.props.containsKey('debug_banner')) {
-        widget.onDebugBannerChanged?.call(root.props['debug_banner'] == 'true');
+      if (root != null) {
+        widget.onAppConfigChanged(root.props);
       }
       setState(() {
         _tree = root;
@@ -171,7 +276,7 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
     final tree = _tree;
     if (tree == null) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF0F2F5),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -185,17 +290,28 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
       );
     }
 
-    // If the Python app returns a Scaffold, let it drive the entire screen layout
-    if (tree.type == 'Scaffold') {
-      return buildFromNode(tree, _sendCallbackEvent);
+    WidgetNode displayNode = tree;
+    // If root node is MaterialApp, render its child home slot
+    if (tree.type == 'MaterialApp') {
+      if (tree.children.isNotEmpty) {
+        displayNode = tree.children.firstWhere(
+          (c) => c.props['slot'] == 'home',
+          orElse: () => tree.children.first,
+        );
+      }
+    }
+
+    // If the node is a Scaffold, let it drive the entire screen layout
+    if (displayNode.type == 'Scaffold') {
+      return buildFromNode(displayNode, _sendCallbackEvent);
     }
 
     // Default wrapper: always protects the UI from Android bottom navigation buttons & notch
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         maintainBottomViewPadding: true,
-        child: buildFromNode(tree, _sendCallbackEvent),
+        child: buildFromNode(displayNode, _sendCallbackEvent),
       ),
     );
   }

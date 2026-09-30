@@ -95,12 +95,19 @@ def ensure_port_free(port: int) -> None:
     time.sleep(0.5)
 
 
-def load_app_from_file(file_path: Path):
+def load_app_from_file(file_path: str | Path):
     """Dynamically loads the Python app module and instantiates the App class."""
+    file_path = Path(file_path).resolve()
     module_name = file_path.stem
     spec = importlib.util.spec_from_file_location(module_name, str(file_path))
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load module from {file_path}")
+
+    # Auto-discover local py_framework if running from development repository
+    workspace = find_workspace_root()
+    dev_framework = workspace / "py_framework"
+    if dev_framework.exists() and str(dev_framework) not in sys.path:
+        sys.path.insert(0, str(dev_framework))
 
     # Ensure the script's directory is on sys.path
     script_dir = str(file_path.parent.resolve())
@@ -112,20 +119,80 @@ def load_app_from_file(file_path: Path):
     spec.loader.exec_module(module)
 
     # Find the App class or callable
+    from pyflutter.core.widget_base import Component, MainWindow
     app_instance = None
+
+    # 1. Explicit 'App' in module
     if hasattr(module, "App"):
         app_cls = getattr(module, "App")
-        app_instance = app_cls() if isinstance(app_cls, type) else app_cls
-    else:
-        # Search for any class ending with 'App'
+        try:
+            app_instance = app_cls() if isinstance(app_cls, type) else app_cls
+        except Exception as e:
+            logger.debug(f"Failed to instantiate App: {e}")
+
+    # 2. Subclass of MainWindow (PyQt / PySide OOP style)
+    if app_instance is None:
         for attr_name in dir(module):
-            if attr_name.endswith("App") and attr_name != "App":
-                attr = getattr(module, attr_name)
-                if isinstance(attr, type):
+            attr = getattr(module, attr_name, None)
+            if (
+                isinstance(attr, type)
+                and issubclass(attr, MainWindow)
+                and attr is not MainWindow
+                and getattr(attr, "__module__", "") == module_name
+            ):
+                try:
                     app_instance = attr()
                     break
+                except Exception as e:
+                    logger.debug(f"Could not instantiate MainWindow {attr_name}: {e}")
 
-    if app_instance is None and hasattr(module, "build"):
+    # 3. User-defined class ending with 'App' or 'Window'
+    if app_instance is None:
+        for attr_name in dir(module):
+            if (attr_name.endswith("App") or attr_name.endswith("Window")) and attr_name not in ("MaterialApp", "App", "MainWindow"):
+                attr = getattr(module, attr_name, None)
+                if isinstance(attr, type) and getattr(attr, "__module__", "") == module_name:
+                    try:
+                        app_instance = attr()
+                        break
+                    except Exception as e:
+                        logger.debug(f"Could not instantiate {attr_name}: {e}")
+
+    # 4. User-defined class inheriting from Component that takes 0 arguments
+    if app_instance is None:
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name, None)
+            if (
+                isinstance(attr, type)
+                and issubclass(attr, Component)
+                and attr not in (Component, MainWindow)
+                and getattr(attr, "__module__", "") == module_name
+            ):
+                try:
+                    app_instance = attr()
+                    break
+                except TypeError:
+                    continue
+                except Exception as e:
+                    logger.debug(f"Could not instantiate {attr_name}: {e}")
+
+    # 5. User-defined class with a build() method
+    if app_instance is None:
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name, None)
+            if (
+                isinstance(attr, type)
+                and hasattr(attr, "build")
+                and getattr(attr, "__module__", "") == module_name
+            ):
+                try:
+                    app_instance = attr()
+                    break
+                except TypeError:
+                    continue
+
+    # 6. Fallback: search for top-level build() function
+    if app_instance is None and hasattr(module, "build") and callable(getattr(module, "build")):
         class FunctionalApp:
             def build(self):
                 return module.build()
@@ -133,8 +200,8 @@ def load_app_from_file(file_path: Path):
 
     if app_instance is None:
         raise AttributeError(
-            f"No App class or build() function found in {file_path}. "
-            "Please define `class App:` with a `build(self)` method."
+            f"No Component, App class, or build() function found in {file_path}. "
+            "Please define a `Component` subclass or a `build(self)` method."
         )
 
     return module, app_instance
@@ -223,13 +290,17 @@ class PyFlutterRunner:
 
     def _build_and_tag_tree(self):
         """Builds the UI tree and applies app-level configurations like debug_banner."""
-        tree = self.app.build()
+        if hasattr(self.app, "build") and callable(self.app.build):
+            tree = self.app.build()
+        else:
+            tree = self.app
         show_banner = False
         if hasattr(self.app, "debug_banner"):
             show_banner = bool(self.app.debug_banner)
         elif self.debug_banner is not None:
             show_banner = bool(self.debug_banner)
-        tree.props["debug_banner"] = "true" if show_banner else "false"
+        if hasattr(tree, "props") and isinstance(tree.props, dict):
+            tree.props["debug_banner"] = "true" if show_banner else "false"
         return tree
 
     def start(self):
@@ -237,6 +308,10 @@ class PyFlutterRunner:
         if not self.entrypoint.exists():
             logger.error(f"Entrypoint file not found: {self.entrypoint}")
             sys.exit(1)
+
+        # 0. Sync declarative permissions to native Android and iOS manifests
+        from pyflutter.cli.manifest_sync import sync_platform_metadata
+        sync_platform_metadata(self.root, self.config)
 
         # 1. Device selection
         logger.info("Discovering target devices...")

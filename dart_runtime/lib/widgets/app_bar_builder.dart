@@ -54,6 +54,15 @@ PreferredSizeWidget? buildAppBar(
   }
 
   final elevation = double.tryParse(node.props['elevation'] ?? '') ?? 0.0;
+  final scrolledUnderElevation = double.tryParse(node.props['scrolled_under_elevation'] ?? '');
+  final shadowColor = node.props.containsKey('shadow_color')
+      ? parseHexColor(node.props['shadow_color']!)
+      : null;
+  final surfaceTintColor = node.props.containsKey('surface_tint_color')
+      ? parseHexColor(node.props['surface_tint_color']!)
+      : null;
+  final toolbarHeight = double.tryParse(node.props['toolbar_height'] ?? '');
+  final titleSpacing = double.tryParse(node.props['title_spacing'] ?? '');
   final centerTitle = node.props['center_title'] == 'true';
 
   return AppBar(
@@ -63,6 +72,11 @@ PreferredSizeWidget? buildAppBar(
     bottom: bottomWidget,
     backgroundColor: bgColor,
     elevation: elevation,
+    scrolledUnderElevation: scrolledUnderElevation,
+    shadowColor: shadowColor,
+    surfaceTintColor: surfaceTintColor,
+    toolbarHeight: toolbarHeight,
+    titleSpacing: titleSpacing,
     centerTitle: centerTitle,
   );
 }

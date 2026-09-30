@@ -1,5 +1,5 @@
 name: pyshop
-description: "PyFlutter Mobile E-Commerce Application powered by Flutter, Python 3, and Rust"
+description: "PyShop — Modern E-Commerce Application showcasing Material 3 and PyQt-style OOP in PyFlutter"
 version: 1.0.0
 
 # PyFlutter project configuration

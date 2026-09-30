@@ -37,10 +37,18 @@ const int msgCallbackEvent = 0x02;
 /// Plain data class mirroring the `Widget` protobuf message. Not named
 /// `Widget` to avoid clashing with Flutter's own `Widget` class.
 class WidgetNode {
-  String type = '';
-  Map<String, String> props = {};
-  List<WidgetNode> children = [];
-  String callbackId = '';
+  String type;
+  Map<String, String> props;
+  List<WidgetNode> children;
+  String callbackId;
+
+  WidgetNode({
+    this.type = '',
+    Map<String, String>? props,
+    List<WidgetNode>? children,
+    this.callbackId = '',
+  })  : props = props ?? {},
+        children = children ?? [];
 }
 
 // --- Decoding ------------------------------------------------------------

@@ -11,6 +11,19 @@ import argparse
 import sys
 from pathlib import Path
 
+# Ensure UTF-8 output on Windows consoles
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+# Ensure py_framework is on sys.path if run directly as a script
+_framework_dir = Path(__file__).resolve().parents[2]
+if str(_framework_dir) not in sys.path:
+    sys.path.insert(0, str(_framework_dir))
+
 from pyflutter import __version__
 from pyflutter.cli.devices import list_devices
 from pyflutter.cli.runner import PyFlutterRunner
@@ -71,8 +84,28 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Name of the Flutter package to remove",
     )
 
+    # `pyflutter create <name>`
+    create_parser = subparsers.add_parser("create", help="Create a new PyFlutter project directory with Material 3 template")
+    create_parser.add_argument(
+        "name",
+        help="Name of the project to create (e.g. my_shop, my_cool_app)",
+    )
+    create_parser.add_argument(
+        "--description", "-d",
+        default="A modern mobile application powered by PyFlutter",
+        help="Short description for the project manifest",
+    )
+
     # `pyflutter init`
-    subparsers.add_parser("init", help="Initialize a new pyflutter.yaml project manifest in current directory")
+    init_parser = subparsers.add_parser("init", help="Initialize a PyFlutter project in the current directory")
+    init_parser.add_argument(
+        "--description", "-d",
+        default="A modern mobile application powered by PyFlutter",
+        help="Short description for the project manifest",
+    )
+
+    # `pyflutter sync`
+    subparsers.add_parser("sync", help="Synchronize pyflutter.yaml permissions to AndroidManifest.xml and Info.plist")
 
     return parser.parse_args(argv)
 
@@ -109,21 +142,43 @@ def main(argv: list[str] | None = None):
         success = remove_flutter_package(args.package)
         sys.exit(0 if success else 1)
 
-    if args.command == "init":
-        from pyflutter.core.config import PyFlutterConfig
-        target = Path.cwd() / "pyflutter.yaml"
-        if target.exists():
-            print(f"pyflutter.yaml already exists at {target}")
-            sys.exit(0)
-        config = PyFlutterConfig(
-            name=Path.cwd().name.lower().replace("-", "_"),
-            description="A new PyFlutter application",
-            version="0.1.0",
-            entrypoint="main.py",
-            config_path=target,
+    if args.command == "create":
+        from pyflutter.cli.creator import create_project, sanitize_project_name
+        target_dir = Path.cwd() / sanitize_project_name(args.name)
+        if target_dir.exists() and any(target_dir.iterdir()):
+            print(f"❌ Error: Directory '{target_dir.name}' already exists and is not empty.")
+            sys.exit(1)
+        created_path = create_project(
+            project_dir=target_dir,
+            name=args.name,
+            description=args.description,
         )
-        config.save()
-        print(f"✅ Created pyflutter.yaml project manifest at {target}")
+        print(f"\n🎉 Successfully created PyFlutter project '{args.name}' at:\n   {created_path}\n")
+        print("Next steps:")
+        print(f"  cd {target_dir.name}")
+        print("  pyflutter run\n")
+        sys.exit(0)
+
+    if args.command == "init":
+        from pyflutter.cli.creator import create_project
+        created_path = create_project(
+            project_dir=Path.cwd(),
+            name=Path.cwd().name,
+            description=args.description,
+        )
+        print(f"\n✅ PyFlutter project initialized in current directory:\n   {created_path}\n")
+        print("To run the application:")
+        print("  pyflutter run\n")
+        sys.exit(0)
+
+    if args.command == "sync":
+        from pyflutter.core.config import PyFlutterConfig
+        from pyflutter.cli.manifest_sync import sync_platform_metadata
+        from pyflutter.cli.runner import find_workspace_root
+        config = PyFlutterConfig.find_and_load(Path.cwd())
+        root = find_workspace_root()
+        sync_platform_metadata(root, config)
+        print("✅ Native manifests (Android & iOS) successfully synchronized with pyflutter.yaml")
         sys.exit(0)
 
     if args.command == "run":

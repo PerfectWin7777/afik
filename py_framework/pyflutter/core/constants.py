@@ -205,6 +205,12 @@ class Colors:
     BACKGROUND = "#F0F2F5"
 
 
+class MainAxisSize:
+    """How much space should be occupied along the main axis in a Row or Column."""
+    MIN = "min"
+    MAX = "max"
+
+
 class MainAxisAlignment:
     """Arrangement of children along the main axis of a Row or Column."""
     START = "start"
@@ -280,3 +286,68 @@ class Axis:
     """The two cardinal directions in 2D coordinate spaces."""
     HORIZONTAL = "horizontal"
     VERTICAL = "vertical"
+
+
+class Curves:
+    """Standard animation curves."""
+    LINEAR = "linear"
+    EASE_IN = "easeIn"
+    EASE_OUT = "easeOut"
+    EASE_IN_OUT = "easeInOut"
+    BOUNCE_IN = "bounceIn"
+    BOUNCE_OUT = "bounceOut"
+    BOUNCE_IN_OUT = "bounceInOut"
+    ELASTIC_IN = "elasticIn"
+    ELASTIC_OUT = "elasticOut"
+    ELASTIC_IN_OUT = "elasticInOut"
+    FAST_OUT_SLOW_IN = "fastOutSlowIn"
+
+
+class HitTestBehavior:
+    """How a gesture detector behaves during hit testing."""
+    DEFER_TO_CHILD = "defer_to_child"
+    OPAQUE = "opaque"
+    TRANSLUCENT = "translucent"
+
+
+class DismissDirection:
+    """Directions in which a Dismissible widget can be dismissed."""
+    VERTICAL = "vertical"
+    HORIZONTAL = "horizontal"
+    END_TO_START = "end_to_start"
+    START_TO_END = "start_to_end"
+    UP = "up"
+    DOWN = "down"
+    NONE = "none"
+
+
+class Alignment:
+    """Standard 2D alignments within a box."""
+    TOP_LEFT = "top_left"
+    TOP_CENTER = "top_center"
+    TOP_RIGHT = "top_right"
+    CENTER_LEFT = "center_left"
+    CENTER = "center"
+    CENTER_RIGHT = "center_right"
+    BOTTOM_LEFT = "bottom_left"
+    BOTTOM_CENTER = "bottom_center"
+    BOTTOM_RIGHT = "bottom_right"
+
+
+class FloatingActionButtonLocation:
+    """Standard placement locations for FloatingActionButton in a Scaffold."""
+    CENTER_FLOAT = "centerFloat"
+    CENTER_DOCKED = "centerDocked"
+    END_FLOAT = "endFloat"
+    END_DOCKED = "endDocked"
+    START_FLOAT = "startFloat"
+    START_DOCKED = "startDocked"
+
+
+class ScrollPhysics:
+    """Physics applied to scrollable views like ListView and SingleChildScrollView."""
+    BOUNCING = "bouncing"
+    CLAMPING = "clamping"
+    NEVER = "never"
+    ALWAYS = "always"
+

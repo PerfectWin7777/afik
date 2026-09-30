@@ -7,8 +7,40 @@ from __future__ import annotations
 
 from typing import Any, Callable, Optional, Sequence
 
-from pyflutter.core.widget_base import Widget, _register_callback
-from pyflutter.core.constants import Axis, BoxFit, FlexFit, WrapAlignment
+from pyflutter.core.widget_base import Widget, _register_callback, QtSignal
+from pyflutter.core.constants import (
+    Axis,
+    BoxFit,
+    FlexFit,
+    WrapAlignment,
+    MainAxisSize,
+    FloatingActionButtonLocation,
+    ScrollPhysics,
+)
+from pyflutter.core.style import TextStyle, ThemeData, ColorScheme
+from pyflutter.core.form import (
+    Form,
+    FormKey,
+    TextEditingController,
+    Validators,
+    InputBorder,
+    OutlineInputBorder,
+    UnderlineInputBorder,
+)
+from pyflutter.widgets.gestures import (
+    GestureDetector,
+    InkWell,
+    Dismissible,
+)
+from pyflutter.widgets.animations import (
+    Hero,
+    AnimatedContainer,
+    AnimatedOpacity,
+    AnimatedScale,
+    AnimatedRotation,
+    AnimatedAlign,
+    AnimatedCrossFade,
+)
 
 
 # --- 1. Typography & Display --------------------------------------------------
@@ -16,33 +48,85 @@ from pyflutter.core.constants import Axis, BoxFit, FlexFit, WrapAlignment
 class Text(Widget):
     """
     A run of text with styled font, weight, color, alignment and truncation.
+    Matches Flutter's native Text widget and Material 3 Typography Scale.
 
     Parameters:
         value: The text string to display.
+        style: Either a Material 3 text theme style name (e.g. 'headlineLarge',
+               'titleMedium', 'bodySmall') or a pf.TextStyle instance.
         font_size: Size of the text in logical pixels (e.g. 14, 18.5).
-        font_weight: Thickness of the glyphs ('normal', 'bold', 'w600').
-        color: Hex color string (e.g. '#1877F2', '#000000').
+        font_weight: Thickness of the glyphs ('normal', 'bold', 'w600', FontWeight.BOLD).
+        color: Hex color string (e.g. '#1877F2', Colors.PRIMARY).
+        font_style: 'normal' or 'italic'.
+        letter_spacing: Spacing between characters.
+        text_align: 'left', 'center', 'right', 'justify'.
+        max_lines: Maximum number of lines for the text to span.
+        overflow: Truncation behavior ('ellipsis', 'clip', 'fade').
+        soft_wrap: Whether the text should break at soft line breaks.
         raw_props: Escape hatch dictionary for unmapped Flutter properties.
     """
     widget_type = "Text"
 
-    def __init__(self, value: Any = "", *,
-                 font_size: Optional[int | float] = None,
-                 font_weight: Optional[str] = None,
-                 color: Optional[str] = None,
-                 raw_props: Optional[dict[str, Any]] = None):
-        super().__init__(
-            value=str(value),
-            font_size=font_size,
-            font_weight=font_weight,
-            color=color,
-            raw_props=raw_props,
-        )
+    def __init__(
+        self,
+        value: Any = "",
+        *,
+        style: Optional[str | TextStyle] = None,
+        font_size: Optional[int | float] = None,
+        font_weight: Optional[str] = None,
+        color: Optional[str] = None,
+        font_style: Optional[str] = None,
+        letter_spacing: Optional[float] = None,
+        text_align: Optional[str] = None,
+        max_lines: Optional[int] = None,
+        overflow: Optional[str] = None,
+        soft_wrap: Optional[bool] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        actual_val = value.value if hasattr(value, "value") else value
+        props: dict[str, Any] = {
+            "value": str(actual_val),
+            "text": str(actual_val),
+        }
+        if style is not None:
+            if isinstance(style, str):
+                props["style"] = style
+                props["theme_style"] = style
+            elif isinstance(style, TextStyle):
+                props.update(style.to_props())
 
-    def set_text(self, value: Any) -> Text:
-        """Dynamically updates the text content."""
+        if font_size is not None:
+            props["font_size"] = font_size
+        if font_weight is not None:
+            props["font_weight"] = font_weight
+        if color is not None:
+            props["color"] = color
+        if font_style is not None:
+            props["font_style"] = font_style
+        if letter_spacing is not None:
+            props["letter_spacing"] = letter_spacing
+        if text_align is not None:
+            props["text_align"] = text_align
+        if max_lines is not None:
+            props["max_lines"] = max_lines
+        if overflow is not None:
+            props["overflow"] = overflow
+        if soft_wrap is not None:
+            props["soft_wrap"] = soft_wrap
+
+        super().__init__(raw_props=raw_props, **props)
+
+    def text(self) -> str:
+        """Returns the current displayed text (Qt QLabel.text())."""
+        return self.props.get("value", "")
+
+    def setText(self, value: Any) -> Text:
+        """Dynamically updates the text content (Qt QLabel.setText())."""
         self.props["value"] = str(value)
+        self.props["text"] = str(value)
         return self
+
+    set_text = setText
 
 
 class Image(Widget):
@@ -109,20 +193,45 @@ class IconButton(Widget):
     """
     A convenient clickable icon button with ripple effect.
     """
-    widget_type = "Icon"
+    widget_type = "IconButton"
 
     def __init__(self, name: str, *,
-                 on_click: Callable,
+                 on_click: Optional[Callable] = None,
+                 on_pressed: Optional[Callable] = None,
                  size: Optional[int | float] = None,
                  color: Optional[str] = None,
+                 padding: Optional[int | float] = None,
                  raw_props: Optional[dict[str, Any]] = None):
         super().__init__(
             name=name,
+            icon=name,
             size=size,
             color=color,
+            padding=padding,
             raw_props=raw_props,
         )
-        self.callback_id = _register_callback(on_click)
+        handler = on_pressed or on_click
+        if handler is not None:
+            self.clicked.connect(handler)
+
+    @property
+    def clicked(self) -> QtSignal:
+        """Qt signal emitted when the icon button is tapped (Qt QPushButton.clicked)."""
+        if not hasattr(self, "_clicked_signal"):
+            self._clicked_signal = QtSignal(self, "callback_id")
+        return self._clicked_signal
+
+    def setIcon(self, name: str) -> IconButton:
+        """Sets the icon name (Qt QAbstractButton.setIcon)."""
+        self.props["name"] = name
+        self.props["icon"] = name
+        return self
+
+    set_icon = setIcon
+
+    def icon(self) -> str:
+        """Returns the current icon name."""
+        return self.props.get("name", "")
 
 
 # --- 2. Layout & Containers ---------------------------------------------------
@@ -135,16 +244,19 @@ class Column(Widget):
         children: List of child widgets to arrange vertically.
         main_axis_alignment: How children align along the vertical axis ('start', 'center', 'space_between').
         cross_axis_alignment: How children align along the horizontal axis ('start', 'center', 'stretch').
+        main_axis_size: How much space should be occupied along the main axis ('max' or 'min', MainAxisSize.MAX).
     """
     widget_type = "Column"
 
     def __init__(self, children: Optional[Sequence[Widget]] = None, *,
                  main_axis_alignment: Optional[str] = None,
                  cross_axis_alignment: Optional[str] = None,
+                 main_axis_size: Optional[str] = None,
                  raw_props: Optional[dict[str, Any]] = None):
         super().__init__(
             main_axis_alignment=main_axis_alignment,
             cross_axis_alignment=cross_axis_alignment,
+            main_axis_size=main_axis_size,
             raw_props=raw_props,
         )
         self.children = list(children) if children else []
@@ -158,16 +270,19 @@ class Row(Widget):
         children: List of child widgets to arrange horizontally.
         main_axis_alignment: How children align horizontally ('start', 'center', 'space_between').
         cross_axis_alignment: How children align vertically ('start', 'center').
+        main_axis_size: How much space should be occupied along the main axis ('max' or 'min', MainAxisSize.MAX).
     """
     widget_type = "Row"
 
     def __init__(self, children: Optional[Sequence[Widget]] = None, *,
                  main_axis_alignment: Optional[str] = None,
                  cross_axis_alignment: Optional[str] = None,
+                 main_axis_size: Optional[str] = None,
                  raw_props: Optional[dict[str, Any]] = None):
         super().__init__(
             main_axis_alignment=main_axis_alignment,
             cross_axis_alignment=cross_axis_alignment,
+            main_axis_size=main_axis_size,
             raw_props=raw_props,
         )
         self.children = list(children) if children else []
@@ -247,18 +362,32 @@ class Container(Widget):
 
     def __init__(self, child: Optional[Widget] = None, *,
                  padding: Optional[int | float] = None,
+                 margin: Optional[int | float] = None,
+                 alignment: Optional[str] = None,
                  color: Optional[str] = None,
                  width: Optional[int | float] = None,
                  height: Optional[int | float] = None,
                  border_radius: Optional[int | float] = None,
+                 shape: Optional[str] = None,
+                 border_color: Optional[str] = None,
+                 border_width: Optional[int | float] = None,
+                 shadow_color: Optional[str] = None,
+                 shadow_blur: Optional[int | float] = None,
                  on_click: Optional[Callable] = None,
                  raw_props: Optional[dict[str, Any]] = None):
         super().__init__(
             padding=padding,
+            margin=margin,
+            alignment=alignment,
             color=color,
             width=width,
             height=height,
             border_radius=border_radius,
+            shape=shape,
+            border_color=border_color,
+            border_width=border_width,
+            shadow_color=shadow_color,
+            shadow_blur=shadow_blur,
             raw_props=raw_props,
         )
         if child is not None:
@@ -279,6 +408,10 @@ class Card(Widget):
                  margin: Optional[int | float] = 8.0,
                  border_radius: Optional[int | float] = 12.0,
                  color: Optional[str] = None,
+                 shadow_color: Optional[str] = None,
+                 surface_tint_color: Optional[str] = None,
+                 border_color: Optional[str] = None,
+                 border_width: Optional[int | float] = None,
                  raw_props: Optional[dict[str, Any]] = None):
         super().__init__(
             padding=padding,
@@ -286,6 +419,10 @@ class Card(Widget):
             margin=margin,
             border_radius=border_radius,
             color=color,
+            shadow_color=shadow_color,
+            surface_tint_color=surface_tint_color,
+            border_color=border_color,
+            border_width=border_width,
             raw_props=raw_props,
         )
         if child is not None:
@@ -300,6 +437,7 @@ class Padding(Widget):
 
     def __init__(self, child: Widget, *,
                  all: Optional[int | float] = None,
+                 padding: Optional[int | float] = None,
                  horizontal: Optional[int | float] = None,
                  vertical: Optional[int | float] = None,
                  top: Optional[int | float] = None,
@@ -307,8 +445,9 @@ class Padding(Widget):
                  left: Optional[int | float] = None,
                  right: Optional[int | float] = None,
                  raw_props: Optional[dict[str, Any]] = None):
+        all_val = all if all is not None else padding
         super().__init__(
-            all=all,
+            all=all_val,
             horizontal=horizontal,
             vertical=vertical,
             top=top,
@@ -413,11 +552,38 @@ class Divider(Widget):
     def __init__(self, *,
                  height: Optional[int | float] = 16.0,
                  thickness: Optional[int | float] = 1.0,
+                 indent: Optional[int | float] = None,
+                 end_indent: Optional[int | float] = None,
                  color: Optional[str] = None,
                  raw_props: Optional[dict[str, Any]] = None):
         super().__init__(
             height=height,
             thickness=thickness,
+            indent=indent,
+            end_indent=end_indent,
+            color=color,
+            raw_props=raw_props,
+        )
+
+
+class VerticalDivider(Widget):
+    """
+    A thin vertical line with padding on either side.
+    """
+    widget_type = "VerticalDivider"
+
+    def __init__(self, *,
+                 width: Optional[int | float] = 16.0,
+                 thickness: Optional[int | float] = 1.0,
+                 indent: Optional[int | float] = None,
+                 end_indent: Optional[int | float] = None,
+                 color: Optional[str] = None,
+                 raw_props: Optional[dict[str, Any]] = None):
+        super().__init__(
+            width=width,
+            thickness=thickness,
+            indent=indent,
+            end_indent=end_indent,
             color=color,
             raw_props=raw_props,
         )
@@ -433,8 +599,19 @@ class ListView(Widget):
 
     def __init__(self, children: Optional[Sequence[Widget]] = None, *,
                  padding: Optional[int | float] = None,
+                 scroll_direction: str = Axis.VERTICAL,
+                 shrink_wrap: bool = False,
+                 reverse: bool = False,
+                 physics: Optional[str] = None,
                  raw_props: Optional[dict[str, Any]] = None):
-        super().__init__(padding=padding, raw_props=raw_props)
+        super().__init__(
+            padding=padding,
+            scroll_direction=scroll_direction,
+            shrink_wrap=shrink_wrap,
+            reverse=reverse,
+            physics=physics,
+            raw_props=raw_props,
+        )
         self.children = list(children) if children else []
 
 
@@ -445,20 +622,106 @@ class SingleChildScrollView(Widget):
     Parameters:
         child: The single widget to scroll.
         scroll_direction: Direction of scroll ('vertical' or 'horizontal'). Default is 'vertical'.
+        reverse: Whether the scroll view scrolls in the reading direction. Default is False.
+        physics: How the scroll view should respond to user input ('bouncing', 'clamping', 'never', 'always').
         padding: Padding inside the scroll view.
     """
     widget_type = "SingleChildScrollView"
 
     def __init__(self, child: Widget, *,
                  scroll_direction: str = Axis.VERTICAL,
+                 reverse: bool = False,
+                 physics: Optional[str] = None,
                  padding: Optional[int | float] = None,
                  raw_props: Optional[dict[str, Any]] = None):
         super().__init__(
             scroll_direction=scroll_direction,
+            reverse=reverse,
+            physics=physics,
             padding=padding,
             raw_props=raw_props,
         )
         self.children = [child]
+
+
+class ListTile(Widget):
+    """
+    A single fixed-height row that typically contains some text as well as a leading or trailing icon.
+
+    Parameters:
+        title: Primary content of the list tile (string or Widget).
+        subtitle: Additional content displayed below the title (string or Widget).
+        leading: A widget to display before the title (e.g. Icon, Image).
+        trailing: A widget to display after the title (e.g. Icon, Switch, Checkbox).
+        is_three_line: Whether this list tile is intended to display three lines of text.
+        dense: Whether this list tile is part of a vertically dense list.
+        enabled: Whether this list tile is interactive.
+        selected: If this tile is also [enabled] then icons and text are rendered with the selected color.
+        tile_color: Background color of the tile when not selected.
+        selected_tile_color: Background color of the tile when selected.
+        on_click: Callback invoked when the tile is tapped.
+        on_tap: Alias for on_click.
+    """
+    widget_type = "ListTile"
+
+    def __init__(
+        self,
+        title: Optional[Widget | str] = None,
+        *,
+        subtitle: Optional[Widget | str] = None,
+        leading: Optional[Widget] = None,
+        trailing: Optional[Widget] = None,
+        is_three_line: bool = False,
+        dense: bool = False,
+        enabled: bool = True,
+        selected: bool = False,
+        tile_color: Optional[str] = None,
+        selected_tile_color: Optional[str] = None,
+        on_click: Optional[Callable] = None,
+        on_tap: Optional[Callable] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        props: dict[str, Any] = {
+            "is_three_line": is_three_line,
+            "dense": dense,
+            "enabled": enabled,
+            "selected": selected,
+        }
+        if tile_color:
+            props["tile_color"] = tile_color
+        if selected_tile_color:
+            props["selected_tile_color"] = selected_tile_color
+        if isinstance(title, str):
+            props["title"] = title
+        if isinstance(subtitle, str):
+            props["subtitle"] = subtitle
+
+        super().__init__(raw_props=raw_props, **props)
+
+        if isinstance(title, Widget):
+            title.props["slot"] = "title"
+            self.children.append(title)
+        if isinstance(subtitle, Widget):
+            subtitle.props["slot"] = "subtitle"
+            self.children.append(subtitle)
+        if leading is not None:
+            leading.props["slot"] = "leading"
+            self.children.append(leading)
+        if trailing is not None:
+            trailing.props["slot"] = "trailing"
+            self.children.append(trailing)
+
+        handler = on_tap or on_click
+        if handler is not None:
+            self.clicked.connect(handler)
+
+    @property
+    def clicked(self) -> QtSignal:
+        """Qt signal emitted when the list tile is tapped."""
+        if not hasattr(self, "_clicked_signal"):
+            self._clicked_signal = QtSignal(self, "callback_id")
+        return self._clicked_signal
+
 
 
 # --- 4. Inputs & Interactive Controls -----------------------------------------
@@ -469,46 +732,836 @@ class Button(Widget):
     """
     widget_type = "Button"
 
-    def __init__(self, label: Any = "", *,
-                 icon: Optional[str] = None,
-                 on_click: Optional[Callable] = None,
-                 color: Optional[str] = None,
-                 raw_props: Optional[dict[str, Any]] = None):
+    def __init__(
+        self,
+        label: Any = "",
+        *,
+        icon: Optional[str] = None,
+        on_click: Optional[Callable] = None,
+        on_pressed: Optional[Callable] = None,
+        color: Optional[str] = None,
+        background_color: Optional[str] = None,
+        border_radius: Optional[float] = None,
+        elevation: Optional[float] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        actual_label = label.value if hasattr(label, "value") else label
+        super().__init__(
+            label=str(actual_label),
+            icon=icon,
+            color=color,
+            background_color=background_color,
+            border_radius=border_radius,
+            elevation=elevation,
+            raw_props=raw_props,
+        )
+        handler = on_pressed or on_click
+        if handler is not None:
+            self.clicked.connect(handler)
+
+    @property
+    def clicked(self) -> QtSignal:
+        """Qt signal emitted when the button is clicked (Qt QPushButton.clicked)."""
+        if not hasattr(self, "_clicked_signal"):
+            self._clicked_signal = QtSignal(self, "callback_id")
+        return self._clicked_signal
+
+    def on_click(self, fn: Callable) -> Button:
+        self.clicked.connect(fn)
+        return self
+
+    def text(self) -> str:
+        """Returns the button label text (Qt QPushButton.text())."""
+        return self.props.get("label", "")
+
+    def setText(self, label: Any) -> Button:
+        """Sets the button label text (Qt QPushButton.setText())."""
+        self.props["label"] = str(label)
+        return self
+
+    set_text = setText
+    set_label = setText
+
+    def isEnabled(self) -> bool:
+        """Returns whether the button is enabled (Qt QWidget.isEnabled())."""
+        return self.props.get("enabled") != "false"
+
+    is_enabled = isEnabled
+
+    def setEnabled(self, enabled: bool) -> Button:
+        """Sets whether the button is enabled (Qt QWidget.setEnabled())."""
+        self.props["enabled"] = "true" if enabled else "false"
+        return self
+
+    set_enabled = setEnabled
+
+
+# Flutter alias for developers coming from Flutter
+ElevatedButton = Button
+
+
+class OutlinedButton(Widget):
+    """
+    A Material 3 Outlined button with a border stroke and transparent background.
+    """
+    widget_type = "OutlinedButton"
+
+    def __init__(
+        self,
+        label: Any = "",
+        *,
+        icon: Optional[str] = None,
+        on_click: Optional[Callable] = None,
+        on_pressed: Optional[Callable] = None,
+        color: Optional[str] = None,
+        border_color: Optional[str] = None,
+        border_width: Optional[float] = 1.0,
+        border_radius: Optional[float] = 8.0,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
         super().__init__(
             label=str(label),
             icon=icon,
             color=color,
+            border_color=border_color,
+            border_width=border_width,
+            border_radius=border_radius,
             raw_props=raw_props,
         )
-        if on_click is not None:
-            self.callback_id = _register_callback(on_click)
+        handler = on_pressed or on_click
+        if handler is not None:
+            self.clicked.connect(handler)
 
-    def on_click(self, fn: Callable) -> Button:
-        self.callback_id = _register_callback(fn)
+    @property
+    def clicked(self) -> QtSignal:
+        """Qt signal emitted when the button is clicked (Qt QPushButton.clicked)."""
+        if not hasattr(self, "_clicked_signal"):
+            self._clicked_signal = QtSignal(self, "callback_id")
+        return self._clicked_signal
+
+    def on_click(self, fn: Callable) -> OutlinedButton:
+        self.clicked.connect(fn)
         return self
+
+    def text(self) -> str:
+        """Returns the button label text (Qt QPushButton.text())."""
+        return self.props.get("label", "")
+
+    def setText(self, label: Any) -> OutlinedButton:
+        """Sets the button label text (Qt QPushButton.setText())."""
+        self.props["label"] = str(label)
+        return self
+
+    set_text = setText
+    set_label = setText
+
+    def isEnabled(self) -> bool:
+        """Returns whether the button is enabled (Qt QWidget.isEnabled())."""
+        return self.props.get("enabled") != "false"
+
+    is_enabled = isEnabled
+
+    def setEnabled(self, enabled: bool) -> OutlinedButton:
+        """Sets whether the button is enabled (Qt QWidget.setEnabled())."""
+        self.props["enabled"] = "true" if enabled else "false"
+        return self
+
+    set_enabled = setEnabled
+
+
+class TextButton(Widget):
+    """
+    A Material 3 Text button (flat button without elevation or outline).
+    """
+    widget_type = "TextButton"
+
+    def __init__(
+        self,
+        label: Any = "",
+        *,
+        icon: Optional[str] = None,
+        on_click: Optional[Callable] = None,
+        on_pressed: Optional[Callable] = None,
+        color: Optional[str] = None,
+        border_radius: Optional[float] = 8.0,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(
+            label=str(label),
+            icon=icon,
+            color=color,
+            border_radius=border_radius,
+            raw_props=raw_props,
+        )
+        handler = on_pressed or on_click
+        if handler is not None:
+            self.clicked.connect(handler)
+
+    @property
+    def clicked(self) -> QtSignal:
+        """Qt signal emitted when the button is clicked (Qt QPushButton.clicked)."""
+        if not hasattr(self, "_clicked_signal"):
+            self._clicked_signal = QtSignal(self, "callback_id")
+        return self._clicked_signal
+
+    def on_click(self, fn: Callable) -> TextButton:
+        self.clicked.connect(fn)
+        return self
+
+    def text(self) -> str:
+        """Returns the button label text (Qt QPushButton.text())."""
+        return self.props.get("label", "")
+
+    def setText(self, label: Any) -> TextButton:
+        """Sets the button label text (Qt QPushButton.setText())."""
+        self.props["label"] = str(label)
+        return self
+
+    set_text = setText
+    set_label = setText
+
+    def isEnabled(self) -> bool:
+        """Returns whether the button is enabled (Qt QWidget.isEnabled())."""
+        return self.props.get("enabled") != "false"
+
+    is_enabled = isEnabled
+
+    def setEnabled(self, enabled: bool) -> TextButton:
+        """Sets whether the button is enabled (Qt QWidget.setEnabled())."""
+        self.props["enabled"] = "true" if enabled else "false"
+        return self
+
+    set_enabled = setEnabled
+
+
+class FloatingActionButton(Widget):
+    """
+    A Material Design floating action button.
+    A circular icon button that hovers over content to promote a primary action in the application.
+
+    Supports both regular circular FABs and extended FABs with text labels.
+    """
+    widget_type = "FloatingActionButton"
+
+    def __init__(
+        self,
+        child: Optional[Widget] = None,
+        *,
+        icon: Optional[str] = None,
+        label: Optional[str] = None,
+        tooltip: Optional[str] = None,
+        mini: bool = False,
+        elevation: Optional[float] = None,
+        background_color: Optional[str] = None,
+        foreground_color: Optional[str] = None,
+        on_pressed: Optional[Callable] = None,
+        on_click: Optional[Callable] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(
+            icon=icon,
+            label=label,
+            tooltip=tooltip,
+            mini=mini,
+            elevation=elevation,
+            background_color=background_color,
+            foreground_color=foreground_color,
+            raw_props=raw_props,
+        )
+        if child is not None:
+            self.children = [child]
+        handler = on_pressed or on_click
+        if handler is not None:
+            self.clicked.connect(handler)
+
+    @classmethod
+    def extended(
+        cls,
+        label: str,
+        *,
+        icon: Optional[str] = None,
+        tooltip: Optional[str] = None,
+        elevation: Optional[float] = None,
+        background_color: Optional[str] = None,
+        foreground_color: Optional[str] = None,
+        on_pressed: Optional[Callable] = None,
+        on_click: Optional[Callable] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+    ) -> FloatingActionButton:
+        """Creates a wider, stadium-shaped FloatingActionButton that includes a text label and optional icon."""
+        return cls(
+            label=label,
+            icon=icon,
+            tooltip=tooltip,
+            elevation=elevation,
+            background_color=background_color,
+            foreground_color=foreground_color,
+            on_pressed=on_pressed,
+            on_click=on_click,
+            raw_props=raw_props,
+        )
+
+    @property
+    def clicked(self) -> QtSignal:
+        """Qt signal emitted when the floating action button is pressed."""
+        if not hasattr(self, "_clicked_signal"):
+            self._clicked_signal = QtSignal(self, "callback_id")
+        return self._clicked_signal
+
+
+class Badge(Widget):
+    """
+    A Material 3 Badge widget that decorates a child widget with a small status or count badge.
+    """
+    widget_type = "Badge"
+
+    def __init__(
+        self,
+        child: Optional[Widget] = None,
+        *,
+        label: Optional[str] = None,
+        background_color: Optional[str] = None,
+        text_color: Optional[str] = None,
+        is_small: bool = False,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(
+            label=label,
+            background_color=background_color,
+            text_color=text_color,
+            is_small=is_small,
+            raw_props=raw_props,
+        )
+        if child is not None:
+            self.children = [child]
+
+
+class Chip(Widget):
+    """
+    A compact Material 3 ActionChip/Chip element that represents an input, attribute, or action.
+    """
+    widget_type = "Chip"
+
+    def __init__(
+        self,
+        label: str,
+        *,
+        avatar: Optional[str] = None,
+        background_color: Optional[str] = None,
+        on_pressed: Optional[Callable] = None,
+        on_click: Optional[Callable] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(
+            label=label,
+            avatar=avatar,
+            background_color=background_color,
+            raw_props=raw_props,
+        )
+        handler = on_pressed or on_click
+        if handler is not None:
+            self.clicked.connect(handler)
+
+    @property
+    def clicked(self) -> QtSignal:
+        """Qt signal emitted when the chip is clicked."""
+        if not hasattr(self, "_clicked_signal"):
+            self._clicked_signal = QtSignal(self, "callback_id")
+        return self._clicked_signal
+
+
+ActionChip = Chip
+
 
 
 class TextField(Widget):
     """
     A Material text field for user text input.
+    Supports TextEditingController, labels, hints, validation errors,
+    password masking, custom borders, icons, and keyboard types.
     """
     widget_type = "TextField"
 
-    def __init__(self, value: str = "", *,
-                 placeholder: Optional[str] = None,
-                 on_change: Optional[Callable[[str], None]] = None,
-                 raw_props: Optional[dict[str, Any]] = None):
+    def __init__(
+        self,
+        value: str = "",
+        *,
+        controller: Optional[TextEditingController] = None,
+        label: Optional[str] = None,
+        label_text: Optional[str] = None,
+        placeholder: Optional[str] = None,
+        hint_text: Optional[str] = None,
+        helper_text: Optional[str] = None,
+        error_text: Optional[str] = None,
+        obscure_text: bool = False,
+        keyboard_type: str = "text",
+        text_align: str = "left",
+        read_only: bool = False,
+        enabled: bool = True,
+        autofocus: bool = False,
+        autocorrect: bool = True,
+        cursor_color: Optional[str] = None,
+        max_length: Optional[int] = None,
+        content_padding: Optional[int | float] = None,
+        prefix_text: Optional[str] = None,
+        suffix_text: Optional[str] = None,
+        text_capitalization: Optional[str] = None,
+        max_lines: Optional[int] = 1,
+        min_lines: Optional[int] = 1,
+        prefix_icon: Optional[str] = None,
+        suffix_icon: Optional[str] = None,
+        on_suffix_icon_click: Optional[Callable[[], None]] = None,
+        border: Any = "outline",
+        border_radius: Optional[float] = None,
+        border_color: Optional[str] = None,
+        focused_border_color: Optional[str] = None,
+        filled: bool = False,
+        fill_color: Optional[str] = None,
+        on_change: Optional[Callable[[str], None]] = None,
+        on_changed: Optional[Callable[[str], None]] = None,
+        on_submit: Optional[Callable[[str], None]] = None,
+        on_submitted: Optional[Callable[[str], None]] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        self.controller = controller
+        initial_val = controller.text if controller is not None else str(value)
+
+        # Parse border if passed as OutlineInputBorder or UnderlineInputBorder
+        border_str = "outline"
+        b_radius = border_radius
+        b_color = border_color
+        if isinstance(border, str):
+            border_str = border
+        elif hasattr(border, "type"):
+            border_str = border.type
+            if hasattr(border, "border_radius"):
+                b_radius = border.border_radius
+            if hasattr(border, "border_color"):
+                b_color = border.border_color
+
         super().__init__(
-            value=str(value),
-            placeholder=placeholder,
+            value=initial_val,
+            label=label or label_text,
+            hint=hint_text or placeholder,
+            placeholder=hint_text or placeholder,
+            helper_text=helper_text,
+            error_text=error_text,
+            obscure_text=obscure_text,
+            keyboard_type=keyboard_type,
+            text_align=text_align,
+            read_only=read_only,
+            enabled=enabled,
+            autofocus=autofocus,
+            autocorrect=autocorrect,
+            cursor_color=cursor_color,
+            max_length=max_length,
+            content_padding=content_padding,
+            prefix_text=prefix_text,
+            suffix_text=suffix_text,
+            text_capitalization=text_capitalization,
+            max_lines=max_lines,
+            min_lines=min_lines,
+            prefix_icon=prefix_icon,
+            suffix_icon=suffix_icon,
+            border=border_str,
+            border_radius=b_radius,
+            border_color=b_color,
+            focused_border_color=focused_border_color,
+            filled=filled,
+            fill_color=fill_color,
             raw_props=raw_props,
         )
-        if on_change is not None:
-            self.callback_id = _register_callback(on_change)
+
+        # Setup Qt-style textChanged signal
+        self._text_changed_signal = QtSignal(self, "callback_id")
+        def _sync_internal(val: str = "") -> None:
+            self.props["value"] = str(val)
+            if self.controller is not None:
+                self.controller.text = str(val)
+        self._text_changed_signal.connect(_sync_internal)
+
+        change_handler = on_changed or on_change
+        if change_handler is not None:
+            self._text_changed_signal.connect(change_handler)
+
+        if self.controller is not None:
+            self.controller.add_listener(self._sync_from_controller)
+
+        if on_suffix_icon_click is not None:
+            self.props["suffix_callback_id"] = _register_callback(on_suffix_icon_click)
+
+        # Setup Qt-style returnPressed signal
+        self._return_pressed_signal = QtSignal(self, "submit_callback_id")
+        submit_handler = on_submitted or on_submit
+        if submit_handler is not None:
+            self._return_pressed_signal.connect(submit_handler)
+
+    def _sync_from_controller(self) -> None:
+        if self.controller is not None:
+            self.props["value"] = self.controller.text
+
+    @property
+    def textChanged(self) -> QtSignal:
+        """Qt signal emitted whenever the text changes (Qt QLineEdit.textChanged)."""
+        return self._text_changed_signal
+
+    text_changed = textChanged
+
+    @property
+    def returnPressed(self) -> QtSignal:
+        """Qt signal emitted when the user presses Enter/Submit (Qt QLineEdit.returnPressed)."""
+        return self._return_pressed_signal
+
+    return_pressed = returnPressed
+
+    @property
+    def value(self) -> str:
+        if self.controller is not None:
+            return self.controller.text
+        return self.props.get("value", "")
 
     def set_value(self, value: str) -> TextField:
         self.props["value"] = str(value)
+        if self.controller is not None:
+            self.controller.text = str(value)
         return self
+
+    def text(self) -> str:
+        """Returns the current text in the field (Qt QLineEdit.text())."""
+        return self.value
+
+    def setText(self, value: str) -> TextField:
+        """Sets the text in the field (Qt QLineEdit.setText())."""
+        return self.set_value(value)
+
+    set_text = setText
+
+    def clear(self) -> TextField:
+        """Clears the text in the field (Qt QLineEdit.clear())."""
+        return self.set_value("")
+
+    def setPlaceholderText(self, text: str) -> TextField:
+        """Sets the placeholder/hint text (Qt QLineEdit.setPlaceholderText())."""
+        self.props["placeholder"] = str(text)
+        self.props["hint"] = str(text)
+        return self
+
+    set_placeholder_text = setPlaceholderText
+    set_placeholder = setPlaceholderText
+
+    def setReadOnly(self, ro: bool) -> TextField:
+        """Sets whether the field is read-only (Qt QLineEdit.setReadOnly())."""
+        self.props["read_only"] = "true" if ro else "false"
+        return self
+
+    set_read_only = setReadOnly
+
+    def isReadOnly(self) -> bool:
+        """Returns whether the field is read-only (Qt QLineEdit.isReadOnly())."""
+        return self.props.get("read_only") == "true"
+
+    is_read_only = isReadOnly
+
+    def setEnabled(self, enabled: bool) -> TextField:
+        """Sets whether the field is enabled (Qt QWidget.setEnabled())."""
+        self.props["enabled"] = "true" if enabled else "false"
+        return self
+
+    set_enabled = setEnabled
+
+    def isEnabled(self) -> bool:
+        """Returns whether the field is enabled (Qt QWidget.isEnabled())."""
+        return self.props.get("enabled") != "false"
+
+    is_enabled = isEnabled
+
+
+class TextFormField(TextField):
+    """
+    A FormField that wraps a TextField, providing integration with Form and FormKey,
+    validation logic (via Validators), error display, and on_saved hooks.
+    """
+    widget_type = "TextField"
+
+    def __init__(
+        self,
+        value: str = "",
+        *,
+        name: Optional[str] = None,
+        controller: Optional[TextEditingController] = None,
+        validator: Optional[Callable[[str], Optional[str]]] = None,
+        on_saved: Optional[Callable[[str], None]] = None,
+        form_key: Optional[FormKey] = None,
+        initial_value: Optional[str] = None,
+        label: Optional[str] = None,
+        label_text: Optional[str] = None,
+        placeholder: Optional[str] = None,
+        hint_text: Optional[str] = None,
+        helper_text: Optional[str] = None,
+        error_text: Optional[str] = None,
+        obscure_text: bool = False,
+        keyboard_type: str = "text",
+        text_align: str = "left",
+        read_only: bool = False,
+        enabled: bool = True,
+        autofocus: bool = False,
+        autocorrect: bool = True,
+        cursor_color: Optional[str] = None,
+        max_length: Optional[int] = None,
+        content_padding: Optional[int | float] = None,
+        prefix_text: Optional[str] = None,
+        suffix_text: Optional[str] = None,
+        text_capitalization: Optional[str] = None,
+        max_lines: Optional[int] = 1,
+        min_lines: Optional[int] = 1,
+        prefix_icon: Optional[str] = None,
+        suffix_icon: Optional[str] = None,
+        on_suffix_icon_click: Optional[Callable[[], None]] = None,
+        border: Any = "outline",
+        border_radius: Optional[float] = None,
+        border_color: Optional[str] = None,
+        focused_border_color: Optional[str] = None,
+        filled: bool = False,
+        fill_color: Optional[str] = None,
+        on_change: Optional[Callable[[str], None]] = None,
+        on_changed: Optional[Callable[[str], None]] = None,
+        on_submit: Optional[Callable[[str], None]] = None,
+        on_submitted: Optional[Callable[[str], None]] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        actual_val = initial_value if initial_value is not None else value
+        super().__init__(
+            value=actual_val,
+            controller=controller,
+            label=label,
+            label_text=label_text,
+            placeholder=placeholder,
+            hint_text=hint_text,
+            helper_text=helper_text,
+            error_text=error_text,
+            obscure_text=obscure_text,
+            keyboard_type=keyboard_type,
+            text_align=text_align,
+            read_only=read_only,
+            enabled=enabled,
+            autofocus=autofocus,
+            autocorrect=autocorrect,
+            cursor_color=cursor_color,
+            max_length=max_length,
+            content_padding=content_padding,
+            prefix_text=prefix_text,
+            suffix_text=suffix_text,
+            text_capitalization=text_capitalization,
+            max_lines=max_lines,
+            min_lines=min_lines,
+            prefix_icon=prefix_icon,
+            suffix_icon=suffix_icon,
+            on_suffix_icon_click=on_suffix_icon_click,
+            border=border,
+            border_radius=border_radius,
+            border_color=border_color,
+            focused_border_color=focused_border_color,
+            filled=filled,
+            fill_color=fill_color,
+            on_change=on_change,
+            on_changed=on_changed,
+            on_submit=on_submit,
+            on_submitted=on_submitted,
+            raw_props=raw_props,
+        )
+        self.name = name
+        self.validator = validator
+        self.on_saved = on_saved
+        self._initial_value = actual_val
+        self.form_key = form_key
+        if form_key:
+            form_key.register(self)
+
+    def _register_with_form_key(self, form_key: FormKey) -> None:
+        self.form_key = form_key
+        form_key.register(self)
+
+    def validate_field(self) -> bool:
+        """Runs the validator function on this field's current value."""
+        if not self.validator:
+            self.props.pop("error_text", None)
+            return True
+        err = self.validator(self.value)
+        if err:
+            self.props["error_text"] = str(err)
+            return False
+        else:
+            self.props.pop("error_text", None)
+            return True
+
+    def reset_field(self) -> None:
+        """Resets the field to its initial value and clears errors."""
+        self.set_value(self._initial_value)
+        self.props.pop("error_text", None)
+
+    def save_field(self) -> None:
+        """Invokes on_saved if defined."""
+        if self.on_saved:
+            self.on_saved(self.value)
+
+
+class DropdownMenuItem(Widget):
+    """
+    An item in a DropdownButton menu or DropdownMenu entries.
+    """
+    widget_type = "DropdownMenuItem"
+
+    def __init__(
+        self,
+        value: Any,
+        child: Optional[Widget] = None,
+        *,
+        label: Optional[str] = None,
+        disabled: bool = False,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(
+            value=str(value),
+            label=label or (str(value) if child is None else None),
+            disabled=disabled,
+            raw_props=raw_props,
+        )
+        if child is not None:
+            self.children = [child]
+
+
+class DropdownButton(Widget):
+    """
+    A Material Design dropdown button.
+    
+    Parameters:
+        items: List of DropdownMenuItem instances or strings.
+        value: Currently selected value.
+        hint: Text or Widget shown when no value is selected.
+        on_change: Callback invoked when the user selects an item: fn(new_value).
+        on_changed: Alias for on_change.
+        is_expanded: Whether the dropdown stretches to fill its parent horizontally (default True).
+        icon: Icon name to display for the dropdown arrow (default 'arrow_drop_down').
+        elevation: Elevation of the dropdown popup menu (default 8).
+    """
+    widget_type = "DropdownButton"
+
+    def __init__(
+        self,
+        items: Sequence[DropdownMenuItem | str | Any],
+        *,
+        value: Optional[Any] = None,
+        hint: Optional[str | Widget] = None,
+        on_change: Optional[Callable[[str], None]] = None,
+        on_changed: Optional[Callable[[str], None]] = None,
+        is_expanded: bool = True,
+        icon: Optional[str] = "arrow_drop_down",
+        icon_size: float = 24.0,
+        elevation: int = 8,
+        border_radius: Optional[float] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        hint_text = hint if isinstance(hint, str) else None
+        super().__init__(
+            value=str(value) if value is not None else None,
+            hint=hint_text,
+            is_expanded=is_expanded,
+            icon=icon,
+            icon_size=icon_size,
+            elevation=elevation,
+            border_radius=border_radius,
+            raw_props=raw_props,
+        )
+        if hint is not None and not isinstance(hint, str):
+            hint.props["slot"] = "hint"
+            self.children.append(hint)
+
+        converted_items: list[Widget] = []
+        for item in items:
+            if isinstance(item, DropdownMenuItem):
+                converted_items.append(item)
+            else:
+                converted_items.append(DropdownMenuItem(value=item, label=str(item)))
+        self.children.extend(converted_items)
+
+        # Setup Qt-style currentTextChanged signal
+        self._current_text_changed_signal = QtSignal(self, "callback_id")
+        def _sync_val(val: str = "") -> None:
+            self.props["value"] = str(val)
+        self._current_text_changed_signal.connect(_sync_val)
+
+        handler = on_changed or on_change
+        if handler:
+            self._current_text_changed_signal.connect(handler)
+
+    @property
+    def currentTextChanged(self) -> QtSignal:
+        """Qt signal emitted when the selected item changes (Qt QComboBox.currentTextChanged)."""
+        return self._current_text_changed_signal
+
+    current_text_changed = currentTextChanged
+    currentIndexChanged = currentTextChanged
+    current_index_changed = currentTextChanged
+
+    @property
+    def value(self) -> Optional[str]:
+        return self.props.get("value")
+
+    def set_value(self, value: Any) -> DropdownButton:
+        self.props["value"] = str(value)
+        return self
+
+    def currentText(self) -> Optional[str]:
+        """Returns currently selected text (Qt QComboBox.currentText())."""
+        return self.value
+
+    current_text = currentText
+
+    def setCurrentText(self, text: Any) -> DropdownButton:
+        """Sets currently selected text (Qt QComboBox.setCurrentText())."""
+        return self.set_value(text)
+
+    set_current_text = setCurrentText
+
+
+class DropdownMenu(Widget):
+    """
+    A Material 3 DropdownMenu widget with text field selection and dropdown list.
+    """
+    widget_type = "DropdownMenu"
+
+    def __init__(
+        self,
+        entries: Sequence[DropdownMenuItem | str | Any],
+        *,
+        initial_selection: Optional[Any] = None,
+        label: Optional[str] = None,
+        hint_text: Optional[str] = None,
+        leading_icon: Optional[str] = None,
+        trailing_icon: Optional[str] = None,
+        width: Optional[float] = None,
+        on_selected: Optional[Callable[[str], None]] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(
+            initial_selection=str(initial_selection) if initial_selection is not None else None,
+            label=label,
+            hint_text=hint_text,
+            leading_icon=leading_icon,
+            trailing_icon=trailing_icon,
+            width=width,
+            raw_props=raw_props,
+        )
+        converted: list[Widget] = []
+        for e in entries:
+            if isinstance(e, DropdownMenuItem):
+                converted.append(e)
+            else:
+                converted.append(DropdownMenuItem(value=e, label=str(e)))
+        self.children.extend(converted)
+
+        if on_selected:
+            self.callback_id = _register_callback(on_selected)
 
 
 class Switch(Widget):
@@ -527,7 +1580,41 @@ class Switch(Widget):
             raw_props=raw_props,
         )
         if on_change is not None:
-            self.callback_id = _register_callback(on_change)
+            self.toggled.connect(on_change)
+
+    @property
+    def toggled(self) -> QtSignal:
+        """Qt signal emitted when the switch is toggled (Qt QAbstractButton.toggled)."""
+        if not hasattr(self, "_toggled_signal"):
+            def _to_bool(v: Any) -> bool:
+                if isinstance(v, bool):
+                    return v
+                return str(v).lower() in ("true", "1")
+            self._toggled_signal = QtSignal(self, "callback_id", value_converter=_to_bool)
+            def _sync_val(v: bool):
+                self.props["value"] = "true" if v else "false"
+            self._toggled_signal.connect(_sync_val)
+        return self._toggled_signal
+
+    stateChanged = toggled
+    state_changed = toggled
+
+    def isChecked(self) -> bool:
+        """Returns whether the switch is currently ON (Qt QAbstractButton.isChecked())."""
+        return self.props.get("value") == "true"
+
+    is_checked = isChecked
+
+    def setChecked(self, checked: bool) -> Switch:
+        """Sets whether the switch is ON (Qt QAbstractButton.setChecked())."""
+        self.props["value"] = "true" if checked else "false"
+        return self
+
+    set_checked = setChecked
+
+    def toggle(self) -> Switch:
+        """Inverts the current switch state (Qt QAbstractButton.toggle())."""
+        return self.setChecked(not self.isChecked())
 
 
 class Checkbox(Widget):
@@ -546,7 +1633,119 @@ class Checkbox(Widget):
             raw_props=raw_props,
         )
         if on_change is not None:
-            self.callback_id = _register_callback(on_change)
+            self.toggled.connect(on_change)
+
+    @property
+    def toggled(self) -> QtSignal:
+        """Qt signal emitted when the checkbox is toggled (Qt QCheckBox.toggled)."""
+        if not hasattr(self, "_toggled_signal"):
+            def _to_bool(v: Any) -> bool:
+                if isinstance(v, bool):
+                    return v
+                return str(v).lower() in ("true", "1")
+            self._toggled_signal = QtSignal(self, "callback_id", value_converter=_to_bool)
+            def _sync_val(v: bool):
+                self.props["value"] = "true" if v else "false"
+            self._toggled_signal.connect(_sync_val)
+        return self._toggled_signal
+
+    stateChanged = toggled
+    state_changed = toggled
+
+    def isChecked(self) -> bool:
+        """Returns whether the checkbox is checked (Qt QCheckBox.isChecked())."""
+        return self.props.get("value") == "true"
+
+    is_checked = isChecked
+
+    def setChecked(self, checked: bool) -> Checkbox:
+        """Sets whether the checkbox is checked (Qt QCheckBox.setChecked())."""
+        self.props["value"] = "true" if checked else "false"
+        return self
+
+    set_checked = setChecked
+
+    def toggle(self) -> Checkbox:
+        """Inverts the current checkbox state (Qt QCheckBox.toggle())."""
+        return self.setChecked(not self.isChecked())
+
+
+class Slider(Widget):
+    """
+    A Material Design slider for selecting a numeric value from a range of values.
+    Supports min, max, divisions, labels, custom colors, and event callbacks.
+
+    Parameters:
+        value: The currently selected value (between min and max).
+        min: The minimum value the user can select. Default is 0.0.
+        max: The maximum value the user can select. Default is 1.0.
+        divisions: The number of discrete divisions. If None, the slider is continuous.
+        label: A label to display above the slider thumb when active.
+        active_color: Color of the slider track and thumb for selected portion.
+        inactive_color: Color of the slider track for unselected portion.
+        on_change: Callback invoked when the user drags the slider: fn(float).
+        on_changed: Alias for on_change.
+    """
+    widget_type = "Slider"
+
+    def __init__(
+        self,
+        value: float = 0.0,
+        *,
+        min: float = 0.0,
+        max: float = 1.0,
+        divisions: Optional[int] = None,
+        label: Optional[str] = None,
+        active_color: Optional[str] = None,
+        inactive_color: Optional[str] = None,
+        on_change: Optional[Callable[[float], None]] = None,
+        on_changed: Optional[Callable[[float], None]] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(
+            value=value,
+            min=min,
+            max=max,
+            divisions=divisions,
+            label=label,
+            active_color=active_color,
+            inactive_color=inactive_color,
+            raw_props=raw_props,
+        )
+        handler = on_changed or on_change
+        if handler is not None:
+            self.valueChanged.connect(handler)
+
+    @property
+    def valueChanged(self) -> QtSignal:
+        """Qt signal emitted when the slider position changes (Qt QSlider.valueChanged)."""
+        if not hasattr(self, "_value_changed_signal"):
+            def _to_float(v: Any) -> float:
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    return 0.0
+            self._value_changed_signal = QtSignal(self, "callback_id", value_converter=_to_float)
+            def _sync_val(v: float):
+                self.props["value"] = str(v)
+            self._value_changed_signal.connect(_sync_val)
+        return self._value_changed_signal
+
+    value_changed = valueChanged
+
+    def value(self) -> float:
+        """Returns the current slider numeric value."""
+        try:
+            return float(self.props.get("value", 0.0))
+        except (TypeError, ValueError):
+            return 0.0
+
+    def setValue(self, val: float) -> Slider:
+        """Sets the slider numeric value."""
+        self.props["value"] = str(val)
+        return self
+
+    set_value = setValue
 
 
 class CircularProgressIndicator(Widget):
@@ -615,19 +1814,41 @@ class AppBar(Widget):
         bottom: Optional[Widget] = None,
         background_color: Optional[str] = None,
         elevation: Optional[float] = None,
+        scrolled_under_elevation: Optional[float] = None,
+        shadow_color: Optional[str] = None,
+        surface_tint_color: Optional[str] = None,
+        toolbar_height: Optional[float] = None,
+        title_spacing: Optional[float] = None,
         center_title: Optional[bool] = None,
+        automatically_imply_leading: bool = True,
         raw_props: Optional[dict[str, Any]] = None,
     ):
         super().__init__(
             title=title if isinstance(title, str) else None,
             background_color=background_color,
             elevation=elevation,
+            scrolled_under_elevation=scrolled_under_elevation,
+            shadow_color=shadow_color,
+            surface_tint_color=surface_tint_color,
+            toolbar_height=toolbar_height,
+            title_spacing=title_spacing,
             center_title=center_title,
             raw_props=raw_props,
         )
         if isinstance(title, Widget):
             title.props["slot"] = "title"
             self.children.append(title)
+
+        # Automatic back button synthesis if on a pushed page
+        if leading is None and automatically_imply_leading:
+            from pyflutter.core.navigation import Navigator
+            if Navigator.can_pop():
+                from pyflutter.core.constants import Icons
+                leading = IconButton(
+                    name=Icons.ARROW_BACK,
+                    on_pressed=Navigator.pop,
+                )
+
         if leading is not None:
             leading.props["slot"] = "leading"
             self.children.append(leading)
@@ -654,14 +1875,22 @@ class Scaffold(Widget):
         app_bar: Optional[AppBar | Widget] = None,
         bottom_navigation_bar: Optional[Widget] = None,
         floating_action_button: Optional[Widget] = None,
+        floating_action_button_location: Optional[str] = None,
         drawer: Optional[Widget] = None,
         end_drawer: Optional[Widget] = None,
         bottom_sheet: Optional[Widget] = None,
         background_color: Optional[str] = None,
+        resize_to_avoid_bottom_inset: bool = True,
+        extend_body: bool = False,
+        extend_body_behind_app_bar: bool = False,
         raw_props: Optional[dict[str, Any]] = None,
     ):
         super().__init__(
             background_color=background_color,
+            floating_action_button_location=floating_action_button_location,
+            resize_to_avoid_bottom_inset=resize_to_avoid_bottom_inset,
+            extend_body=extend_body,
+            extend_body_behind_app_bar=extend_body_behind_app_bar,
             raw_props=raw_props,
         )
         if app_bar is not None:
@@ -902,3 +2131,78 @@ class BottomSheet(Widget):
         )
         if child is not None:
             self.children.append(child)
+
+
+class MaterialApp(Widget):
+    """
+    An application that uses Material Design.
+    Configures the root application title, Material 3 ThemeData, dark theme,
+    ThemeMode, and home widget.
+
+    Parameters:
+        home: The primary screen/widget to display as the root.
+        title: The title of the application displayed in OS task switchers.
+        theme: Light theme configuration (ThemeData).
+        dark_theme: Dark theme configuration (ThemeData).
+        theme_mode: 'system' (adapts to OS), 'light', or 'dark'.
+        debug_show_checked_mode_banner: Whether to show the debug ribbon.
+    """
+    widget_type = "MaterialApp"
+
+    def __init__(
+        self,
+        home: Optional[Widget] = None,
+        *,
+        title: str = "PyFlutter",
+        theme: Optional[ThemeData] = None,
+        dark_theme: Optional[ThemeData] = None,
+        theme_mode: str = "system",
+        debug_show_checked_mode_banner: bool = False,
+        routes: Optional[dict[str, Any]] = None,
+        initial_route: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+    ):
+        props: dict[str, Any] = {
+            "title": title,
+            "theme_mode": theme_mode,
+            "debug_banner": debug_show_checked_mode_banner,
+        }
+        if theme is not None:
+            props.update(theme.to_props(prefix="theme_"))
+            if theme.color_scheme and theme.color_scheme.seed_color:
+                props["seed_color"] = theme.color_scheme.seed_color
+        if dark_theme is not None:
+            props.update(dark_theme.to_props(prefix="dark_theme_"))
+
+        super().__init__(raw_props=raw_props, **props)
+
+        from pyflutter.core.navigation import Navigator
+        if routes:
+            Navigator.set_routes(routes)
+
+        effective_home = home
+        if initial_route and routes and initial_route in routes:
+            builder = routes[initial_route]
+            effective_home = builder()
+
+        self._initial_home = effective_home
+        if effective_home is not None:
+            Navigator.set_initial_page(effective_home)
+        self._children_list: list[Widget] = []
+
+    @property
+    def children(self) -> list[Widget]:
+        from pyflutter.core.navigation import Navigator
+        if Navigator.can_pop():
+            active = Navigator.current_page()
+        else:
+            active = self._initial_home or Navigator.current_page()
+        if active is not None:
+            active.props["slot"] = "home"
+            return [active]
+        return self._children_list
+
+    @children.setter
+    def children(self, val: list[Widget]):
+        self._children_list = val
+
