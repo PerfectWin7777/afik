@@ -33,6 +33,9 @@ pub mod ir {
 
 const MSG_RENDER_TREE: u8 = 0x01;
 const MSG_CALLBACK_EVENT: u8 = 0x02;
+const MSG_PLUGIN_CALL: u8 = 0x03;
+const MSG_TREE_PATCH: u8 = 0x04;
+const MSG_PLUGIN_RESPONSE: u8 = 0x05;
 
 fn read_frame(stream: &mut impl Read) -> io::Result<(u8, Vec<u8>)> {
     let mut header = [0u8; 5]; // 1 byte type + 4 byte length
@@ -168,8 +171,10 @@ fn relay_mode(port: u16) {
                     let mut guard = last_tree_for_py.lock().unwrap();
                     *guard = Some(payload.clone());
                 }
-            } else if msg_type == 0x03 {
+            } else if msg_type == MSG_PLUGIN_CALL {
                 eprintln!("[bridge] forwarding plugin call to Dart");
+            } else if msg_type == MSG_TREE_PATCH {
+                eprintln!("[bridge] forwarding tree patch to Dart");
             }
 
             // Forward to active Dart client if connected
@@ -231,13 +236,13 @@ fn relay_mode(port: u16) {
                     break;
                 }
             };
-            if event_type != MSG_CALLBACK_EVENT {
+            if event_type != MSG_CALLBACK_EVENT && event_type != MSG_PLUGIN_RESPONSE {
                 eprintln!("[bridge] unexpected msg type {event_type} from Dart, ignoring");
                 continue;
             }
 
-            eprintln!("[bridge] relaying callback event to Python");
-            if let Err(e) = write_frame(&mut stdout, MSG_CALLBACK_EVENT, &event_payload) {
+            eprintln!("[bridge] relaying event (0x{event_type:02x}) to Python");
+            if let Err(e) = write_frame(&mut stdout, event_type, &event_payload) {
                 eprintln!("[bridge] failed to forward event to Python (stdout closed): {e}");
                 return;
             }

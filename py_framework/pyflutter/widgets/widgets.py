@@ -71,6 +71,7 @@ class Text(Widget):
         self,
         value: Any = "",
         *,
+        key: Optional[str] = None,
         style: Optional[str | TextStyle] = None,
         font_size: Optional[int | float] = None,
         font_weight: Optional[str] = None,
@@ -82,12 +83,15 @@ class Text(Widget):
         overflow: Optional[str] = None,
         soft_wrap: Optional[bool] = None,
         raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
     ):
         actual_val = value.value if hasattr(value, "value") else value
         props: dict[str, Any] = {
             "value": str(actual_val),
             "text": str(actual_val),
         }
+        if key is not None:
+            props["key"] = key
         if style is not None:
             if isinstance(style, str):
                 props["style"] = style
@@ -120,11 +124,9 @@ class Text(Widget):
         """Returns the current displayed text (Qt QLabel.text())."""
         return self.props.get("value", "")
 
-    def setText(self, value: Any) -> Text:
+    def setText(self, value: Any, *, auto_update: bool = True) -> Text:
         """Dynamically updates the text content (Qt QLabel.setText())."""
-        self.props["value"] = str(value)
-        self.props["text"] = str(value)
-        return self
+        return super().set_text(value, auto_update=auto_update)
 
     set_text = setText
 
@@ -736,6 +738,7 @@ class Button(Widget):
         self,
         label: Any = "",
         *,
+        key: Optional[str] = None,
         icon: Optional[str] = None,
         on_click: Optional[Callable] = None,
         on_pressed: Optional[Callable] = None,
@@ -744,16 +747,20 @@ class Button(Widget):
         border_radius: Optional[float] = None,
         elevation: Optional[float] = None,
         raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
     ):
         actual_label = label.value if hasattr(label, "value") else label
         super().__init__(
             label=str(actual_label),
+            text=str(actual_label),
+            key=key,
             icon=icon,
             color=color,
             background_color=background_color,
             border_radius=border_radius,
             elevation=elevation,
             raw_props=raw_props,
+            **kwargs,
         )
         handler = on_pressed or on_click
         if handler is not None:
@@ -774,10 +781,9 @@ class Button(Widget):
         """Returns the button label text (Qt QPushButton.text())."""
         return self.props.get("label", "")
 
-    def setText(self, label: Any) -> Button:
+    def setText(self, label: Any, *, auto_update: bool = True) -> Button:
         """Sets the button label text (Qt QPushButton.setText())."""
-        self.props["label"] = str(label)
-        return self
+        return super().set_text(label, auto_update=auto_update)
 
     set_text = setText
     set_label = setText
@@ -1220,25 +1226,27 @@ class TextField(Widget):
             return self.controller.text
         return self.props.get("value", "")
 
-    def set_value(self, value: str) -> TextField:
+    def set_value(self, value: str, *, auto_update: bool = True) -> TextField:
         self.props["value"] = str(value)
         if self.controller is not None:
             self.controller.text = str(value)
+        if auto_update:
+            self._notify_dirty()
         return self
 
     def text(self) -> str:
         """Returns the current text in the field (Qt QLineEdit.text())."""
         return self.value
 
-    def setText(self, value: str) -> TextField:
+    def setText(self, value: str, *, auto_update: bool = True) -> TextField:
         """Sets the text in the field (Qt QLineEdit.setText())."""
-        return self.set_value(value)
+        return self.set_value(value, auto_update=auto_update)
 
     set_text = setText
 
-    def clear(self) -> TextField:
+    def clear(self, *, auto_update: bool = True) -> TextField:
         """Clears the text in the field (Qt QLineEdit.clear())."""
-        return self.set_value("")
+        return self.set_value("", auto_update=auto_update)
 
     def setPlaceholderText(self, text: str) -> TextField:
         """Sets the placeholder/hint text (Qt QLineEdit.setPlaceholderText())."""
@@ -1605,9 +1613,11 @@ class Switch(Widget):
 
     is_checked = isChecked
 
-    def setChecked(self, checked: bool) -> Switch:
+    def setChecked(self, checked: bool, *, auto_update: bool = True) -> Switch:
         """Sets whether the switch is ON (Qt QAbstractButton.setChecked())."""
         self.props["value"] = "true" if checked else "false"
+        if auto_update:
+            self._notify_dirty()
         return self
 
     set_checked = setChecked
@@ -1658,9 +1668,11 @@ class Checkbox(Widget):
 
     is_checked = isChecked
 
-    def setChecked(self, checked: bool) -> Checkbox:
+    def setChecked(self, checked: bool, *, auto_update: bool = True) -> Checkbox:
         """Sets whether the checkbox is checked (Qt QCheckBox.setChecked())."""
         self.props["value"] = "true" if checked else "false"
+        if auto_update:
+            self._notify_dirty()
         return self
 
     set_checked = setChecked
@@ -1740,9 +1752,11 @@ class Slider(Widget):
         except (TypeError, ValueError):
             return 0.0
 
-    def setValue(self, val: float) -> Slider:
+    def setValue(self, val: float, *, auto_update: bool = True) -> Slider:
         """Sets the slider numeric value."""
         self.props["value"] = str(val)
+        if auto_update:
+            self._notify_dirty()
         return self
 
     set_value = setValue
@@ -2205,4 +2219,472 @@ class MaterialApp(Widget):
     @children.setter
     def children(self, val: list[Widget]):
         self._children_list = val
+
+
+# --- 7. Additional Material & High-Value Components ---------------------------
+
+class GridView(Widget):
+    """
+    A 2-dimensional, scrollable grid of widgets.
+    """
+    widget_type = "GridView"
+
+    def __init__(
+        self,
+        children: Optional[Sequence[Widget]] = None,
+        *,
+        cross_axis_count: int = 2,
+        main_axis_spacing: float = 8.0,
+        cross_axis_spacing: float = 8.0,
+        child_aspect_ratio: float = 1.0,
+        shrink_wrap: bool = False,
+        physics: Optional[str] = None,
+        padding: Optional[float] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            cross_axis_count=cross_axis_count,
+            main_axis_spacing=main_axis_spacing,
+            cross_axis_spacing=cross_axis_spacing,
+            child_aspect_ratio=child_aspect_ratio,
+            shrink_wrap=shrink_wrap,
+            physics=physics,
+            padding=padding,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        if children:
+            self.children.extend(children)
+
+    @classmethod
+    def count(
+        cls,
+        cross_axis_count: int,
+        children: Sequence[Widget],
+        *,
+        main_axis_spacing: float = 8.0,
+        cross_axis_spacing: float = 8.0,
+        child_aspect_ratio: float = 1.0,
+        shrink_wrap: bool = False,
+        padding: Optional[float] = None,
+        **kwargs: Any,
+    ) -> GridView:
+        return cls(
+            children=children,
+            cross_axis_count=cross_axis_count,
+            main_axis_spacing=main_axis_spacing,
+            cross_axis_spacing=cross_axis_spacing,
+            child_aspect_ratio=child_aspect_ratio,
+            shrink_wrap=shrink_wrap,
+            padding=padding,
+            **kwargs,
+        )
+
+
+class Radio(Widget):
+    """
+    A Material Design radio button.
+    Used to select between mutually exclusive options.
+    """
+    widget_type = "Radio"
+
+    def __init__(
+        self,
+        value: Any,
+        group_value: Any,
+        *,
+        on_change: Optional[Callable[[Any], None]] = None,
+        on_changed: Optional[Callable[[Any], None]] = None,
+        active_color: Optional[str] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            value=str(value),
+            group_value=str(group_value),
+            active_color=active_color,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        handler = on_changed or on_change
+        if handler is not None:
+            self.changed.connect(handler)
+
+    @property
+    def changed(self) -> QtSignal:
+        if not hasattr(self, "_changed_signal"):
+            self._changed_signal = QtSignal(self, "callback_id")
+        return self._changed_signal
+
+
+class RadioListTile(Widget):
+    """
+    A ListTile containing a radio button, title, and optional subtitle.
+    """
+    widget_type = "RadioListTile"
+
+    def __init__(
+        self,
+        value: Any,
+        group_value: Any,
+        *,
+        title: Any = "",
+        subtitle: Optional[Any] = None,
+        on_change: Optional[Callable[[Any], None]] = None,
+        on_changed: Optional[Callable[[Any], None]] = None,
+        active_color: Optional[str] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            value=str(value),
+            group_value=str(group_value),
+            active_color=active_color,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        title_w = title if isinstance(title, Widget) else Text(str(title))
+        title_w.props["slot"] = "title"
+        self.children.append(title_w)
+
+        if subtitle is not None:
+            sub_w = subtitle if isinstance(subtitle, Widget) else Text(str(subtitle))
+            sub_w.props["slot"] = "subtitle"
+            self.children.append(sub_w)
+
+        handler = on_changed or on_change
+        if handler is not None:
+            self.changed.connect(handler)
+
+    @property
+    def changed(self) -> QtSignal:
+        if not hasattr(self, "_changed_signal"):
+            self._changed_signal = QtSignal(self, "callback_id")
+        return self._changed_signal
+
+
+class Tooltip(Widget):
+    """
+    A Material Design tooltip that displays informative text when pressed or hovered.
+    """
+    widget_type = "Tooltip"
+
+    def __init__(
+        self,
+        message: str,
+        child: Widget,
+        *,
+        wait_duration_ms: Optional[int] = None,
+        show_duration_ms: Optional[int] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            message=message,
+            wait_duration_ms=wait_duration_ms,
+            show_duration_ms=show_duration_ms,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        self.children.append(child)
+
+
+class TextSpan(Widget):
+    """
+    An immutable span of text with an individual style within a RichText tree.
+    """
+    widget_type = "TextSpan"
+
+    def __init__(
+        self,
+        text: str = "",
+        *,
+        style: Optional[str | TextStyle] = None,
+        font_size: Optional[float] = None,
+        font_weight: Optional[str] = None,
+        color: Optional[str] = None,
+        font_style: Optional[str] = None,
+        children: Optional[Sequence[TextSpan]] = None,
+        on_click: Optional[Callable[[], None]] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            text=text,
+            font_size=font_size,
+            font_weight=font_weight,
+            color=color,
+            font_style=font_style,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        if on_click is not None:
+            self.callback_id = _register_callback(on_click)
+        if children:
+            self.children.extend(children)
+
+
+class RichText(Widget):
+    """
+    Displays text that uses multiple different styles in a single paragraph.
+    """
+    widget_type = "RichText"
+
+    def __init__(
+        self,
+        spans: Sequence[TextSpan],
+        *,
+        text_align: Optional[str] = None,
+        overflow: Optional[str] = None,
+        max_lines: Optional[int] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            text_align=text_align,
+            overflow=overflow,
+            max_lines=max_lines,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        self.children.extend(spans)
+
+
+class CircleAvatar(Widget):
+    """
+    A circular avatar displaying a user profile image or initials.
+    """
+    widget_type = "CircleAvatar"
+
+    def __init__(
+        self,
+        child: Optional[Widget] = None,
+        *,
+        radius: Optional[float] = None,
+        background_color: Optional[str] = None,
+        foreground_color: Optional[str] = None,
+        image_url: Optional[str] = None,
+        on_click: Optional[Callable[[], None]] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            radius=radius,
+            background_color=background_color,
+            foreground_color=foreground_color,
+            image_url=image_url,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        if on_click is not None:
+            self.callback_id = _register_callback(on_click)
+        if child:
+            self.children.append(child)
+
+
+class LinearProgressIndicator(Widget):
+    """
+    A Material Design linear progress bar.
+    """
+    widget_type = "LinearProgressIndicator"
+
+    def __init__(
+        self,
+        value: Optional[float] = None,
+        *,
+        color: Optional[str] = None,
+        background_color: Optional[str] = None,
+        min_height: Optional[float] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            value=value,
+            color=color,
+            background_color=background_color,
+            min_height=min_height,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+
+
+class PopupMenuItem(Widget):
+    """
+    An item inside a PopupMenuButton.
+    """
+    widget_type = "PopupMenuItem"
+
+    def __init__(
+        self,
+        value: Any,
+        child: Widget | str,
+        *,
+        enabled: bool = True,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            value=str(value),
+            enabled=enabled,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        c = child if isinstance(child, Widget) else Text(str(child))
+        self.children.append(c)
+
+
+class PopupMenuButton(Widget):
+    """
+    Displays a menu when pressed and calls on_selected when an item is chosen.
+    """
+    widget_type = "PopupMenuButton"
+
+    def __init__(
+        self,
+        items: Sequence[PopupMenuItem],
+        *,
+        on_selected: Optional[Callable[[str], None]] = None,
+        icon: Optional[str] = None,
+        tooltip: Optional[str] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            icon=icon,
+            tooltip=tooltip,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        self.children.extend(items)
+        if on_selected is not None:
+            self.selected.connect(on_selected)
+
+    @property
+    def selected(self) -> QtSignal:
+        if not hasattr(self, "_selected_signal"):
+            self._selected_signal = QtSignal(self, "callback_id")
+        return self._selected_signal
+
+
+class RefreshIndicator(Widget):
+    """
+    A widget that supports the Material 'swipe down to refresh' pull gesture.
+    """
+    widget_type = "RefreshIndicator"
+
+    def __init__(
+        self,
+        child: Widget,
+        *,
+        on_refresh: Optional[Callable[[], None]] = None,
+        color: Optional[str] = None,
+        background_color: Optional[str] = None,
+        displacement: float = 40.0,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            color=color,
+            background_color=background_color,
+            displacement=displacement,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        self.children.append(child)
+        if on_refresh is not None:
+            self.callback_id = _register_callback(on_refresh)
+
+
+class AlertDialog(Widget):
+    """
+    A Material Design modal alert dialog.
+    """
+    widget_type = "AlertDialog"
+
+    def __init__(
+        self,
+        title: Any = "",
+        content: Any = "",
+        *,
+        actions: Optional[Sequence[Widget]] = None,
+        background_color: Optional[str] = None,
+        elevation: Optional[float] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            background_color=background_color,
+            elevation=elevation,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        title_w = title if isinstance(title, Widget) else Text(str(title), style="titleLarge")
+        title_w.props["slot"] = "title"
+        self.children.append(title_w)
+
+        content_w = content if isinstance(content, Widget) else Text(str(content))
+        content_w.props["slot"] = "content"
+        self.children.append(content_w)
+
+        if actions:
+            for a in actions:
+                a.props["slot"] = "action"
+                self.children.append(a)
+
+
+class SimpleDialog(Widget):
+    """
+    A simple modal dialog offering choices to the user.
+    """
+    widget_type = "SimpleDialog"
+
+    def __init__(
+        self,
+        title: Any = "",
+        children: Optional[Sequence[Widget]] = None,
+        *,
+        background_color: Optional[str] = None,
+        elevation: Optional[float] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            background_color=background_color,
+            elevation=elevation,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        title_w = title if isinstance(title, Widget) else Text(str(title), style="titleLarge")
+        title_w.props["slot"] = "title"
+        self.children.append(title_w)
+
+        if children:
+            self.children.extend(children)
 

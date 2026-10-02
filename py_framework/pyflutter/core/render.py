@@ -1,24 +1,31 @@
 """
 Converts the in-memory Widget tree (see core/widget_base.py) into real
-Protobuf bytes matching ir_spec/widget.proto, ready to be sent to the
-Rust bridge.
+Protobuf bytes or granular JSON TreePatches matching ir_spec/widget.proto,
+ready to be sent to the Rust bridge and Flutter runtime.
 
 Wire framing: 1-byte message type tag + 4-byte big-endian length
-prefix + payload. This matches rust_bridge/src/main.rs's read_frame /
-write_frame (see comments there for why a length prefix is needed on a
-raw stream, and why a type tag — to allow RenderTree and CallbackEvent
-to share the same stdin/stdout stream).
+prefix + payload.
+  0x01: MSG_RENDER_TREE     (Full tree Protobuf)
+  0x02: MSG_CALLBACK_EVENT  (Dart -> Rust -> Python)
+  0x03: MSG_PLUGIN_CALL     (Python -> Rust -> Dart)
+  0x04: MSG_TREE_PATCH      (Granular diff JSON)
+  0x05: MSG_PLUGIN_RESPONSE (Dart -> Rust -> Python)
 """
 
 from __future__ import annotations
 
+import json
 import struct
+from typing import Any, Optional
 
 from pyflutter.core.widget_base import Widget
 from pyflutter.generated import widget_pb2
 
 MSG_RENDER_TREE = 0x01
 MSG_CALLBACK_EVENT = 0x02
+MSG_PLUGIN_CALL = 0x03
+MSG_TREE_PATCH = 0x04
+MSG_PLUGIN_RESPONSE = 0x05
 
 
 def resolve_widget(widget: Any) -> Widget:
@@ -36,6 +43,17 @@ def resolve_widget(widget: Any) -> Widget:
     return widget
 
 
+def assign_node_ids(widget: Any, path: str = "root") -> None:
+    """Assigns deterministic hierarchical structural IDs (_nid) to all widgets in the tree."""
+    resolved = resolve_widget(widget)
+    key = resolved.props.get("key")
+    nid = f"{path}[{key}]" if key else path
+    resolved.props["_nid"] = nid
+
+    for idx, child in enumerate(resolved.children):
+        assign_node_ids(child, f"{nid}.{idx}")
+
+
 def widget_to_proto(widget: Any) -> widget_pb2.Widget:
     """Recursively converts a Widget (and its children) to the
     generated protobuf Widget message.
@@ -46,10 +64,77 @@ def widget_to_proto(widget: Any) -> widget_pb2.Widget:
         callback_id=resolved.callback_id,
     )
     for key, value in resolved.props.items():
-        msg.props[key] = value
+        msg.props[key] = str(value)
     for child in resolved.children:
         msg.children.append(widget_to_proto(child))
     return msg
+
+
+def widget_to_snapshot(widget: Any) -> dict:
+    """Recursively serializes a Widget into a lightweight dict tree for diffing."""
+    resolved = resolve_widget(widget)
+    return {
+        "_nid": resolved.props.get("_nid", ""),
+        "type": resolved.widget_type,
+        "props": dict(resolved.props),
+        "callback_id": resolved.callback_id,
+        "children": [widget_to_snapshot(c) for c in resolved.children],
+    }
+
+
+def diff_snapshots(old: Optional[dict], new: Optional[dict]) -> Optional[list[dict]]:
+    """Compares two tree snapshots.
+    Returns:
+        - None: if structural change occurred (root type changed, child count changed, etc.)
+                which requires a full RenderTree rebuild.
+        - list[dict]: list of granular update operations:
+          [{"id": "root.0.1", "props": {"text": "5"}, "callback_id": "..."}]
+    """
+    if old is None or new is None:
+        return None
+    if old.get("type") != new.get("type"):
+        return None
+    if len(old.get("children", [])) != len(new.get("children", [])):
+        return None
+
+    updates: list[dict] = []
+
+    # Check prop differences
+    old_props = old.get("props", {})
+    new_props = new.get("props", {})
+    changed_props: dict[str, str] = {}
+
+    for k, v in new_props.items():
+        if k not in old_props or old_props[k] != v:
+            changed_props[k] = v
+
+    # Check for removed props
+    for k in old_props:
+        if k not in new_props:
+            changed_props[k] = ""  # empty string indicates prop removal
+
+    old_cb = old.get("callback_id", "")
+    new_cb = new.get("callback_id", "")
+    cb_changed = (old_cb != new_cb)
+
+    if changed_props or cb_changed:
+        op: dict[str, Any] = {"id": new.get("_nid", "")}
+        if changed_props:
+            op["props"] = changed_props
+        if cb_changed:
+            op["callback_id"] = new_cb
+        updates.append(op)
+
+    # Check children recursively
+    old_children = old.get("children", [])
+    new_children = new.get("children", [])
+    for oc, nc in zip(old_children, new_children):
+        child_diff = diff_snapshots(oc, nc)
+        if child_diff is None:
+            return None  # structural change inside child subtree
+        updates.extend(child_diff)
+
+    return updates
 
 
 def encode_frame(msg_type: int, payload: bytes) -> bytes:
@@ -64,12 +149,18 @@ def render_tree_frame(root: Any) -> bytes:
     """Encodes `root` as a framed RenderTree message, ready to write
     directly to the Rust bridge's stdin.
     """
+    assign_node_ids(root)
     tree = widget_pb2.RenderTree(root=widget_to_proto(root))
     return encode_frame(MSG_RENDER_TREE, tree.SerializeToString())
+
+
+def tree_patch_frame(updates: list[dict]) -> bytes:
+    """Encodes a list of node update patches as a framed MSG_TREE_PATCH message."""
+    payload = json.dumps({"type": "patch", "updates": updates}).encode("utf-8")
+    return encode_frame(MSG_TREE_PATCH, payload)
 
 
 def decode_callback_event(payload: bytes) -> widget_pb2.CallbackEvent:
     event = widget_pb2.CallbackEvent()
     event.ParseFromString(payload)
     return event
-

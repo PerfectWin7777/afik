@@ -52,6 +52,8 @@ from pyflutter.core.style import (
     TextTheme,
 )
 from pyflutter.plugins.overlay import show_snack_bar, show_dialog
+from pyflutter import plugins
+
 
 # ============================================================================
 # 3. Forms, Controllers & Validation
@@ -151,6 +153,21 @@ from pyflutter.widgets.widgets import (
     ListView,
     ListTile,
     SingleChildScrollView,
+    GridView,
+    RefreshIndicator,
+
+    # High-Value Material Controls
+    Radio,
+    RadioListTile,
+    Tooltip,
+    TextSpan,
+    RichText,
+    CircleAvatar,
+    LinearProgressIndicator,
+    PopupMenuItem,
+    PopupMenuButton,
+    AlertDialog,
+    SimpleDialog,
 
     # Application Shell, Material 3 & Navigation
     MaterialApp,
@@ -181,6 +198,8 @@ __all__ = [
     "StatelessWidget",
     "MainWindow",
     "QtSignal",
+    "plugins",
+
 
     # Reactive State Management
     "Signal",
@@ -299,6 +318,19 @@ __all__ = [
     "ListView",
     "ListTile",
     "SingleChildScrollView",
+    "GridView",
+    "RefreshIndicator",
+    "Radio",
+    "RadioListTile",
+    "Tooltip",
+    "TextSpan",
+    "RichText",
+    "CircleAvatar",
+    "LinearProgressIndicator",
+    "PopupMenuItem",
+    "PopupMenuButton",
+    "AlertDialog",
+    "SimpleDialog",
     "Scaffold",
     "AppBar",
     "Drawer",

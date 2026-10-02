@@ -33,6 +33,9 @@ const int wireLengthDelimited = 2;
 
 const int msgRenderTree = 0x01;
 const int msgCallbackEvent = 0x02;
+const int msgPluginCall = 0x03;
+const int msgTreePatch = 0x04;
+const int msgPluginResponse = 0x05;
 
 /// Plain data class mirroring the `Widget` protobuf message. Not named
 /// `Widget` to avoid clashing with Flutter's own `Widget` class.
@@ -49,6 +52,16 @@ class WidgetNode {
     this.callbackId = '',
   })  : props = props ?? {},
         children = children ?? [];
+}
+
+/// Recursively searches for a WidgetNode matching the structural node ID (_nid).
+WidgetNode? findNodeById(WidgetNode root, String nid) {
+  if (root.props['_nid'] == nid) return root;
+  for (final child in root.children) {
+    final found = findNodeById(child, nid);
+    if (found != null) return found;
+  }
+  return null;
 }
 
 // --- Decoding ------------------------------------------------------------

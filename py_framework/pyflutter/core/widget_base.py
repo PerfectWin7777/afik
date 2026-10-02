@@ -138,6 +138,98 @@ class Widget:
             for k, v in raw_props.items():
                 self.props[str(k)] = str(v)
 
+    def _notify_dirty(self) -> None:
+        """Triggers an immediate reactive update if an app runner is active."""
+        try:
+            from pyflutter.app import update
+            update()
+        except Exception:
+            pass
+
+    def set_enabled(self, enabled: bool = True, *, auto_update: bool = True) -> Widget:
+        """Enables or disables the widget (Qt QWidget.setEnabled())."""
+        self.props["enabled"] = "true" if enabled else "false"
+        if auto_update:
+            self._notify_dirty()
+        return self
+
+    def is_enabled(self) -> bool:
+        """Returns True if the widget is enabled (Qt QWidget.isEnabled())."""
+        return self.props.get("enabled", "true") != "false"
+
+    def set_visible(self, visible: bool = True, *, auto_update: bool = True) -> Widget:
+        """Shows or hides the widget (Qt QWidget.setVisible())."""
+        self.props["visible"] = "true" if visible else "false"
+        if auto_update:
+            self._notify_dirty()
+        return self
+
+    def is_visible(self) -> bool:
+        """Returns True if the widget is visible (Qt QWidget.isVisible())."""
+        return self.props.get("visible", "true") != "false"
+
+    def set_text(self, text: Any, *, auto_update: bool = True) -> Widget:
+        """Updates text/label content (Qt QLabel.setText() / QPushButton.setText())."""
+        val_str = str(text.value if hasattr(text, "value") else text)
+        self.props["text"] = val_str
+        self.props["value"] = val_str
+        self.props["label"] = val_str
+        if auto_update:
+            self._notify_dirty()
+        return self
+
+    def text(self) -> str:
+        """Returns the current text or label (Qt QLabel.text())."""
+        return self.props.get("text") or self.props.get("value") or self.props.get("label") or ""
+
+    def set_value(self, value: Any, *, auto_update: bool = True) -> Widget:
+        """Updates numeric or boolean value (Qt QSlider.setValue / QCheckBox.setChecked)."""
+        val = value.value if hasattr(value, "value") else value
+        if isinstance(val, bool):
+            self.props["value"] = "true" if val else "false"
+        else:
+            self.props["value"] = str(val)
+        if auto_update:
+            self._notify_dirty()
+        return self
+
+    def value(self) -> str:
+        """Returns the current value property."""
+        return self.props.get("value", "")
+
+    def set_color(self, color: str, *, auto_update: bool = True) -> Widget:
+        """Sets the primary foreground or text color."""
+        self.props["color"] = color
+        if auto_update:
+            self._notify_dirty()
+        return self
+
+    def set_background_color(self, color: str, *, auto_update: bool = True) -> Widget:
+        """Sets the background color."""
+        self.props["background_color"] = color
+        if auto_update:
+            self._notify_dirty()
+        return self
+
+    def set_tooltip(self, message: str, *, auto_update: bool = True) -> Widget:
+        """Sets a hover tooltip on this widget (Qt QWidget.setToolTip())."""
+        self.props["tooltip"] = message
+        if auto_update:
+            self._notify_dirty()
+        return self
+
+    # Qt-style camelCase aliases
+    setEnabled = set_enabled
+    isEnabled = is_enabled
+    setVisible = set_visible
+    isVisible = is_visible
+    setText = set_text
+    setValue = set_value
+    setColor = set_color
+    setBackgroundColor = set_background_color
+    setToolTip = set_tooltip
+    setTooltip = set_tooltip
+
     def padding(
         self,
         all: Optional[float] = None,
@@ -337,19 +429,26 @@ class QtSignal:
         self._installed = True
 
         def _dispatcher(*args: Any, **kwargs: Any):
-            if self.value_converter is not None:
-                if args:
-                    try:
-                        args = (self.value_converter(args[0]), *args[1:])
-                    except Exception:
-                        pass
-                elif "value" in kwargs:
-                    try:
-                        kwargs = dict(kwargs)
-                        kwargs["value"] = self.value_converter(kwargs["value"])
-                    except Exception:
-                        pass
-            self._dispatch(*args, **kwargs)
+            extracted_val = None
+            if args:
+                extracted_val = args[0]
+            elif "value" in kwargs:
+                extracted_val = kwargs["value"]
+            elif "text" in kwargs:
+                extracted_val = kwargs["text"]
+            elif "checked" in kwargs:
+                extracted_val = kwargs["checked"]
+
+            if extracted_val is not None and self.value_converter is not None:
+                try:
+                    extracted_val = self.value_converter(extracted_val)
+                except Exception:
+                    pass
+
+            if extracted_val is not None:
+                self._dispatch(extracted_val, *args[1:], **kwargs)
+            else:
+                self._dispatch(*args, **kwargs)
 
         cid = _register_callback(_dispatcher)
         if self.callback_prop == "callback_id":
@@ -472,6 +571,27 @@ class Component(Widget):
     addSpacer = add_stretch
     addDivider = add_divider
 
+    def set_menu_bar(self, menu_bar: Widget) -> Component:
+        """Sets the menu bar (Qt QMainWindow.setMenuBar). Returns self."""
+        self._menu_bar = menu_bar
+        return self
+
+    def set_status_bar(self, status_bar: Widget) -> Component:
+        """Sets the status bar (Qt QMainWindow.setStatusBar). Returns self."""
+        self._status_bar = status_bar
+        return self
+
+    def add_tool_bar(self, tool_bar: Widget) -> Component:
+        """Adds a toolbar to this window (Qt QMainWindow.addToolBar). Returns self."""
+        if not hasattr(self, "_tool_bars"):
+            self._tool_bars = []
+        self._tool_bars.append(tool_bar)
+        return self
+
+    setMenuBar = set_menu_bar
+    setStatusBar = set_status_bar
+    addToolBar = add_tool_bar
+
     def build(self) -> Widget:
         """
         Builds the widget subtree.
@@ -510,6 +630,22 @@ class Component(Widget):
                 f"or define an imperative layout attribute (e.g. self.column, self.layout, "
                 f"self.set_central_widget(w), or self.add_widget(w))."
             )
+
+        menu_bar = getattr(self, "_menu_bar", None)
+        tool_bars = getattr(self, "_tool_bars", [])
+        status_bar = getattr(self, "_status_bar", None)
+
+        if menu_bar is not None or tool_bars or status_bar is not None:
+            from pyflutter.widgets.widgets import Column
+            body_items: list[Widget] = []
+            if menu_bar is not None:
+                body_items.append(menu_bar)
+            for tb in tool_bars:
+                body_items.append(tb)
+            body_items.append(central.expanded())
+            if status_bar is not None:
+                body_items.append(status_bar)
+            central = Column(children=body_items)
 
         # Wrap in Scaffold if app-level elements are provided
         if app_bar is not None or drawer is not None or fab is not None or bottom_bar is not None:

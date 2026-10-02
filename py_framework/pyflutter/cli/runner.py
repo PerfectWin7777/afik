@@ -444,31 +444,44 @@ class PyFlutterRunner:
         threading.Thread(target=stream_output, daemon=True).start()
 
     def _event_loop(self):
-        """Listens for incoming CallbackEvents from Flutter."""
+        """Listens for incoming frames (CallbackEvents and PluginResponses) from Flutter."""
+        from pyflutter.core.render import MSG_CALLBACK_EVENT, MSG_PLUGIN_RESPONSE
+        from pyflutter.plugins.manager import handle_plugin_response
+
         while self.is_running and self.session:
             try:
-                event = self.session.next_event()
+                event_pair = self.session.next_event()
             except Exception as e:
                 if self.is_running:
                     logger.error(f"Bridge stream error: {e}")
                 break
 
-            if event is None:
+            if event_pair is None:
                 if self.is_running:
                     logger.warning("Bridge stream ended or Flutter disconnected.")
                 break
 
-            try:
-                logger.debug(f"Event received: {event.callback_id}")
-                invoke_callback(event.callback_id, dict(event.event_data))
+            msg_type, event = event_pair
 
-                # Rebuild and send new tree
-                with self.tree_lock:
-                    new_tree = self._build_and_tag_tree()
-                    self.session.send_tree(new_tree)
-            except Exception as e:
-                if self.is_running:
-                    logger.error(f"Error handling callback event {event.callback_id}: {e}")
+            if msg_type == MSG_PLUGIN_RESPONSE:
+                try:
+                    handle_plugin_response(event)
+                except Exception as e:
+                    logger.error(f"Error handling plugin response: {e}")
+                continue
+
+            if msg_type == MSG_CALLBACK_EVENT and event:
+                try:
+                    logger.debug(f"Event received: {event.callback_id}")
+                    invoke_callback(event.callback_id, dict(event.event_data))
+
+                    # Rebuild and send new tree (diffing is applied inside send_tree)
+                    with self.tree_lock:
+                        new_tree = self._build_and_tag_tree()
+                        self.session.send_tree(new_tree)
+                except Exception as e:
+                    if self.is_running:
+                        logger.error(f"Error handling callback event {event.callback_id}: {e}")
 
     def push_update(self):
         """Pushes an asynchronous tree update to the bridge and connected device."""
@@ -481,17 +494,20 @@ class PyFlutterRunner:
                 logger.error(f"Failed to push async update: {e}")
 
     def hot_reload(self):
-        """Performs a fast Hot Reload (reloads Python module and re-renders tree)."""
+        """Performs a fast Hot Reload (reloads Python module while preserving state, pushes diff patch)."""
         logger.info("\n⚡ [PyFlutter] Hot Reloading UI...")
         start_time = time.perf_counter()
         try:
-            # Clear previous callbacks to prevent memory leaks
-            clear_callbacks()
+            # Reload module from disk to capture new build logic without resetting state
+            self.app_module, new_app = load_app_from_file(self.entrypoint)
+            if new_app is not None and self.app is not None:
+                if hasattr(self.app, "__dict__") and hasattr(new_app, "__dict__"):
+                    for k, v in self.app.__dict__.items():
+                        if not k.startswith("_") and k in new_app.__dict__:
+                            setattr(new_app, k, v)
+                self.app = new_app
 
-            # Reload module from disk
-            self.app_module, self.app = load_app_from_file(self.entrypoint)
-
-            # Rebuild tree and push
+            # Rebuild tree and push diff
             if self.session and self.app:
                 with self.tree_lock:
                     tree = self._build_and_tag_tree()
@@ -511,16 +527,22 @@ class PyFlutterRunner:
             logger.error(f"Hot Reload failed: {e}")
 
     def hot_restart(self):
-        """Performs a Hot Restart (resets app state and resets Flutter)."""
+        """Performs a Hot Restart (resets app state, clears callbacks, and resets Flutter)."""
         logger.info("\n🔄 [PyFlutter] Hot Restarting app...")
         try:
+            from pyflutter.core.state import clear_state_registry
             clear_callbacks()
+            clear_state_registry()
+
+            if self.session:
+                self.session.reset_snapshot()
+
             self.app_module, self.app = load_app_from_file(self.entrypoint)
 
             if self.session and self.app:
                 with self.tree_lock:
                     tree = self._build_and_tag_tree()
-                    self.session.send_tree(tree)
+                    self.session.send_tree(tree, force_full=True)
 
             if self.flutter_process and self.flutter_process.stdin:
                 try:

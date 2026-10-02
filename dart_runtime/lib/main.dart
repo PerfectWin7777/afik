@@ -12,14 +12,24 @@ import 'package:flutter/material.dart';
 import 'core/color_parser.dart';
 import 'frame_buffer.dart';
 import 'ir_codec.dart';
+import 'plugins/device_info_shim.dart';
+import 'plugins/file_picker_shim.dart';
 import 'plugins/overlay_shim.dart';
+import 'plugins/path_provider_shim.dart';
 import 'plugins/plugin_registry.dart';
+import 'plugins/storage_shim.dart';
 import 'plugins/url_launcher_shim.dart';
 import 'widgets/widget_builder.dart';
 
 void main() {
   // Register default static shims
   PluginRegistry.register('url_launcher', UrlLauncherShim());
+  PluginRegistry.register('storage', StorageShim());
+  PluginRegistry.register('shared_preferences', StorageShim());
+  PluginRegistry.register('path_provider', PathProviderShim());
+  PluginRegistry.register('device_info', DeviceInfoShim());
+  PluginRegistry.register('device_info_plus', DeviceInfoShim());
+  PluginRegistry.register('file_picker', FilePickerShim());
 
   runApp(const PyFlutterShellApp());
 }
@@ -235,15 +245,71 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
       setState(() {
         _tree = root;
       });
-    } else if (msgType == 0x03) {
+    } else if (msgType == msgTreePatch) {
+      _handleTreePatch(payload);
+    } else if (msgType == msgPluginCall) {
       _handlePluginCall(payload);
+    }
+  }
+
+  void _handleTreePatch(Uint8List payload) {
+    try {
+      final jsonStr = utf8.decode(payload);
+      final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+      final updates = data['updates'] as List<dynamic>?;
+      if (updates != null && _tree != null) {
+        bool modified = false;
+        for (final item in updates) {
+          final u = item as Map<String, dynamic>;
+          final nid = u['id'] as String?;
+          if (nid == null) continue;
+          final target = findNodeById(_tree!, nid);
+          if (target != null) {
+            if (u.containsKey('props')) {
+              final p = u['props'] as Map<String, dynamic>;
+              p.forEach((k, v) {
+                if (v == null || v == '') {
+                  target.props.remove(k);
+                } else {
+                  target.props[k] = v.toString();
+                }
+              });
+              modified = true;
+            }
+            if (u.containsKey('callback_id')) {
+              target.callbackId = u['callback_id'] as String? ?? '';
+              modified = true;
+            }
+          }
+        }
+        if (modified && mounted) {
+          setState(() {});
+        }
+      }
+    } catch (e) {
+      debugPrint('[patch error] Failed to apply tree patch: $e');
     }
   }
 
   Future<void> _handlePluginCall(Uint8List payload) async {
     final str = utf8.decode(payload);
     final parts = str.split('\x00');
-    if (parts.length >= 3) {
+    if (parts.length >= 4) {
+      final pluginName = parts[0];
+      final method = parts[1];
+      final callId = parts[2];
+      final argsJson = parts[3];
+      try {
+        final Map<String, dynamic> rawMap = jsonDecode(argsJson);
+        final Map<String, String> args =
+            rawMap.map((k, v) => MapEntry(k, v.toString()));
+        final res = await PluginRegistry.dispatch(pluginName, method, args);
+        _sendPluginResponse(callId, res);
+      } catch (e) {
+        debugPrint('[plugin error] $pluginName.$method: $e');
+        _sendPluginResponse(callId, null, e.toString());
+      }
+    } else if (parts.length >= 3) {
       final pluginName = parts[0];
       final method = parts[1];
       final argsJson = parts[2];
@@ -256,6 +322,17 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
         debugPrint('[plugin error] $pluginName.$method: $e');
       }
     }
+  }
+
+  void _sendPluginResponse(String callId, dynamic result, [String? error]) {
+    final socket = _socket;
+    if (socket == null) return;
+    final payload = utf8.encode(jsonEncode({
+      'call_id': callId,
+      'result': result,
+      'error': error,
+    }));
+    socket.add(encodeFrame(msgPluginResponse, payload));
   }
 
   void _sendCallbackEvent(String callbackId, Map<String, String> eventData) {

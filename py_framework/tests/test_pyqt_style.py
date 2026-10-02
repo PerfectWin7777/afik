@@ -324,5 +324,81 @@ class TestMaterialAppReactiveRootAndCallbacks(unittest.TestCase):
         self.assertEqual(call_count, 1)
 
 
+class TestPyQtWindowAndMutators(unittest.TestCase):
+    """Tests PyQt QWidget mutators and QMainWindow layout methods."""
+
+    def test_widget_mutators(self):
+        lbl = Text("Initial")
+        self.assertEqual(lbl.text(), "Initial")
+        self.assertTrue(lbl.is_enabled())
+        self.assertTrue(lbl.is_visible())
+
+        lbl.setText("Updated", auto_update=False)
+        self.assertEqual(lbl.text(), "Updated")
+        self.assertEqual(lbl.props["text"], "Updated")
+
+        lbl.setEnabled(False, auto_update=False)
+        self.assertFalse(lbl.is_enabled())
+        self.assertEqual(lbl.props["enabled"], "false")
+
+        lbl.setVisible(False, auto_update=False)
+        self.assertFalse(lbl.is_visible())
+        self.assertEqual(lbl.props["visible"], "false")
+
+        lbl.setColor("#FF0000", auto_update=False)
+        self.assertEqual(lbl.props["color"], "#FF0000")
+
+        lbl.setBackgroundColor("#00FF00", auto_update=False)
+        self.assertEqual(lbl.props["background_color"], "#00FF00")
+
+        lbl.setToolTip("Help info", auto_update=False)
+        self.assertEqual(lbl.props["tooltip"], "Help info")
+
+    def test_main_window_menu_status_and_toolbar(self):
+        class MyWindow(MainWindow):
+            def __init__(self):
+                super().__init__()
+                self.menu = Row([Text("File"), Text("Edit")])
+                self.toolbar = Row([Button("Save")])
+                self.status = Text("Ready")
+                self.central = Column([Text("Content")])
+
+                self.setMenuBar(self.menu)
+                self.addToolBar(self.toolbar)
+                self.setStatusBar(self.status)
+                self.setCentralWidget(self.central)
+
+        win = MyWindow()
+        built = win.build()
+        self.assertEqual(built.widget_type, "Column")
+        # Menu, Toolbar, Expanded Central, Status Bar
+        self.assertEqual(len(built.children), 4)
+        self.assertIs(built.children[0], win.menu)
+        self.assertIs(built.children[1], win.toolbar)
+        self.assertEqual(built.children[2].widget_type, "Expanded")
+        self.assertIs(built.children[3], win.status)
+
+    def test_slot_parameter_delivery(self):
+        tf = TextField()
+        received_text = []
+
+        def on_text(t: str):
+            received_text.append(t)
+
+        tf.textChanged.connect(on_text)
+        invoke_callback(tf.callback_id, {"text": "Hello World"})
+        self.assertEqual(received_text, ["Hello World"])
+
+        sl = Slider(0.0)
+        received_vals = []
+
+        def on_val(v: float):
+            received_vals.append(v)
+
+        sl.valueChanged.connect(on_val)
+        invoke_callback(sl.callback_id, {"value": "0.75"})
+        self.assertEqual(received_vals, [0.75])
+
+
 if __name__ == "__main__":
     unittest.main()

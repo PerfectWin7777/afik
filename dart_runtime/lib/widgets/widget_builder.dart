@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../core/color_parser.dart';
 import '../ir_codec.dart';
@@ -1482,6 +1483,228 @@ Widget buildFromNode(
       }
       break;
 
+    case 'GridView':
+      final crossAxisCount = int.tryParse(node.props['cross_axis_count'] ?? '') ?? 2;
+      final mainAxisSpacing = double.tryParse(node.props['main_axis_spacing'] ?? '') ?? 8.0;
+      final crossAxisSpacing = double.tryParse(node.props['cross_axis_spacing'] ?? '') ?? 8.0;
+      final childAspectRatio = double.tryParse(node.props['child_aspect_ratio'] ?? '') ?? 1.0;
+      final shrinkWrap = node.props['shrink_wrap'] == 'true';
+      final paddingVal = double.tryParse(node.props['padding'] ?? '');
+      final physStr = node.props['physics'];
+      ScrollPhysics? gridPhysics;
+      if (physStr == 'bouncing') gridPhysics = const BouncingScrollPhysics();
+      else if (physStr == 'clamping') gridPhysics = const ClampingScrollPhysics();
+      else if (physStr == 'never') gridPhysics = const NeverScrollableScrollPhysics();
+      else if (physStr == 'always') gridPhysics = const AlwaysScrollableScrollPhysics();
+
+      widget = GridView.count(
+        crossAxisCount: crossAxisCount,
+        mainAxisSpacing: mainAxisSpacing,
+        crossAxisSpacing: crossAxisSpacing,
+        childAspectRatio: childAspectRatio,
+        shrinkWrap: shrinkWrap,
+        physics: gridPhysics,
+        padding: paddingVal != null ? EdgeInsets.all(paddingVal) : null,
+        children: node.children.map((c) => buildFromNode(c, sendEvent)).toList(),
+      );
+      break;
+
+    case 'Radio':
+      final val = node.props['value'] ?? '';
+      final groupVal = node.props['group_value'] ?? '';
+      final activeColor = parseHexColor(node.props['active_color'] ?? '');
+      widget = Radio<String>(
+        value: val,
+        groupValue: groupVal,
+        activeColor: activeColor,
+        onChanged: (v) {
+          if (node.callbackId.isNotEmpty) {
+            sendEvent(node.callbackId, {'value': v ?? ''});
+          }
+        },
+      );
+      break;
+
+    case 'RadioListTile':
+      final val = node.props['value'] ?? '';
+      final groupVal = node.props['group_value'] ?? '';
+      final activeColor = parseHexColor(node.props['active_color'] ?? '');
+      Widget? titleW;
+      Widget? subtitleW;
+      for (final c in node.children) {
+        if (c.props['slot'] == 'title') titleW = buildFromNode(c, sendEvent);
+        else if (c.props['slot'] == 'subtitle') subtitleW = buildFromNode(c, sendEvent);
+      }
+      widget = RadioListTile<String>(
+        value: val,
+        groupValue: groupVal,
+        activeColor: activeColor,
+        title: titleW,
+        subtitle: subtitleW,
+        onChanged: (v) {
+          if (node.callbackId.isNotEmpty) {
+            sendEvent(node.callbackId, {'value': v ?? ''});
+          }
+        },
+      );
+      break;
+
+    case 'Tooltip':
+      final msg = node.props['message'] ?? '';
+      Widget child = const SizedBox.shrink();
+      if (node.children.isNotEmpty) {
+        child = buildFromNode(node.children.first, sendEvent);
+      }
+      widget = Tooltip(
+        message: msg,
+        child: child,
+      );
+      break;
+
+    case 'RichText':
+      final spans = <InlineSpan>[];
+      for (final c in node.children) {
+        if (c.type == 'TextSpan') {
+          spans.add(_buildTextSpan(c, sendEvent));
+        }
+      }
+      TextAlign? richAlign;
+      final ta = node.props['text_align'];
+      if (ta == 'left') richAlign = TextAlign.left;
+      else if (ta == 'center') richAlign = TextAlign.center;
+      else if (ta == 'right') richAlign = TextAlign.right;
+      else if (ta == 'justify') richAlign = TextAlign.justify;
+
+      widget = Text.rich(
+        TextSpan(children: spans),
+        textAlign: richAlign,
+      );
+      break;
+
+    case 'CircleAvatar':
+      final radius = double.tryParse(node.props['radius'] ?? '');
+      final bgColor = parseHexColor(node.props['background_color'] ?? '');
+      final fgColor = parseHexColor(node.props['foreground_color'] ?? '');
+      final imgUrl = node.props['image_url'];
+      ImageProvider? imgProvider;
+      if (imgUrl != null && imgUrl.isNotEmpty) {
+        imgProvider = NetworkImage(imgUrl);
+      }
+      Widget? childW;
+      if (node.children.isNotEmpty) {
+        childW = buildFromNode(node.children.first, sendEvent);
+      }
+      widget = CircleAvatar(
+        radius: radius,
+        backgroundColor: bgColor,
+        foregroundColor: fgColor,
+        backgroundImage: imgProvider,
+        child: childW,
+      );
+      break;
+
+    case 'LinearProgressIndicator':
+      final val = double.tryParse(node.props['value'] ?? '');
+      final color = parseHexColor(node.props['color'] ?? '');
+      final bgColor = parseHexColor(node.props['background_color'] ?? '');
+      final minHeight = double.tryParse(node.props['min_height'] ?? '');
+      widget = LinearProgressIndicator(
+        value: val,
+        color: color,
+        backgroundColor: bgColor,
+        minHeight: minHeight,
+      );
+      break;
+
+    case 'PopupMenuButton':
+      final iconName = node.props['icon'];
+      final tooltip = node.props['tooltip'];
+      widget = PopupMenuButton<String>(
+        icon: iconName != null ? Icon(resolveIcon(iconName)) : null,
+        tooltip: tooltip,
+        onSelected: (val) {
+          if (node.callbackId.isNotEmpty) {
+            sendEvent(node.callbackId, {'value': val});
+          }
+        },
+        itemBuilder: (ctx) {
+          return node.children.where((c) => c.type == 'PopupMenuItem').map((c) {
+            final itemVal = c.props['value'] ?? '';
+            final enabled = c.props['enabled'] != 'false';
+            Widget childW = const SizedBox.shrink();
+            if (c.children.isNotEmpty) {
+              childW = buildFromNode(c.children.first, sendEvent);
+            }
+            return PopupMenuItem<String>(
+              value: itemVal,
+              enabled: enabled,
+              child: childW,
+            );
+          }).toList();
+        },
+      );
+      break;
+
+    case 'RefreshIndicator':
+      final color = parseHexColor(node.props['color'] ?? '');
+      final bgColor = parseHexColor(node.props['background_color'] ?? '');
+      final displacement = double.tryParse(node.props['displacement'] ?? '') ?? 40.0;
+      Widget childW = const SizedBox.shrink();
+      if (node.children.isNotEmpty) {
+        childW = buildFromNode(node.children.first, sendEvent);
+      }
+      widget = RefreshIndicator(
+        color: color,
+        backgroundColor: bgColor,
+        displacement: displacement,
+        onRefresh: () async {
+          if (node.callbackId.isNotEmpty) {
+            sendEvent(node.callbackId, {});
+            await Future.delayed(const Duration(milliseconds: 500));
+          }
+        },
+        child: childW,
+      );
+      break;
+
+    case 'AlertDialog':
+      Widget? titleW;
+      Widget? contentW;
+      final actions = <Widget>[];
+      for (final c in node.children) {
+        if (c.props['slot'] == 'title') titleW = buildFromNode(c, sendEvent);
+        else if (c.props['slot'] == 'content') contentW = buildFromNode(c, sendEvent);
+        else if (c.props['slot'] == 'action') actions.add(buildFromNode(c, sendEvent));
+        else actions.add(buildFromNode(c, sendEvent));
+      }
+      final bgColor = parseHexColor(node.props['background_color'] ?? '');
+      final elevation = double.tryParse(node.props['elevation'] ?? '');
+      widget = AlertDialog(
+        title: titleW,
+        content: contentW,
+        actions: actions.isNotEmpty ? actions : null,
+        backgroundColor: bgColor,
+        elevation: elevation,
+      );
+      break;
+
+    case 'SimpleDialog':
+      Widget? titleW;
+      final children = <Widget>[];
+      for (final c in node.children) {
+        if (c.props['slot'] == 'title') titleW = buildFromNode(c, sendEvent);
+        else children.add(buildFromNode(c, sendEvent));
+      }
+      final bgColor = parseHexColor(node.props['background_color'] ?? '');
+      final elevation = double.tryParse(node.props['elevation'] ?? '');
+      widget = SimpleDialog(
+        title: titleW,
+        backgroundColor: bgColor,
+        elevation: elevation,
+        children: children.isNotEmpty ? children : null,
+      );
+      break;
+
     default:
       widget = Text('[unknown widget: ${node.type}]');
       break;
@@ -1504,6 +1727,10 @@ Widget buildFromNode(
       node.type != 'Switch' &&
       node.type != 'Checkbox' &&
       node.type != 'Slider' &&
+      node.type != 'Radio' &&
+      node.type != 'RadioListTile' &&
+      node.type != 'PopupMenuButton' &&
+      node.type != 'RefreshIndicator' &&
       node.type != 'BottomNavigationBar' &&
       node.type != 'PageView') {
     return InkWell(
@@ -1876,5 +2103,44 @@ class PyDropdownMenuWidget extends StatelessWidget {
       },
     );
   }
+}
+
+/// Recursively builds an InlineSpan for RichText.
+InlineSpan _buildTextSpan(
+  WidgetNode node,
+  void Function(String callbackId, Map<String, String> eventData) sendEvent,
+) {
+  final text = node.props['text'] ?? '';
+  final fontSize = double.tryParse(node.props['font_size'] ?? '');
+  final color = parseHexColor(node.props['color'] ?? '');
+  FontWeight? fontWeight;
+  final fw = node.props['font_weight'];
+  if (fw == 'bold') fontWeight = FontWeight.bold;
+  final fontStyle = node.props['font_style'] == 'italic' ? FontStyle.italic : null;
+
+  final children = <InlineSpan>[];
+  for (final c in node.children) {
+    if (c.type == 'TextSpan') {
+      children.add(_buildTextSpan(c, sendEvent));
+    }
+  }
+
+  GestureRecognizer? recognizer;
+  if (node.callbackId.isNotEmpty) {
+    recognizer = TapGestureRecognizer()
+      ..onTap = () => sendEvent(node.callbackId, {});
+  }
+
+  return TextSpan(
+    text: text,
+    style: TextStyle(
+      fontSize: fontSize,
+      color: color,
+      fontWeight: fontWeight,
+      fontStyle: fontStyle,
+    ),
+    recognizer: recognizer,
+    children: children.isNotEmpty ? children : null,
+  );
 }
 
