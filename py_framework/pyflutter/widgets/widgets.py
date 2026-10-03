@@ -2862,4 +2862,136 @@ class Chewie(Widget):
         return self._event_signal
 
 
+class SfPdfViewer(Widget):
+    """
+    Syncfusion enterprise PDF viewer widget.
+    Supports network URLs, local files, and asset documents with page navigation and zoom.
+    """
+    widget_type = "SfPdfViewer"
+
+    def __init__(
+        self,
+        src: str,
+        *,
+        controller: Optional[Any] = None,
+        can_show_pagination: bool = True,
+        width: Optional[float] = None,
+        height: Optional[float] = None,
+        on_page_changed: Optional[Callable[[dict[str, Any]], None]] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            src=str(src),
+            can_show_pagination=can_show_pagination,
+            width=width,
+            height=height,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        if on_page_changed:
+            self.page_changed.connect(on_page_changed)
+
+    @classmethod
+    def network(cls, url: str, **kwargs: Any) -> SfPdfViewer:
+        return cls(url, **kwargs)
+
+    @classmethod
+    def file(cls, path: str, **kwargs: Any) -> SfPdfViewer:
+        return cls(path, **kwargs)
+
+    @classmethod
+    def asset(cls, asset_name: str, **kwargs: Any) -> SfPdfViewer:
+        return cls(asset_name, **kwargs)
+
+    @property
+    def page_changed(self) -> QtSignal:
+        if not hasattr(self, "_page_changed_signal"):
+            self._page_changed_signal = QtSignal(self, "callback_id")
+        return self._page_changed_signal
+
+
+class PdfView(Widget):
+    """
+    Modern PDFX document viewer widget with pinch-to-zoom and swipe page indicators.
+    """
+    widget_type = "PdfView"
+
+    def __init__(
+        self,
+        path_or_controller: Any,
+        *,
+        width: Optional[float] = None,
+        height: Optional[float] = None,
+        on_page_changed: Optional[Callable[[dict[str, Any]], None]] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        path = getattr(path_or_controller, "path", str(path_or_controller))
+        super().__init__(
+            path=str(path),
+            width=width,
+            height=height,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        if on_page_changed:
+            self.page_changed.connect(on_page_changed)
+
+    @property
+    def page_changed(self) -> QtSignal:
+        if not hasattr(self, "_page_changed_signal"):
+            self._page_changed_signal = QtSignal(self, "callback_id")
+        return self._page_changed_signal
+
+
+class PdfViewPinch(PdfView):
+    """Alias for PdfView with pinch-zoom support."""
+    widget_type = "PdfViewPinch"
+
+
+class PDFView(Widget):
+    """
+    Native platform PDF viewer (flutter_pdfview).
+    """
+    widget_type = "PDFView"
+
+    def __init__(
+        self,
+        file_path: str,
+        *,
+        enable_swipe: bool = True,
+        swipe_horizontal: bool = False,
+        width: Optional[float] = None,
+        height: Optional[float] = None,
+        on_page_changed: Optional[Callable[[dict[str, Any]], None]] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            file_path=str(file_path),
+            enable_swipe=enable_swipe,
+            swipe_horizontal=swipe_horizontal,
+            width=width,
+            height=height,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        if on_page_changed:
+            self.page_changed.connect(on_page_changed)
+
+    @property
+    def page_changed(self) -> QtSignal:
+        if not hasattr(self, "_page_changed_signal"):
+            self._page_changed_signal = QtSignal(self, "callback_id")
+        return self._page_changed_signal
+
+
+
 

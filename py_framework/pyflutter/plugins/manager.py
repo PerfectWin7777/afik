@@ -418,7 +418,24 @@ def _dispatch_local_fallback(plugin_name: str, method: str, args: dict[str, Any]
         elif method == "stopAuthentication":
             return {"stopped": True}
 
+    # PDF & Printing Suite (Syncfusion, PDFX, Printing, FlutterPdfView)
+    elif plugin_name in ("pdf", "printing", "syncfusion_flutter_pdfviewer", "syncfusion_pdfviewer", "pdfx", "flutter_pdfview"):
+        if method == "openPdf":
+            return {"documentId": "doc_1", "pageCount": 10, "path": args.get("path", "doc.pdf")}
+        elif method == "getPageCount":
+            return {"pageCount": 10}
+        elif method == "renderPage":
+            p = int(args.get("pageNumber", 1))
+            return {"pageNumber": p, "width": 595, "height": 842, "rendered": True}
+        elif method == "printPdf":
+            return {"printed": True, "name": args.get("name", "doc.pdf")}
+        elif method == "sharePdf":
+            return {"shared": True, "path": args.get("path", "")}
+        elif method == "layoutPdf":
+            return {"completed": True}
+
     return None
+
 
 
 

@@ -31,6 +31,11 @@ from pyflutter.plugins import (
     secure_storage,
     flutter_secure_storage,
     local_auth,
+    pdf,
+    syncfusion_pdfviewer,
+    pdfx,
+    printing,
+    flutter_pdfview,
 )
 from pyflutter.plugins.manager import (
     add_flutter_package,
@@ -66,11 +71,17 @@ __all__ = [
     "secure_storage",
     "flutter_secure_storage",
     "local_auth",
+    "pdf",
+    "syncfusion_pdfviewer",
+    "pdfx",
+    "printing",
+    "flutter_pdfview",
     "add_flutter_package",
     "invoke_plugin_method",
     "call_plugin",
     "handle_plugin_response",
 ]
+
 
 
 

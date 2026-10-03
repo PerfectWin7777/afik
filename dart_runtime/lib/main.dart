@@ -33,7 +33,9 @@ import 'plugins/local_notifications_shim.dart';
 import 'plugins/permission_handler_shim.dart';
 import 'plugins/secure_storage_shim.dart';
 import 'plugins/sqflite_shim.dart';
+import 'plugins/pdf_shim.dart';
 import 'widgets/widget_builder.dart';
+
 
 void main() {
   // Register default static shims
@@ -64,6 +66,13 @@ void main() {
   PluginRegistry.register('flutter_secure_storage', SecureStorageShim());
   PluginRegistry.register('secure_storage', SecureStorageShim());
   PluginRegistry.register('local_auth', LocalAuthShim());
+  PluginRegistry.register('pdf', PdfShim());
+  PluginRegistry.register('printing', PdfShim());
+  PluginRegistry.register('syncfusion_flutter_pdfviewer', PdfShim());
+  PluginRegistry.register('syncfusion_pdfviewer', PdfShim());
+  PluginRegistry.register('pdfx', PdfShim());
+  PluginRegistry.register('flutter_pdfview', PdfShim());
+
 
 
 

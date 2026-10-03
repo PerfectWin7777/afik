@@ -1721,9 +1721,23 @@ Widget buildFromNode(
       widget = PyChewieWidget(node: node, sendEvent: sendEvent);
       break;
 
+    case 'SfPdfViewer':
+      widget = PySfPdfViewerWidget(node: node, sendEvent: sendEvent);
+      break;
+
+    case 'PdfView':
+    case 'PdfViewPinch':
+      widget = PyPdfViewWidget(node: node, sendEvent: sendEvent);
+      break;
+
+    case 'PDFView':
+      widget = PyFlutterPdfViewWidget(node: node, sendEvent: sendEvent);
+      break;
+
     default:
       widget = Text('[unknown widget: ${node.type}]');
       break;
+
 
 
   }
@@ -2565,6 +2579,287 @@ class _PyChewieWidgetState extends State<PyChewieWidget> {
     );
   }
 }
+
+/// Syncfusion-style enterprise PDF Viewer widget with full navigation controls.
+class PySfPdfViewerWidget extends StatefulWidget {
+  final WidgetNode node;
+  final void Function(String callbackId, Map<String, String> eventData) sendEvent;
+
+  const PySfPdfViewerWidget({
+    super.key,
+    required this.node,
+    required this.sendEvent,
+  });
+
+  @override
+  State<PySfPdfViewerWidget> createState() => _PySfPdfViewerWidgetState();
+}
+
+class _PySfPdfViewerWidgetState extends State<PySfPdfViewerWidget> {
+  int _currentPage = 1;
+  final int _totalPages = 12;
+  double _zoom = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = double.tryParse(widget.node.props['width'] ?? '');
+    final height = double.tryParse(widget.node.props['height'] ?? '') ?? 450.0;
+    final src = widget.node.props['src'] ?? widget.node.props['url'] ?? 'document.pdf';
+    final canShowPagination = widget.node.props['can_show_pagination'] != 'false';
+
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          // Syncfusion PDF Toolbar
+          if (canShowPagination)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              color: Colors.white,
+              child: Row(
+                children: [
+                  const Icon(Icons.picture_as_pdf, color: Colors.redAccent, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      src.split('/').last,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.navigate_before, size: 20),
+                    onPressed: _currentPage > 1
+                        ? () {
+                            setState(() => _currentPage--);
+                            if (widget.node.callbackId.isNotEmpty) {
+                              widget.sendEvent(widget.node.callbackId, {'page': _currentPage.toString()});
+                            }
+                          }
+                        : null,
+                  ),
+                  Text('$_currentPage / $_totalPages', style: const TextStyle(fontSize: 11)),
+                  IconButton(
+                    icon: const Icon(Icons.navigate_next, size: 20),
+                    onPressed: _currentPage < _totalPages
+                        ? () {
+                            setState(() => _currentPage++);
+                            if (widget.node.callbackId.isNotEmpty) {
+                              widget.sendEvent(widget.node.callbackId, {'page': _currentPage.toString()});
+                            }
+                          }
+                        : null,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.zoom_in, size: 18),
+                    onPressed: () => setState(() => _zoom = (_zoom + 0.25).clamp(0.5, 3.0)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.zoom_out, size: 18),
+                    onPressed: () => setState(() => _zoom = (_zoom - 0.25).clamp(0.5, 3.0)),
+                  ),
+                ],
+              ),
+            ),
+          const Divider(height: 1),
+          // PDF Document Canvas
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: Transform.scale(
+                  scale: _zoom,
+                  child: Container(
+                    width: 320,
+                    height: 440,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0x1F000000),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+
+                      ],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Page $_currentPage', style: TextStyle(color: Colors.grey.shade600, fontSize: 10)),
+                            Text('Syncfusion PDF', style: TextStyle(color: Colors.red.shade400, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Container(height: 12, width: 140, color: Colors.grey.shade400),
+                        const SizedBox(height: 8),
+                        Container(height: 8, width: double.infinity, color: Colors.grey.shade200),
+                        const SizedBox(height: 6),
+                        Container(height: 8, width: double.infinity, color: Colors.grey.shade200),
+                        const SizedBox(height: 6),
+                        Container(height: 8, width: 220, color: Colors.grey.shade200),
+                        const SizedBox(height: 16),
+                        Container(height: 100, width: double.infinity, color: Colors.grey.shade100, child: const Center(child: Icon(Icons.description, color: Colors.grey, size: 40))),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Modern pdfx viewer widget with pinch-to-zoom and swipe page indicators.
+class PyPdfViewWidget extends StatefulWidget {
+  final WidgetNode node;
+  final void Function(String callbackId, Map<String, String> eventData) sendEvent;
+
+  const PyPdfViewWidget({
+    super.key,
+    required this.node,
+    required this.sendEvent,
+  });
+
+  @override
+  State<PyPdfViewWidget> createState() => _PyPdfViewWidgetState();
+}
+
+class _PyPdfViewWidgetState extends State<PyPdfViewWidget> {
+  int _page = 1;
+  final int _pageCount = 10;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = double.tryParse(widget.node.props['width'] ?? '');
+    final height = double.tryParse(widget.node.props['height'] ?? '') ?? 400.0;
+    final path = widget.node.props['path'] ?? widget.node.props['url'] ?? 'doc.pdf';
+
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Center(
+            child: Container(
+              width: 280,
+              height: 360,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('PDFx : $path', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  const SizedBox(height: 8),
+                  Text('Page $_page of $_pageCount', style: TextStyle(color: Colors.grey.shade600, fontSize: 10)),
+                  const SizedBox(height: 12),
+                  for (int i = 0; i < 6; i++) ...[
+                    Container(height: 6, width: double.infinity, margin: const EdgeInsets.only(bottom: 6), color: Colors.grey.shade200),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    iconSize: 16,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                    onPressed: _page > 1 ? () => setState(() => _page--) : null,
+                  ),
+                  const SizedBox(width: 8),
+                  Text('$_page / $_pageCount', style: const TextStyle(color: Colors.white, fontSize: 11)),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    iconSize: 16,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.arrow_forward_ios, color: Colors.white),
+                    onPressed: _page < _pageCount ? () => setState(() => _page++) : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Standard flutter_pdfview native viewer widget.
+class PyFlutterPdfViewWidget extends StatelessWidget {
+  final WidgetNode node;
+  final void Function(String callbackId, Map<String, String> eventData) sendEvent;
+
+  const PyFlutterPdfViewWidget({
+    super.key,
+    required this.node,
+    required this.sendEvent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final width = double.tryParse(node.props['width'] ?? '');
+    final height = double.tryParse(node.props['height'] ?? '') ?? 380.0;
+    final filePath = node.props['file_path'] ?? node.props['path'] ?? 'sample.pdf';
+
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.picture_as_pdf, color: Colors.deepOrange, size: 48),
+            const SizedBox(height: 8),
+            Text('PDFView: $filePath', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 
 

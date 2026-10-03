@@ -172,6 +172,10 @@ from pyflutter.widgets.widgets import (
     VideoPlayer,
     CameraPreview,
     Chewie,
+    SfPdfViewer,
+    PdfView,
+    PdfViewPinch,
+    PDFView,
 
     # Application Shell, Material 3 & Navigation
     MaterialApp,
@@ -206,6 +210,8 @@ from pyflutter.plugins.local_notifications import FlutterLocalNotificationsPlugi
 from pyflutter.plugins.permission_handler import Permission, PermissionStatus, check_permission, request_permission
 from pyflutter.plugins.secure_storage import FlutterSecureStorage
 from pyflutter.plugins.local_auth import LocalAuthentication
+from pyflutter.plugins.pdf import PdfViewerController, PdfDocument, Printing
+
 
 
 
@@ -359,6 +365,10 @@ __all__ = [
     "VideoPlayer",
     "CameraPreview",
     "Chewie",
+    "SfPdfViewer",
+    "PdfView",
+    "PdfViewPinch",
+    "PDFView",
     "Scaffold",
     "AppBar",
     "Drawer",
@@ -400,6 +410,10 @@ __all__ = [
     "request_permission",
     "FlutterSecureStorage",
     "LocalAuthentication",
+    "PdfViewerController",
+    "PdfDocument",
+    "Printing",
 ]
+
 
 
