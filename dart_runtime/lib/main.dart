@@ -26,6 +26,13 @@ import 'plugins/storage_shim.dart';
 import 'plugins/url_launcher_shim.dart';
 import 'plugins/video_player_shim.dart';
 import 'plugins/webview_shim.dart';
+import 'plugins/chewie_shim.dart';
+import 'plugins/hive_shim.dart';
+import 'plugins/local_auth_shim.dart';
+import 'plugins/local_notifications_shim.dart';
+import 'plugins/permission_handler_shim.dart';
+import 'plugins/secure_storage_shim.dart';
+import 'plugins/sqflite_shim.dart';
 import 'widgets/widget_builder.dart';
 
 void main() {
@@ -48,6 +55,16 @@ void main() {
   PluginRegistry.register('share', ShareShim());
   PluginRegistry.register('webview_flutter', WebViewShim());
   PluginRegistry.register('webview', WebViewShim());
+  PluginRegistry.register('chewie', ChewieShim());
+  PluginRegistry.register('hive', HiveShim());
+  PluginRegistry.register('sqflite', SqfliteShim());
+  PluginRegistry.register('flutter_local_notifications', LocalNotificationsShim());
+  PluginRegistry.register('local_notifications', LocalNotificationsShim());
+  PluginRegistry.register('permission_handler', PermissionHandlerShim());
+  PluginRegistry.register('flutter_secure_storage', SecureStorageShim());
+  PluginRegistry.register('secure_storage', SecureStorageShim());
+  PluginRegistry.register('local_auth', LocalAuthShim());
+
 
 
   runApp(const PyFlutterShellApp());

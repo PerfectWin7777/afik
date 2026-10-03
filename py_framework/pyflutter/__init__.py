@@ -171,6 +171,7 @@ from pyflutter.widgets.widgets import (
     WebView,
     VideoPlayer,
     CameraPreview,
+    Chewie,
 
     # Application Shell, Material 3 & Navigation
     MaterialApp,
@@ -198,6 +199,14 @@ from pyflutter.plugins.audioplayer import AudioPlayer, PlayerState
 from pyflutter.plugins.video_player import VideoPlayerController
 from pyflutter.plugins.share import share, share_files
 from pyflutter.plugins.webview import WebViewController
+from pyflutter.plugins.chewie import ChewieController
+from pyflutter.plugins.hive import Box, open_box
+from pyflutter.plugins.sqflite import Database, open_database
+from pyflutter.plugins.local_notifications import FlutterLocalNotificationsPlugin
+from pyflutter.plugins.permission_handler import Permission, PermissionStatus, check_permission, request_permission
+from pyflutter.plugins.secure_storage import FlutterSecureStorage
+from pyflutter.plugins.local_auth import LocalAuthentication
+
 
 
 __version__ = "0.1.0"
@@ -349,6 +358,7 @@ __all__ = [
     "WebView",
     "VideoPlayer",
     "CameraPreview",
+    "Chewie",
     "Scaffold",
     "AppBar",
     "Drawer",
@@ -378,5 +388,18 @@ __all__ = [
     "WebViewController",
     "share",
     "share_files",
+    "ChewieController",
+    "Box",
+    "open_box",
+    "Database",
+    "open_database",
+    "FlutterLocalNotificationsPlugin",
+    "Permission",
+    "PermissionStatus",
+    "check_permission",
+    "request_permission",
+    "FlutterSecureStorage",
+    "LocalAuthentication",
 ]
+
 

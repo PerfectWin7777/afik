@@ -1717,9 +1717,14 @@ Widget buildFromNode(
       widget = PyCameraPreviewWidget(node: node, sendEvent: sendEvent);
       break;
 
+    case 'Chewie':
+      widget = PyChewieWidget(node: node, sendEvent: sendEvent);
+      break;
+
     default:
       widget = Text('[unknown widget: ${node.type}]');
       break;
+
 
   }
 
@@ -2455,5 +2460,111 @@ class PyCameraPreviewWidget extends StatelessWidget {
     );
   }
 }
+
+/// Interactive Chewie video player with full Material controls.
+class PyChewieWidget extends StatefulWidget {
+  final WidgetNode node;
+  final void Function(String callbackId, Map<String, String> eventData) sendEvent;
+
+  const PyChewieWidget({
+    super.key,
+    required this.node,
+    required this.sendEvent,
+  });
+
+  @override
+  State<PyChewieWidget> createState() => _PyChewieWidgetState();
+}
+
+class _PyChewieWidgetState extends State<PyChewieWidget> {
+  bool _isPlaying = false;
+  double _position = 0.0;
+  final double _duration = 240.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _isPlaying = widget.node.props['auto_play'] == 'true';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = double.tryParse(widget.node.props['width'] ?? '');
+    final height = double.tryParse(widget.node.props['height'] ?? '') ?? 240.0;
+    final aspectRatio = double.tryParse(widget.node.props['aspect_ratio'] ?? '') ?? (16.0 / 9.0);
+
+    return AspectRatio(
+      aspectRatio: aspectRatio,
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(10.0),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Center(
+              child: IconButton(
+                iconSize: 56,
+                icon: Icon(
+                  _isPlaying ? Icons.pause_circle_outline : Icons.play_circle_outline,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  setState(() => _isPlaying = !_isPlaying);
+                  if (widget.node.callbackId.isNotEmpty) {
+                    widget.sendEvent(widget.node.callbackId, {
+                      'action': _isPlaying ? 'play' : 'pause',
+                      'position': _position.toString(),
+                    });
+                  }
+                },
+              ),
+            ),
+            Positioned(
+              left: 12,
+              bottom: 8,
+              right: 12,
+              child: Row(
+                children: [
+                  Text(
+                    '${_position.toInt()}s',
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                  Expanded(
+                    child: Slider(
+                      value: _position,
+                      max: _duration,
+                      activeColor: Colors.deepOrangeAccent,
+                      inactiveColor: Colors.white30,
+                      onChanged: (val) {
+                        setState(() => _position = val);
+                        if (widget.node.callbackId.isNotEmpty) {
+                          widget.sendEvent(widget.node.callbackId, {
+                            'action': 'seek',
+                            'position': val.toString(),
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                  Text(
+                    '${_duration.toInt()}s',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.fullscreen, color: Colors.white70, size: 20),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 

@@ -2814,3 +2814,52 @@ class CameraPreview(Widget):
         return self._shutter_signal
 
 
+class Chewie(Widget):
+    """
+    An enhanced video player widget with Material/Cupertino controls and aspect ratio.
+    """
+    widget_type = "Chewie"
+
+    def __init__(
+        self,
+        controller: Any,
+        *,
+        auto_play: bool = False,
+        aspect_ratio: float = 16.0 / 9.0,
+        show_controls: bool = True,
+        width: Optional[float] = None,
+        height: Optional[float] = None,
+        on_event: Optional[Callable[[dict[str, Any]], None]] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        video_ctrl = getattr(controller, "video_player_controller", controller)
+        url = getattr(video_ctrl, "url", str(video_ctrl))
+        ctrl_id = getattr(video_ctrl, "controller_id", None)
+        auto_play_val = getattr(controller, "auto_play", auto_play)
+        aspect_val = getattr(controller, "aspect_ratio", aspect_ratio)
+
+        super().__init__(
+            url=url,
+            controller_id=ctrl_id,
+            auto_play=auto_play_val,
+            aspect_ratio=aspect_val,
+            show_controls=show_controls,
+            width=width,
+            height=height,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        if on_event:
+            self.event.connect(on_event)
+
+    @property
+    def event(self) -> QtSignal:
+        if not hasattr(self, "_event_signal"):
+            self._event_signal = QtSignal(self, "callback_id")
+        return self._event_signal
+
+
+

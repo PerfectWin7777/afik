@@ -294,8 +294,132 @@ def _dispatch_local_fallback(plugin_name: str, method: str, args: dict[str, Any]
         elif method == "currentUrl":
             return {"url": _local_storage_cache.get(f"_web_url_{vid}", "about:blank")}
 
+    # Chewie
+    elif plugin_name == "chewie":
+        cid = args.get("controllerId", "default")
+        if method == "createChewieController":
+            return {"controllerId": cid, "configured": True}
+        elif method == "enterFullScreen":
+            return {"controllerId": cid, "isFullScreen": True}
+        elif method == "exitFullScreen":
+            return {"controllerId": cid, "isFullScreen": False}
+        elif method == "getConfig":
+            return {"controllerId": cid, "configured": True}
+
+    # Hive
+    elif plugin_name == "hive":
+        bname = args.get("boxName", "default")
+        if method == "openBox":
+            return {"boxName": bname, "opened": True}
+        elif method == "put":
+            k = str(args.get("key", ""))
+            _local_storage_cache[f"_hive_{bname}_{k}"] = args.get("value")
+            return {"boxName": bname, "key": k, "success": True}
+        elif method == "get":
+            k = str(args.get("key", ""))
+            val = _local_storage_cache.get(f"_hive_{bname}_{k}")
+            return {"boxName": bname, "key": k, "value": val if val is not None else args.get("defaultValue")}
+        elif method == "delete":
+            k = str(args.get("key", ""))
+            _local_storage_cache.pop(f"_hive_{bname}_{k}", None)
+            return {"boxName": bname, "key": k, "success": True}
+        elif method == "clear":
+            prefix = f"_hive_{bname}_"
+            for k in list(_local_storage_cache.keys()):
+                if k.startswith(prefix):
+                    del _local_storage_cache[k]
+            return {"boxName": bname, "cleared": True}
+        elif method == "getAll":
+            prefix = f"_hive_{bname}_"
+            res = {}
+            for k, v in _local_storage_cache.items():
+                if k.startswith(prefix):
+                    res[k[len(prefix):]] = v
+            return res
+        elif method == "close":
+            return {"boxName": bname, "closed": True}
+
+    # Sqflite
+    elif plugin_name == "sqflite":
+        dbname = args.get("db", "main.db")
+        if method == "openDatabase":
+            return {"db": dbname, "opened": True}
+        elif method == "execute":
+            return {"db": dbname, "executed": True}
+        elif method == "insert":
+            return {"db": dbname, "inserted": True, "id": 1}
+        elif method == "query":
+            return []
+        elif method == "update":
+            return {"db": dbname, "updated": 1}
+        elif method == "delete":
+            return {"db": dbname, "deleted": 1}
+        elif method == "close":
+            return {"db": dbname, "closed": True}
+
+    # Local Notifications
+    elif plugin_name in ("flutter_local_notifications", "local_notifications"):
+        if method == "initialize":
+            return {"initialized": True}
+        elif method == "show":
+            return {"shown": True, "id": args.get("id", "0")}
+        elif method == "cancel":
+            return {"cancelled": True, "id": args.get("id", "0")}
+        elif method == "cancelAll":
+            return {"cancelledCount": 1}
+        elif method == "getActiveNotifications":
+            return [{"id": 0, "title": "Notification", "body": "Body"}]
+
+    # Permission Handler
+    elif plugin_name == "permission_handler":
+        perm = args.get("permission", "camera")
+        if method == "checkPermission":
+            return {"permission": perm, "status": "granted"}
+        elif method == "requestPermission":
+            return {"permission": perm, "status": "granted"}
+        elif method == "openAppSettings":
+            return {"opened": True}
+
+    # Secure Storage
+    elif plugin_name in ("flutter_secure_storage", "secure_storage"):
+        if method == "write":
+            k = str(args.get("key", ""))
+            _local_storage_cache[f"_sec_{k}"] = str(args.get("value", ""))
+            return {"key": k, "success": True}
+        elif method == "read":
+            k = str(args.get("key", ""))
+            return _local_storage_cache.get(f"_sec_{k}")
+        elif method == "delete":
+            k = str(args.get("key", ""))
+            _local_storage_cache.pop(f"_sec_{k}", None)
+            return {"key": k, "success": True}
+        elif method == "deleteAll":
+            for k in list(_local_storage_cache.keys()):
+                if k.startswith("_sec_"):
+                    del _local_storage_cache[k]
+            return {"cleared": True}
+        elif method == "readAll":
+            prefix = "_sec_"
+            return {k[len(prefix):]: str(v) for k, v in _local_storage_cache.items() if k.startswith(prefix)}
+        elif method == "containsKey":
+            k = str(args.get("key", ""))
+            return {"containsKey": f"_sec_{k}" in _local_storage_cache}
+
+    # Local Auth
+    elif plugin_name == "local_auth":
+        if method == "canCheckBiometrics":
+            return {"canCheck": True}
+        elif method == "isDeviceSupported":
+            return {"supported": True}
+        elif method == "getAvailableBiometrics":
+            return ["fingerprint", "face"]
+        elif method == "authenticate":
+            return {"authenticated": True}
+        elif method == "stopAuthentication":
+            return {"stopped": True}
 
     return None
+
 
 
 

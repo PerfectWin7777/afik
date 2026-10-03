@@ -22,6 +22,15 @@ from pyflutter.plugins import (
     share_plus,
     webview,
     webview_flutter,
+    chewie,
+    hive,
+    sqflite,
+    local_notifications,
+    flutter_local_notifications,
+    permission_handler,
+    secure_storage,
+    flutter_secure_storage,
+    local_auth,
 )
 from pyflutter.plugins.manager import (
     add_flutter_package,
@@ -48,10 +57,20 @@ __all__ = [
     "share_plus",
     "webview",
     "webview_flutter",
+    "chewie",
+    "hive",
+    "sqflite",
+    "local_notifications",
+    "flutter_local_notifications",
+    "permission_handler",
+    "secure_storage",
+    "flutter_secure_storage",
+    "local_auth",
     "add_flutter_package",
     "invoke_plugin_method",
     "call_plugin",
     "handle_plugin_response",
 ]
+
 
 
