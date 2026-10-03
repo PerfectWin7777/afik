@@ -9,6 +9,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import 'bridge/ffi_bridge.dart';
 import 'core/color_parser.dart';
 import 'frame_buffer.dart';
 import 'ir_codec.dart';
@@ -215,6 +216,8 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
   late final FrameBuffer _frameBuffer;
   WidgetNode? _tree;
   String _status = 'connecting...';
+  bool _isFFIMode = false;
+  StreamSubscription<FFIFrame>? _ffiSub;
 
   @override
   void initState() {
@@ -231,6 +234,29 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
       ),
     );
 
+    _initBridge();
+  }
+
+  void _initBridge() {
+    final ffi = PyFlutterFFIBridge();
+    const bool isExplicitStandalone =
+        bool.fromEnvironment('PYFLUTTER_STANDALONE', defaultValue: false);
+
+    if (isExplicitStandalone || ffi.isAvailable) {
+      final success = ffi.init();
+      if (success) {
+        setState(() {
+          _isFFIMode = true;
+          _status = 'embedded (standalone)';
+        });
+        _ffiSub = ffi.frameStream.listen((frame) {
+          _handleFrame(frame.msgType, frame.payload);
+        });
+        return;
+      }
+    }
+
+    // Development fallback: connect to local TCP socket relay
     _connect();
   }
 
@@ -346,9 +372,7 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
       final argsJson = parts[3];
       try {
         final Map<String, dynamic> rawMap = jsonDecode(argsJson);
-        final Map<String, String> args =
-            rawMap.map((k, v) => MapEntry(k, v.toString()));
-        final res = await PluginRegistry.dispatch(pluginName, method, args);
+        final res = await PluginRegistry.dispatch(pluginName, method, rawMap);
         _sendPluginResponse(callId, res);
       } catch (e) {
         debugPrint('[plugin error] $pluginName.$method: $e');
@@ -360,9 +384,7 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
       final argsJson = parts[2];
       try {
         final Map<String, dynamic> rawMap = jsonDecode(argsJson);
-        final Map<String, String> args =
-            rawMap.map((k, v) => MapEntry(k, v.toString()));
-        await PluginRegistry.dispatch(pluginName, method, args);
+        await PluginRegistry.dispatch(pluginName, method, rawMap);
       } catch (e) {
         debugPrint('[plugin error] $pluginName.$method: $e');
       }
@@ -370,25 +392,36 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
   }
 
   void _sendPluginResponse(String callId, dynamic result, [String? error]) {
-    final socket = _socket;
-    if (socket == null) return;
     final payload = utf8.encode(jsonEncode({
       'call_id': callId,
       'result': result,
       'error': error,
     }));
-    socket.add(encodeFrame(msgPluginResponse, payload));
+    if (_isFFIMode) {
+      PyFlutterFFIBridge().pushToPython(msgPluginResponse, payload);
+    } else {
+      final socket = _socket;
+      if (socket != null) {
+        socket.add(encodeFrame(msgPluginResponse, payload));
+      }
+    }
   }
 
   void _sendCallbackEvent(String callbackId, Map<String, String> eventData) {
-    final socket = _socket;
-    if (socket == null) return;
     final encoded = encodeCallbackEvent(callbackId, eventData);
-    socket.add(encodeFrame(msgCallbackEvent, encoded));
+    if (_isFFIMode) {
+      PyFlutterFFIBridge().pushToPython(msgCallbackEvent, encoded);
+    } else {
+      final socket = _socket;
+      if (socket != null) {
+        socket.add(encodeFrame(msgCallbackEvent, encoded));
+      }
+    }
   }
 
   @override
   void dispose() {
+    _ffiSub?.cancel();
     _socket?.destroy();
     super.dispose();
   }

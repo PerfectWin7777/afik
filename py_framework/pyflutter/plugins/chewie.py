@@ -57,3 +57,12 @@ class ChewieController:
     def dispose(self) -> None:
         """Disposes the controller resources."""
         self.video_player_controller.dispose()
+
+
+from pyflutter.widgets.widgets import Chewie
+
+__all__ = [
+    "ChewieController",
+    "Chewie",
+]
+

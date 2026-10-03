@@ -118,3 +118,12 @@ class VideoPlayerController:
         call_plugin("video_player", "dispose", {"controllerId": self.controller_id})
         self.is_initialized = False
         self._is_playing = False
+
+
+from pyflutter.widgets.widgets import VideoPlayer
+
+__all__ = [
+    "VideoPlayerController",
+    "VideoPlayer",
+]
+

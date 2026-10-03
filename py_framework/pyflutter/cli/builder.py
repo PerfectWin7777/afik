@@ -1,0 +1,129 @@
+"""
+PyFlutter CLI Standalone Builder.
+Builds autonomous production packages (APK, AppBundle, etc.)
+by embedding the Python app assets and native FFI bridge library (.so).
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from typing import Optional
+
+from pyflutter.core.logger import logger
+from pyflutter.core.config import PyFlutterConfig
+from pyflutter.cli.manifest_sync import sync_platform_metadata
+
+
+def find_workspace_root() -> Path:
+    """Finds the root directory containing dart_runtime and rust_bridge."""
+    current = Path.cwd().resolve()
+    for parent in [current, *current.parents]:
+        if (parent / "dart_runtime").exists() and (parent / "rust_bridge").exists():
+            return parent
+    return Path(__file__).resolve().parents[3]
+
+
+class PyFlutterBuilder:
+    """Orchestrates building autonomous release packages."""
+
+    def __init__(
+        self,
+        target: str = "apk",
+        entrypoint: str = "main.py",
+        release: bool = True,
+        split_per_abi: bool = False,
+    ):
+        self.target = target.lower()
+        self.entrypoint = Path(entrypoint).resolve()
+        self.release = release
+        self.split_per_abi = split_per_abi
+        self.workspace_root = find_workspace_root()
+        self.dart_runtime = self.workspace_root / "dart_runtime"
+        self.rust_bridge = self.workspace_root / "rust_bridge"
+
+    def build(self) -> bool:
+        """Executes the complete end-to-end autonomous standalone build pipeline."""
+        logger.info(f"🚀 Starting PyFlutter Standalone Build ({self.target.upper()})...")
+        mode_str = "Release" if self.release else "Debug"
+        logger.info(f"   Target: {self.target} | Mode: {mode_str} | Entrypoint: {self.entrypoint.name}")
+
+        # 1. Validate environment
+        if not self.entrypoint.exists():
+            logger.error(f"Entrypoint file '{self.entrypoint}' not found.")
+            return False
+
+        flutter_bin = shutil.which("flutter") or shutil.which("flutter.bat")
+        if not flutter_bin:
+            logger.error("Flutter SDK not found in PATH.")
+            return False
+
+        # 2. Sync metadata from pyflutter.yaml
+        config = PyFlutterConfig.find_and_load(Path.cwd())
+        logger.info("📦 Synchronizing platform manifests & permissions...")
+        sync_platform_metadata(self.workspace_root, config)
+
+        # 3. Package Python application code into assets
+        assets_app_dir = self.dart_runtime / "assets" / "app"
+        assets_app_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"📁 Bundling Python app assets into {assets_app_dir}...")
+        
+        # Copy entrypoint
+        shutil.copy2(self.entrypoint, assets_app_dir / "main.py")
+
+        # Copy any local python source files or config
+        source_dir = self.entrypoint.parent
+        for py_file in source_dir.glob("*.py"):
+            if py_file.name != self.entrypoint.name:
+                shutil.copy2(py_file, assets_app_dir / py_file.name)
+
+        # 4. Build native Rust FFI library
+        logger.info("⚙️ Compiling native Rust FFI bridge library...")
+        cargo_bin = shutil.which("cargo") or shutil.which("cargo.exe")
+        if cargo_bin:
+            build_cmd = [cargo_bin, "build"]
+            if self.release:
+                build_cmd.append("--release")
+            try:
+                subprocess.run(build_cmd, cwd=str(self.rust_bridge), check=True)
+                logger.success("Native Rust FFI bridge compiled successfully.")
+            except Exception as e:
+                logger.warning(f"Could not compile Rust bridge with cargo: {e}")
+
+        # 5. Build Flutter package with Standalone flag enabled
+        logger.info("🔨 Building standalone Flutter APK with embedded FFI engine...")
+        flutter_cmd = [
+            flutter_bin,
+            "build",
+            self.target,
+            "--dart-define=PYFLUTTER_STANDALONE=true",
+        ]
+        if self.release:
+            flutter_cmd.append("--release")
+        else:
+            flutter_cmd.append("--debug")
+
+        if self.split_per_abi and self.target == "apk":
+            flutter_cmd.append("--split-per-abi")
+
+        logger.info(f"   Executing: {' '.join(flutter_cmd)}")
+        try:
+            res = subprocess.run(
+                flutter_cmd,
+                cwd=str(self.dart_runtime),
+                check=True,
+            )
+            if res.returncode == 0:
+                logger.success(f"🎉 PyFlutter Standalone {self.target.upper()} build completed successfully!")
+                output_dir = self.dart_runtime / "build" / "app" / "outputs" / "flutter-apk"
+                logger.info(f"📦 Output artifacts located at:\n   {output_dir}")
+                return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Flutter build failed with exit code {e.returncode}")
+        except Exception as e:
+            logger.error(f"Build execution error: {e}")
+
+        return False

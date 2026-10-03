@@ -109,3 +109,15 @@ class CameraController:
         """Releases the camera device."""
         call_plugin("camera", "dispose", {"cameraId": self.camera_id})
         self.is_initialized = False
+
+
+from pyflutter.widgets.widgets import CameraPreview
+
+__all__ = [
+    "CameraDescription",
+    "available_cameras",
+    "CameraController",
+    "CameraPreview",
+    "XFile",
+]
+

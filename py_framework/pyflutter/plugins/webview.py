@@ -72,3 +72,12 @@ class WebViewController:
         if isinstance(res, dict) and "url" in res:
             self._current_url = str(res["url"])
         return self._current_url
+
+
+from pyflutter.widgets.widgets import WebView
+
+__all__ = [
+    "WebViewController",
+    "WebView",
+]
+

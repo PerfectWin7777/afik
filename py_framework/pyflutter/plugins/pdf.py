@@ -100,3 +100,22 @@ class Printing:
         """Prepares a PDF document for print layout preview."""
         res = call_plugin("pdf", "layoutPdf", {"path": str(path)})
         return bool(isinstance(res, dict) and res.get("completed", True))
+
+
+from pyflutter.widgets.widgets import (
+    SfPdfViewer,
+    PdfView,
+    PdfViewPinch,
+    PDFView,
+)
+
+__all__ = [
+    "PdfViewerController",
+    "PdfDocument",
+    "Printing",
+    "SfPdfViewer",
+    "PdfView",
+    "PdfViewPinch",
+    "PDFView",
+]
+

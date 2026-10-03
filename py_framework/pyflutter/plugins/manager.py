@@ -93,6 +93,18 @@ def handle_plugin_response(payload: bytes) -> None:
 
 def _dispatch_local_fallback(plugin_name: str, method: str, args: dict[str, Any]) -> Any:
     """Safe local fallback for offline development, CLI operations, and unit tests."""
+    # MethodChannel Universal Fallback
+    if plugin_name == "__method_channel__":
+        channel_name = str(args.get("channel", ""))
+        method_name = str(args.get("method", method))
+        arguments = args.get("arguments")
+        from pyflutter.core.channel import get_mock_method_call_handler, MethodCall
+        mock = get_mock_method_call_handler(channel_name)
+        if mock is not None:
+            return mock(MethodCall(method_name, arguments))
+        logger.debug(f"[MethodChannel fallback] {channel_name}.{method_name} invoked offline.")
+        return None
+
     # Storage / SharedPreferences
     if plugin_name in ("storage", "shared_preferences"):
         key = args.get("key", "")

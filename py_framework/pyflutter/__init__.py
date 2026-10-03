@@ -194,28 +194,69 @@ from pyflutter.widgets.widgets import (
 )
 
 # ============================================================================
-# 7. Native Hardware, Media & Device Plugins
+# 7. MethodChannel & Platform Communication
 # ============================================================================
-from pyflutter.plugins.image_picker import ImagePicker, XFile, ImageSource
-from pyflutter.plugins.camera import CameraController, CameraDescription, available_cameras
-from pyflutter.plugins.connectivity import ConnectivityResult, check_connectivity, is_connected
-from pyflutter.plugins.audioplayer import AudioPlayer, PlayerState
-from pyflutter.plugins.video_player import VideoPlayerController
-from pyflutter.plugins.share import share, share_files
-from pyflutter.plugins.webview import WebViewController
-from pyflutter.plugins.chewie import ChewieController
-from pyflutter.plugins.hive import Box, open_box
-from pyflutter.plugins.sqflite import Database, open_database
-from pyflutter.plugins.local_notifications import FlutterLocalNotificationsPlugin
-from pyflutter.plugins.permission_handler import Permission, PermissionStatus, check_permission, request_permission
-from pyflutter.plugins.secure_storage import FlutterSecureStorage
-from pyflutter.plugins.local_auth import LocalAuthentication
-from pyflutter.plugins.pdf import PdfViewerController, PdfDocument, Printing
+from pyflutter.core.channel import (
+    MethodChannel,
+    EventChannel,
+    MethodCall,
+    PlatformException,
+)
 
+import importlib
+from typing import Any
 
+_DEPRECATED_ROOT_EXPORTS: dict[str, tuple[str, str]] = {
+    "ImagePicker": ("pyflutter.plugins.image_picker", "ImagePicker"),
+    "XFile": ("pyflutter.plugins.image_picker", "XFile"),
+    "ImageSource": ("pyflutter.plugins.image_picker", "ImageSource"),
+    "CameraController": ("pyflutter.plugins.camera", "CameraController"),
+    "CameraDescription": ("pyflutter.plugins.camera", "CameraDescription"),
+    "available_cameras": ("pyflutter.plugins.camera", "available_cameras"),
+    "CameraPreview": ("pyflutter.plugins.camera", "CameraPreview"),
+    "ConnectivityResult": ("pyflutter.plugins.connectivity", "ConnectivityResult"),
+    "check_connectivity": ("pyflutter.plugins.connectivity", "check_connectivity"),
+    "is_connected": ("pyflutter.plugins.connectivity", "is_connected"),
+    "AudioPlayer": ("pyflutter.plugins.audioplayer", "AudioPlayer"),
+    "PlayerState": ("pyflutter.plugins.audioplayer", "PlayerState"),
+    "VideoPlayerController": ("pyflutter.plugins.video_player", "VideoPlayerController"),
+    "VideoPlayer": ("pyflutter.plugins.video_player", "VideoPlayer"),
+    "share": ("pyflutter.plugins.share", "share"),
+    "share_files": ("pyflutter.plugins.share", "share_files"),
+    "WebViewController": ("pyflutter.plugins.webview", "WebViewController"),
+    "WebView": ("pyflutter.plugins.webview", "WebView"),
+    "ChewieController": ("pyflutter.plugins.chewie", "ChewieController"),
+    "Chewie": ("pyflutter.plugins.chewie", "Chewie"),
+    "Box": ("pyflutter.plugins.hive", "Box"),
+    "open_box": ("pyflutter.plugins.hive", "open_box"),
+    "Database": ("pyflutter.plugins.sqflite", "Database"),
+    "open_database": ("pyflutter.plugins.sqflite", "open_database"),
+    "FlutterLocalNotificationsPlugin": ("pyflutter.plugins.local_notifications", "FlutterLocalNotificationsPlugin"),
+    "Permission": ("pyflutter.plugins.permission_handler", "Permission"),
+    "PermissionStatus": ("pyflutter.plugins.permission_handler", "PermissionStatus"),
+    "check_permission": ("pyflutter.plugins.permission_handler", "check_permission"),
+    "request_permission": ("pyflutter.plugins.permission_handler", "request_permission"),
+    "FlutterSecureStorage": ("pyflutter.plugins.secure_storage", "FlutterSecureStorage"),
+    "LocalAuthentication": ("pyflutter.plugins.local_auth", "LocalAuthentication"),
+    "SfPdfViewer": ("pyflutter.plugins.pdf", "SfPdfViewer"),
+    "PdfView": ("pyflutter.plugins.pdf", "PdfView"),
+    "PdfViewPinch": ("pyflutter.plugins.pdf", "PdfViewPinch"),
+    "PDFView": ("pyflutter.plugins.pdf", "PDFView"),
+    "PdfViewerController": ("pyflutter.plugins.pdf", "PdfViewerController"),
+    "PdfDocument": ("pyflutter.plugins.pdf", "PdfDocument"),
+    "Printing": ("pyflutter.plugins.pdf", "Printing"),
+}
+
+def __getattr__(name: str) -> Any:
+    if name in _DEPRECATED_ROOT_EXPORTS:
+        mod_name, attr_name = _DEPRECATED_ROOT_EXPORTS[name]
+        mod = importlib.import_module(mod_name)
+        return getattr(mod, attr_name)
+    raise AttributeError(f"module 'pyflutter' has no attribute '{name}'")
 
 
 __version__ = "0.1.0"
+
 
 __all__ = [
     # Application & State
@@ -361,14 +402,6 @@ __all__ = [
     "PopupMenuButton",
     "AlertDialog",
     "SimpleDialog",
-    "WebView",
-    "VideoPlayer",
-    "CameraPreview",
-    "Chewie",
-    "SfPdfViewer",
-    "PdfView",
-    "PdfViewPinch",
-    "PDFView",
     "Scaffold",
     "AppBar",
     "Drawer",
@@ -382,37 +415,11 @@ __all__ = [
     "TabBarView",
     "DefaultTabController",
 
-    # Native Plugins & Hardware
-    "ImagePicker",
-    "XFile",
-    "ImageSource",
-    "CameraController",
-    "CameraDescription",
-    "available_cameras",
-    "ConnectivityResult",
-    "check_connectivity",
-    "is_connected",
-    "AudioPlayer",
-    "PlayerState",
-    "VideoPlayerController",
-    "WebViewController",
-    "share",
-    "share_files",
-    "ChewieController",
-    "Box",
-    "open_box",
-    "Database",
-    "open_database",
-    "FlutterLocalNotificationsPlugin",
-    "Permission",
-    "PermissionStatus",
-    "check_permission",
-    "request_permission",
-    "FlutterSecureStorage",
-    "LocalAuthentication",
-    "PdfViewerController",
-    "PdfDocument",
-    "Printing",
+    # Platform Channels & Communication
+    "MethodChannel",
+    "EventChannel",
+    "MethodCall",
+    "PlatformException",
 ]
 
 

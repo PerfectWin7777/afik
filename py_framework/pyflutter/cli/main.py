@@ -107,6 +107,32 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     # `pyflutter sync`
     subparsers.add_parser("sync", help="Synchronize pyflutter.yaml permissions to AndroidManifest.xml and Info.plist")
 
+    # `pyflutter build <target>`
+    build_parser = subparsers.add_parser("build", help="Build an autonomous standalone package (apk, appbundle, etc.)")
+    build_parser.add_argument(
+        "target",
+        nargs="?",
+        default="apk",
+        choices=["apk", "appbundle", "ipa", "ios", "windows", "linux", "macos"],
+        help="Target build format (default: apk)",
+    )
+    build_parser.add_argument(
+        "entrypoint",
+        nargs="?",
+        default="main.py",
+        help="Path to Python app entrypoint file (default: main.py)",
+    )
+    build_parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Build in debug mode instead of release",
+    )
+    build_parser.add_argument(
+        "--split-per-abi",
+        action="store_true",
+        help="Split the APK per ABI for smaller download size",
+    )
+
     return parser.parse_args(argv)
 
 
@@ -199,6 +225,18 @@ def main(argv: list[str] | None = None):
             attach_only=args.attach,
         )
         runner.start()
+
+    if args.command == "build":
+        from pyflutter.cli.builder import PyFlutterBuilder
+        builder = PyFlutterBuilder(
+            target=args.target,
+            entrypoint=args.entrypoint,
+            release=not args.debug,
+            split_per_abi=args.split_per_abi,
+        )
+        success = builder.build()
+        sys.exit(0 if success else 1)
+
 
 
 if __name__ == "__main__":
