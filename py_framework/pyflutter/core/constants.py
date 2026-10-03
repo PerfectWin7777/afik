@@ -152,30 +152,79 @@ class Icons(metaclass=_IconsMeta):
 class Colors:
     """
     Comprehensive color palette for rapid, consistent UI styling.
-    Custom colors can also be passed directly as hex strings (e.g. "#1877F2").
+    Provides standard Material, Tailwind-compatible swatches, semantic tokens,
+    and the with_opacity() helper for alpha channel calculations.
     """
-    # Special
+    # Special & Transparents
     TRANSPARENT = "transparent"
     WHITE = "#FFFFFF"
     BLACK = "#000000"
 
-    # Primaries & Brand
+    # Brand & Deep Primaries
     BLUE = "#1877F2"
     FACEBOOK_BLUE = "#1877F2"
+    NAVY = "#1E3A8A"
+    DEEP_BLUE = "#1E3A8A"
     LIGHT_BLUE = "#03A9F4"
     CYAN = "#00BCD4"
     TEAL = "#009688"
-    GREEN = "#42B72A"
-    LIGHT_GREEN = "#8BC34A"
     INDIGO = "#3F51B5"
+    INDIGO_500 = "#6366F1"
     PURPLE = "#7B1FA2"
     DEEP_PURPLE = "#673AB7"
+    VIOLET = "#8B5CF6"
+    VIOLET_600 = "#7C3AED"
     PINK = "#E91E63"
-    RED = "#E41E3F"
-    AMBER = "#FFC107"
-    ORANGE = "#FF9800"
-    DEEP_ORANGE = "#FF5722"
+    ROSE = "#F43F5E"
     BROWN = "#795548"
+
+    # Blue Scale
+    BLUE_50 = "#EFF6FF"
+    BLUE_100 = "#DBEAFE"
+    BLUE_200 = "#BFDBFE"
+    BLUE_300 = "#93C5FD"
+    BLUE_400 = "#60A5FA"
+    BLUE_500 = "#3B82F6"
+    BLUE_600 = "#2563EB"
+    BLUE_700 = "#1D4ED8"
+    BLUE_800 = "#1E40AF"
+    BLUE_900 = "#1E3A8A"
+
+    # Greens & Emeralds
+    GREEN = "#42B72A"
+    GREEN_ACCENT = "#45BD62"
+    LIGHT_GREEN = "#8BC34A"
+    EMERALD = "#10B981"
+    EMERALD_50 = "#ECFDF5"
+    EMERALD_100 = "#D1FAE5"
+    EMERALD_500 = "#10B981"
+    EMERALD_600 = "#059669"
+    EMERALD_700 = "#047857"
+
+    # Ambers & Oranges
+    AMBER = "#FFC107"
+    AMBER_500 = "#F59E0B"
+    AMBER_ACCENT = "#F7B125"
+    ORANGE = "#FF9800"
+    ORANGE_500 = "#F97316"
+    DEEP_ORANGE = "#FF5722"
+
+    # Reds
+    RED = "#E41E3F"
+    RED_500 = "#EF4444"
+    RED_600 = "#DC2626"
+
+    # Modern Slates (Cool Greys)
+    SLATE_50 = "#F8FAFC"
+    SLATE_100 = "#F1F5F9"
+    SLATE_200 = "#E2E8F0"
+    SLATE_300 = "#CBD5E1"
+    SLATE_400 = "#94A3B8"
+    SLATE_500 = "#64748B"
+    SLATE_600 = "#475569"
+    SLATE_700 = "#334155"
+    SLATE_800 = "#1E293B"
+    SLATE_900 = "#0F172A"
 
     # Greys & Neutrals
     GREY_50 = "#FAFAFA"
@@ -195,14 +244,46 @@ class Colors:
     BORDER_GREY = "#E4E6EB"
     DARK_GREY = "#1C1E21"
 
-    # Semantic Status Colors
-    SUCCESS = "#42B72A"
-    WARNING = "#FF9800"
-    DANGER = "#E41E3F"
-    ERROR = "#E41E3F"
-    INFO = "#1877F2"
+    # Semantic UI Layout & Typography Tokens
+    SCAFFOLD_BACKGROUND = "#F8FAFC"
+    CARD_BACKGROUND = "#FFFFFF"
     SURFACE = "#FFFFFF"
     BACKGROUND = "#F0F2F5"
+    DIVIDER = "#E2E8F0"
+    BORDER = "#E4E6EB"
+    INPUT_BACKGROUND = "#F0F2F5"
+    INPUT_FILL = "#F0F2F5"
+
+    TEXT_PRIMARY = "#0F172A"
+    TEXT_DARK = "#1C1E21"
+    TEXT_SECONDARY = "#65676B"
+    TEXT_MUTED = "#94A3B8"
+    TEXT_LIGHT = "#FFFFFF"
+
+    SUCCESS = "#10B981"
+    WARNING = "#F59E0B"
+    DANGER = "#EF4444"
+    ERROR = "#EF4444"
+    INFO = "#1877F2"
+
+    @staticmethod
+    def with_opacity(color: str, opacity: float) -> str:
+        """
+        Returns a hex color string with the specified opacity applied (0.0 to 1.0).
+        Outputs #AARRGGBB formatted for native Flutter color parsing.
+        Example:
+            Colors.with_opacity(Colors.EMERALD, 0.15) -> '#2610B981'
+        """
+        if not color or color == "transparent":
+            return "transparent"
+        cl = color.lstrip("#")
+        # Strip preexisting alpha if 8 characters
+        if len(cl) == 8:
+            cl = cl[2:]
+        alpha_int = int(max(0.0, min(1.0, opacity)) * 255)
+        return f"#{alpha_int:02X}{cl}"
+
+    with_alpha = with_opacity
 
 
 class MainAxisSize:
@@ -264,6 +345,12 @@ class BoxFit:
     FIT_HEIGHT = "fit_height"
     SCALE_DOWN = "scale_down"
     NONE = "none"
+
+
+class BoxShape:
+    """The shape to generate when painting a BoxDecoration or Container."""
+    RECTANGLE = "rectangle"
+    CIRCLE = "circle"
 
 
 class FlexFit:

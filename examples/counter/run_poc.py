@@ -1,35 +1,33 @@
 """
-Runs the full POC loop for the counter example:
-
-  Python builds tree -> Rust bridge -> Rust simulates a tap on the
-  button (standing in for Dart, which doesn't exist yet) -> Python
-  receives the callback event -> runs App.increment() -> re-sends the
-  updated tree -> repeat.
-
+Runs the POC loop for the counter example.
 Usage:
-    python run_poc.py /path/to/pyflutter-bridge
+    python run_poc.py [/path/to/pyflutter-bridge]
 """
+
+from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "py_framework"))
+# Add py_framework to path
+repo_root = Path(__file__).resolve().parents[2]
+framework_path = repo_root / "py_framework"
+if str(framework_path) not in sys.path:
+    sys.path.insert(0, str(framework_path))
 
-from pyflutter.core.bridge import run_loop  # noqa: E402
-from main import App  # noqa: E402
+from pyflutter import run
+from main import App
 
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python run_poc.py /path/to/pyflutter-bridge")
-        sys.exit(1)
-
-    bridge_binary = sys.argv[1]
-    app = App()
-
-    run_loop(bridge_binary, build_tree=app.build, max_iterations=5)
-
-    print(f"[python] final count: {app.count}")
+    if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
+        from pyflutter.core.bridge import run_loop
+        bridge_binary = sys.argv[1]
+        app = App()
+        run_loop(bridge_binary, build_tree=app.build, max_iterations=5)
+        print(f"[python] final count: {app.count}")
+    else:
+        run(App())
 
 
 if __name__ == "__main__":

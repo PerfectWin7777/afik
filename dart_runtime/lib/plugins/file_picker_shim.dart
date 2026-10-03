@@ -1,35 +1,67 @@
 import 'dart:async';
-import 'dart:io';
-
+import 'package:file_picker/file_picker.dart';
 import 'plugin_registry.dart';
 
-/// Provides file selection dialogs (matching file_picker).
+/// Real native file selection dialogs using Flutter's file_picker package.
 class FilePickerShim implements PyFlutterPlugin {
   @override
   Future<dynamic> handleMethodCall(String method, Map<String, String> args) async {
     switch (method) {
       case 'pickFiles':
       case 'pick_files':
-        // If directory or test files exist, return paths
+        final allowMultiple = args['allow_multiple'] == 'true';
         final initialDir = args['initial_directory'];
-        final dir = initialDir != null ? Directory(initialDir) : Directory.current;
-        final files = <Map<String, dynamic>>[];
-        try {
-          if (await dir.exists()) {
-            final entities = await dir.list().take(10).toList();
-            for (final e in entities) {
-              if (e is File) {
-                final stat = await e.stat();
-                files.add({
-                  'name': e.uri.pathSegments.lastWhere((s) => s.isNotEmpty, orElse: () => 'file'),
-                  'path': e.path,
-                  'size': stat.size,
-                });
-              }
-            }
+        final allowedExtStr = args['allowed_extensions'];
+        List<String>? allowedExtensions;
+        FileType fileType = FileType.any;
+
+        if (allowedExtStr != null && allowedExtStr.trim().isNotEmpty) {
+          allowedExtensions = allowedExtStr
+              .split(',')
+              .map((e) => e.trim().replaceAll('.', ''))
+              .where((e) => e.isNotEmpty)
+              .toList();
+          if (allowedExtensions.isNotEmpty) {
+            fileType = FileType.custom;
           }
-        } catch (_) {}
-        return files;
+        }
+
+        final result = await FilePicker.pickFiles(
+          allowMultiple: allowMultiple,
+          initialDirectory: initialDir,
+          type: fileType,
+          allowedExtensions: allowedExtensions,
+        );
+
+        if (result == null || result.files.isEmpty) {
+          return <Map<String, dynamic>>[];
+        }
+
+        return result.files.map((file) {
+          return {
+            'name': file.name,
+            'path': file.path ?? '',
+            'size': file.size,
+          };
+        }).toList();
+
+      case 'getDirectoryPath':
+      case 'get_directory_path':
+        final initialDir = args['initial_directory'];
+        final path = await FilePicker.getDirectoryPath(
+          initialDirectory: initialDir,
+        );
+        return path;
+
+      case 'saveFile':
+      case 'save_file':
+        final fileName = args['file_name'] ?? 'untitled';
+        final initialDir = args['initial_directory'];
+        final path = await FilePicker.saveFile(
+          fileName: fileName,
+          initialDirectory: initialDir,
+        );
+        return path;
 
       default:
         throw UnsupportedError('Unsupported FilePicker method: $method');

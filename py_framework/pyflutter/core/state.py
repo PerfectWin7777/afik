@@ -22,10 +22,36 @@ _active_signal_tracker: contextvars.ContextVar[Optional[Callable[[Signal[Any]], 
 )
 
 _state_registry: dict[Any, State] = {}
+_call_site_counters: dict[tuple[str, int], int] = {}
+
+
+def reset_call_site_counters() -> None:
+    """Resets call-site counters at the start of a frame build."""
+    _call_site_counters.clear()
+
+
+def infer_call_site_key(cls: type) -> str:
+    """Infers a deterministic, stable key for a stateful widget based on its caller code location."""
+    import inspect
+    caller = inspect.currentframe().f_back
+    while caller:
+        fn = caller.f_code.co_filename
+        if not fn.endswith(("state.py", "widget_base.py", "render.py")):
+            break
+        caller = caller.f_back
+    if caller:
+        base_name = caller.f_code.co_filename.replace("\\", "/").split("/")[-1]
+        line = caller.f_lineno
+        loc = (base_name, line)
+        idx = _call_site_counters.get(loc, 0)
+        _call_site_counters[loc] = idx + 1
+        return f"{cls.__name__}@{base_name}:{line}#{idx}"
+    return f"{cls.__name__}#auto"
 
 
 def clear_state_registry() -> None:
     """Clears all cached State instances (used during hot reload/restart)."""
+    reset_call_site_counters()
     for state in _state_registry.values():
         try:
             state.dispose()
@@ -329,7 +355,9 @@ class SignalBuilder(Component):
         if self.signal is None:
             raise ValueError("SignalBuilder requires a signal or value_listenable argument.")
         self.builder = builder
-        self.signal.add_listener(self._on_signal_changed)
+        from pyflutter.app import update
+        if not getattr(self.signal, "_auto_update", True):
+            self.signal.add_listener(update)
 
     def build(self) -> Widget:
         return self.builder(self.signal.value)
@@ -415,7 +443,7 @@ class StatefulComponent(Component):
 
     def __init__(self, *, key: Optional[Any] = None, **props: Any):
         super().__init__(**props)
-        self.key = key
+        self.key = key if key is not None else infer_call_site_key(self.__class__)
         self._state: Optional[State] = None
 
     def create_state(self) -> State:

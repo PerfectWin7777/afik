@@ -23,9 +23,12 @@ from typing import Optional
 from pyflutter import (
     Alignment,
     AppBar,
+    Axis,
     Badge,
     BottomNavigationBar,
     BottomNavigationBarItem,
+    BoxFit,
+    BoxShape,
     Button,
     Card,
     Center,
@@ -50,6 +53,7 @@ from pyflutter import (
     IconButton,
     Icons,
     Image,
+    InputBorder,
     ListTile,
     ListView,
     MainAxisAlignment,
@@ -68,6 +72,7 @@ from pyflutter import (
     TextButton,
     TextEditingController,
     TextField,
+    TextOverflow,
     ThemeData,
     ThemeMode,
     VerticalDivider,
@@ -217,7 +222,7 @@ class ProductCard(Component):
         img = Image(
             self.product.image,
             height=160,
-            fit="cover",
+            fit=BoxFit.COVER,
             border_radius=10,
         )
 
@@ -231,21 +236,21 @@ class ProductCard(Component):
                 self.product.category.upper(),
                 font_size=10,
                 font_weight=FontWeight.BOLD,
-                color="#1E3A8A",
+                color=Colors.NAVY,
             ),
             padding=4,
-            color="#DBEAFE",
+            color=Colors.BLUE_100,
             border_radius=6,
         )
         rating_box = Row(main_axis_size=MainAxisSize.MIN)
-        rating_box.add_widget(Icon(Icons.STAR, size=15, color="#F59E0B"))
+        rating_box.add_widget(Icon(Icons.STAR, size=15, color=Colors.AMBER_500))
         rating_box.add_spacing(4)
         rating_box.add_widget(
             Text(
                 f"{self.product.rating:.1f} ({self.product.reviews_count})",
                 font_size=12,
                 font_weight=FontWeight.BOLD,
-                color="#475569",
+                color=Colors.SLATE_600,
             )
         )
         meta_row.add_widget(cat_badge).add_widget(rating_box)
@@ -255,16 +260,16 @@ class ProductCard(Component):
             self.product.title,
             font_size=15,
             font_weight=FontWeight.BOLD,
-            color="#0F172A",
+            color=Colors.SLATE_900,
             max_lines=1,
-            overflow="ellipsis",
+            overflow=TextOverflow.ELLIPSIS,
         )
         desc_text = Text(
             self.product.description,
             font_size=12,
-            color="#64748B",
+            color=Colors.SLATE_500,
             max_lines=2,
-            overflow="ellipsis",
+            overflow=TextOverflow.ELLIPSIS,
         )
 
         # 4. Price & Action button row
@@ -276,13 +281,13 @@ class ProductCard(Component):
             f"${self.product.price:,.2f}",
             font_size=18,
             font_weight=FontWeight.BOLD,
-            color="#059669",
+            color=Colors.EMERALD_600,
         )
         add_btn = Button(
             "Add to Cart",
             icon=Icons.ADD_SHOPPING_CART,
-            background_color="#1E3A8A",
-            color="#FFFFFF",
+            background_color=Colors.NAVY,
+            color=Colors.WHITE,
             border_radius=8.0,
             elevation=2.0,
         )
@@ -307,9 +312,9 @@ class ProductCard(Component):
             margin=8,
             elevation=1.5,
             border_radius=14,
-            border_color="#E2E8F0",
+            border_color=Colors.SLATE_200,
             border_width=1.0,
-            color="#FFFFFF",
+            color=Colors.WHITE,
             raw_props={"key": f"product_card_{self.product.id}"},
         )
 
@@ -334,7 +339,7 @@ class CartItemRow(Component):
             prod.image,
             width=70,
             height=70,
-            fit="cover",
+            fit=BoxFit.COVER,
             border_radius=8,
         )
 
@@ -350,14 +355,14 @@ class CartItemRow(Component):
             prod.title,
             font_size=14,
             font_weight=FontWeight.BOLD,
-            color="#0F172A",
+            color=Colors.SLATE_900,
             max_lines=1,
-            overflow="ellipsis",
+            overflow=TextOverflow.ELLIPSIS,
         )
         del_btn = IconButton(
             Icons.DELETE_OUTLINE,
             size=18,
-            color="#DC2626",
+            color=Colors.RED_600,
             padding=2,
             on_pressed=lambda: self.on_remove(self.item),
         )
@@ -370,7 +375,7 @@ class CartItemRow(Component):
             Text(
                 f"${prod.price:,.2f} each",
                 font_size=12,
-                color="#64748B",
+                color=Colors.SLATE_500,
             )
         )
         right_col.add_spacing(4)
@@ -384,7 +389,7 @@ class CartItemRow(Component):
             f"Total: ${self.item.total_price:,.2f}",
             font_size=13,
             font_weight=FontWeight.BOLD,
-            color="#059669",
+            color=Colors.EMERALD_600,
         )
         bottom_line.add_widget(subtotal_text)
 
@@ -392,7 +397,7 @@ class CartItemRow(Component):
         minus_btn = IconButton(
             Icons.REMOVE,
             size=16,
-            color="#475569",
+            color=Colors.SLATE_600,
             padding=2,
             on_pressed=lambda: self.on_decrease(self.item),
         )
@@ -401,16 +406,16 @@ class CartItemRow(Component):
                 str(self.item.quantity),
                 font_size=13,
                 font_weight=FontWeight.BOLD,
-                color="#0F172A",
+                color=Colors.SLATE_900,
             ),
             padding=4,
-            color="#F1F5F9",
+            color=Colors.SLATE_100,
             border_radius=4,
         )
         plus_btn = IconButton(
             Icons.ADD,
             size=16,
-            color="#1E3A8A",
+            color=Colors.NAVY,
             padding=2,
             on_pressed=lambda: self.on_increase(self.item),
         )
@@ -435,9 +440,9 @@ class CartItemRow(Component):
             margin=6,
             elevation=1.0,
             border_radius=10,
-            border_color="#E2E8F0",
+            border_color=Colors.SLATE_200,
             border_width=1.0,
-            color="#FFFFFF",
+            color=Colors.WHITE,
             raw_props={"key": f"cart_item_{self.item.product.id}"},
         )
 
@@ -629,10 +634,10 @@ class PyShopWindow(MainWindow):
             prefix_icon=Icons.SEARCH,
             suffix_icon=Icons.CLOSE if self.search_query else None,
             on_suffix_icon_click=lambda: self.search_controller.clear(),
-            border="outline",
+            border=InputBorder.OUTLINE,
             border_radius=12.0,
             filled=True,
-            fill_color="#FFFFFF",
+            fill_color=Colors.WHITE,
         )
         search_field.textChanged.connect(self._on_search_changed)
         search_padding = Padding(search_field, horizontal=8, vertical=4)
@@ -645,7 +650,7 @@ class PyShopWindow(MainWindow):
             chip = Chip(
                 label=cat,
                 avatar=Icons.CHECK if is_active else None,
-                background_color="#1E3A8A" if is_active else "#FFFFFF",
+                background_color=Colors.NAVY if is_active else Colors.WHITE,
                 on_pressed=lambda c=cat: self._on_category_selected(c),
             )
             chips_list.add_widget(chip)
@@ -653,7 +658,7 @@ class PyShopWindow(MainWindow):
 
         chips_scroll = SingleChildScrollView(
             chips_list,
-            scroll_direction="horizontal",
+            scroll_direction=Axis.HORIZONTAL,
             padding=8,
         )
         items.append(chips_scroll)
@@ -664,9 +669,9 @@ class PyShopWindow(MainWindow):
             margin=8,
             elevation=1.0,
             border_radius=12,
-            border_color="#E2E8F0",
+            border_color=Colors.SLATE_200,
             border_width=1.0,
-            color="#FFFFFF",
+            color=Colors.WHITE,
         )
         price_header = Row(
             main_axis_alignment=MainAxisAlignment.SPACE_BETWEEN,
@@ -677,7 +682,7 @@ class PyShopWindow(MainWindow):
                 "Filter by Max Price",
                 font_size=13,
                 font_weight=FontWeight.BOLD,
-                color="#475569",
+                color=Colors.SLATE_600,
             )
         )
         price_header.add_widget(
@@ -685,7 +690,7 @@ class PyShopWindow(MainWindow):
                 f"${self.max_price:,.0f}",
                 font_size=14,
                 font_weight=FontWeight.BOLD,
-                color="#1E3A8A",
+                color=Colors.NAVY,
             )
         )
         price_slider = Slider(
@@ -693,8 +698,8 @@ class PyShopWindow(MainWindow):
             min=50.0,
             max=3000.0,
             divisions=59,
-            active_color="#1E3A8A",
-            inactive_color="#CBD5E1",
+            active_color=Colors.NAVY,
+            inactive_color=Colors.SLATE_300,
             label=f"${self.max_price:,.0f}",
         )
         price_slider.valueChanged.connect(self._on_price_changed)
@@ -723,13 +728,13 @@ class PyShopWindow(MainWindow):
                 f"Showing {len(filtered)} items",
                 font_size=13,
                 font_weight=FontWeight.BOLD,
-                color="#64748B",
+                color=Colors.SLATE_500,
             )
         )
         if self.selected_category != "All" or self.search_query or self.max_price < 3000:
             reset_btn = TextButton(
                 "Reset Filters",
-                color="#DC2626",
+                color=Colors.RED_600,
                 on_pressed=lambda: self._reset_filters(),
             )
             counter_row.add_widget(reset_btn)
@@ -766,14 +771,14 @@ class PyShopWindow(MainWindow):
         """Tab 1: Shopping cart with live item management, subtotal, and checkout."""
         if not self.cart:
             empty_layout = Column(main_axis_alignment=MainAxisAlignment.CENTER)
-            empty_layout.add_widget(Icon(Icons.SHOPPING_BAG_OUTLINED, size=72, color="#94A3B8"))
+            empty_layout.add_widget(Icon(Icons.SHOPPING_BAG_OUTLINED, size=72, color=Colors.SLATE_400))
             empty_layout.add_spacing(16)
             empty_layout.add_widget(
                 Text(
                     "Your Shopping Bag is Empty",
                     font_size=19,
                     font_weight=FontWeight.BOLD,
-                    color="#0F172A",
+                    color=Colors.SLATE_900,
                 )
             )
             empty_layout.add_spacing(8)
@@ -781,15 +786,15 @@ class PyShopWindow(MainWindow):
                 Text(
                     "Explore the catalog to discover cutting-edge tech gear.",
                     font_size=14,
-                    color="#64748B",
+                    color=Colors.SLATE_500,
                 )
             )
             empty_layout.add_spacing(20)
             explore_btn = Button(
                 "Explore Catalog",
                 icon=Icons.STOREFRONT,
-                background_color="#1E3A8A",
-                color="#FFFFFF",
+                background_color=Colors.NAVY,
+                color=Colors.WHITE,
                 border_radius=8.0,
                 elevation=2.0,
             )
@@ -817,9 +822,9 @@ class PyShopWindow(MainWindow):
             margin=8,
             elevation=2.0,
             border_radius=14,
-            border_color="#E2E8F0",
+            border_color=Colors.SLATE_200,
             border_width=1.0,
-            color="#FFFFFF",
+            color=Colors.WHITE,
         )
         summary_layout = Column()
         summary_layout.add_widget(
@@ -827,43 +832,43 @@ class PyShopWindow(MainWindow):
                 "Order Summary",
                 font_size=17,
                 font_weight=FontWeight.BOLD,
-                color="#0F172A",
+                color=Colors.SLATE_900,
             )
         )
         summary_layout.add_divider(height=16, thickness=1.0)
 
         # Subtotal row
         subtotal_row = Row(main_axis_alignment=MainAxisAlignment.SPACE_BETWEEN)
-        subtotal_row.add_widget(Text(f"Items ({total_items}):", font_size=14, color="#64748B"))
+        subtotal_row.add_widget(Text(f"Items ({total_items}):", font_size=14, color=Colors.SLATE_500))
         subtotal_row.add_widget(Text(f"${total_price:,.2f}", font_size=14, font_weight=FontWeight.BOLD))
         summary_layout.add_widget(subtotal_row)
         summary_layout.add_spacing(6)
 
         # Delivery row
         delivery_row = Row(main_axis_alignment=MainAxisAlignment.SPACE_BETWEEN)
-        delivery_row.add_widget(Text("Express Shipping:", font_size=14, color="#64748B"))
+        delivery_row.add_widget(Text("Express Shipping:", font_size=14, color=Colors.SLATE_500))
         delivery_row.add_widget(
-            Text("FREE", font_size=14, font_weight=FontWeight.BOLD, color="#059669")
+            Text("FREE", font_size=14, font_weight=FontWeight.BOLD, color=Colors.EMERALD_600)
         )
         summary_layout.add_widget(delivery_row)
         summary_layout.add_spacing(6)
 
         # Estimated Tax row
         tax_row = Row(main_axis_alignment=MainAxisAlignment.SPACE_BETWEEN)
-        tax_row.add_widget(Text("Estimated Taxes:", font_size=14, color="#64748B"))
-        tax_row.add_widget(Text("Included", font_size=14, color="#64748B"))
+        tax_row.add_widget(Text("Estimated Taxes:", font_size=14, color=Colors.SLATE_500))
+        tax_row.add_widget(Text("Included", font_size=14, color=Colors.SLATE_500))
         summary_layout.add_widget(tax_row)
         summary_layout.add_divider(height=18, thickness=1.0)
 
         # Grand Total row
         total_row = Row(main_axis_alignment=MainAxisAlignment.SPACE_BETWEEN)
-        total_row.add_widget(Text("Grand Total:", font_size=17, font_weight=FontWeight.BOLD, color="#0F172A"))
+        total_row.add_widget(Text("Grand Total:", font_size=17, font_weight=FontWeight.BOLD, color=Colors.SLATE_900))
         total_row.add_widget(
             Text(
                 f"${total_price:,.2f}",
                 font_size=20,
                 font_weight=FontWeight.BOLD,
-                color="#059669",
+                color=Colors.EMERALD_600,
             )
         )
         summary_layout.add_widget(total_row)
@@ -873,8 +878,8 @@ class PyShopWindow(MainWindow):
         checkout_btn = Button(
             f"Proceed to Checkout (${total_price:,.2f})",
             icon=Icons.LOCK,
-            background_color="#059669",
-            color="#FFFFFF",
+            background_color=Colors.EMERALD_600,
+            color=Colors.WHITE,
             border_radius=10.0,
             elevation=3.0,
         )
@@ -901,30 +906,30 @@ class PyShopWindow(MainWindow):
             margin=8,
             elevation=1.5,
             border_radius=14,
-            border_color="#E2E8F0",
+            border_color=Colors.SLATE_200,
             border_width=1.0,
-            color="#FFFFFF",
+            color=Colors.WHITE,
         )
         p_row = Row(cross_axis_alignment=CrossAxisAlignment.CENTER)
         avatar = Container(
-            Icon(Icons.PERSON, size=32, color="#FFFFFF"),
-            color="#1E3A8A",
+            Icon(Icons.PERSON, size=32, color=Colors.WHITE),
+            color=Colors.NAVY,
             padding=14,
-            shape="circle",
+            shape=BoxShape.CIRCLE,
         )
         p_info = Column(cross_axis_alignment=CrossAxisAlignment.START)
-        p_info.add_widget(Text("Tony Stark", font_size=18, font_weight=FontWeight.BOLD, color="#0F172A"))
+        p_info.add_widget(Text("Tony Stark", font_size=18, font_weight=FontWeight.BOLD, color=Colors.SLATE_900))
         p_info.add_spacing(4)
         p_info.add_widget(
             Container(
-                Text("VIP PLATINUM MEMBER", font_size=11, font_weight=FontWeight.BOLD, color="#1E3A8A"),
+                Text("VIP PLATINUM MEMBER", font_size=11, font_weight=FontWeight.BOLD, color=Colors.NAVY),
                 padding=4,
-                color="#DBEAFE",
+                color=Colors.BLUE_100,
                 border_radius=6,
             )
         )
         p_info.add_spacing(2)
-        p_info.add_widget(Text("stark@avengers.org", font_size=13, color="#64748B"))
+        p_info.add_widget(Text("stark@avengers.org", font_size=13, color=Colors.SLATE_500))
 
         p_row.add_widget(avatar)
         p_row.add_spacing(16)
@@ -937,17 +942,17 @@ class PyShopWindow(MainWindow):
             margin=8,
             elevation=1.0,
             border_radius=12,
-            border_color="#E2E8F0",
+            border_color=Colors.SLATE_200,
             border_width=1.0,
-            color="#FFFFFF",
+            color=Colors.WHITE,
         )
         tiles_col = Column()
         tiles_col.add_widget(
             ListTile(
                 title="Order History",
                 subtitle="View past purchases and invoices",
-                leading=Icon(Icons.RECEIPT_LONG, color="#1E3A8A"),
-                trailing=Icon(Icons.CHEVRON_RIGHT, color="#94A3B8"),
+                leading=Icon(Icons.RECEIPT_LONG, color=Colors.NAVY),
+                trailing=Icon(Icons.CHEVRON_RIGHT, color=Colors.SLATE_400),
                 on_tap=lambda: show_snack_bar("Displaying order history...", duration=Duration(seconds=2)),
             )
         )
@@ -956,8 +961,8 @@ class PyShopWindow(MainWindow):
             ListTile(
                 title="Shipping Addresses",
                 subtitle="2 locations saved (Home, Office)",
-                leading=Icon(Icons.LOCATION_ON, color="#059669"),
-                trailing=Icon(Icons.CHEVRON_RIGHT, color="#94A3B8"),
+                leading=Icon(Icons.LOCATION_ON, color=Colors.EMERALD_600),
+                trailing=Icon(Icons.CHEVRON_RIGHT, color=Colors.SLATE_400),
                 on_tap=lambda: show_snack_bar("Shipping address settings", duration=Duration(seconds=2)),
             )
         )
@@ -966,8 +971,8 @@ class PyShopWindow(MainWindow):
             ListTile(
                 title="Payment Methods",
                 subtitle="Apple Pay & Visa ending in 4242",
-                leading=Icon(Icons.CREDIT_CARD, color="#F59E0B"),
-                trailing=Icon(Icons.CHEVRON_RIGHT, color="#94A3B8"),
+                leading=Icon(Icons.CREDIT_CARD, color=Colors.AMBER_500),
+                trailing=Icon(Icons.CHEVRON_RIGHT, color=Colors.SLATE_400),
                 on_tap=lambda: show_snack_bar("Managing saved cards", duration=Duration(seconds=2)),
             )
         )
@@ -980,20 +985,20 @@ class PyShopWindow(MainWindow):
             margin=8,
             elevation=1.0,
             border_radius=12,
-            border_color="#E2E8F0",
+            border_color=Colors.SLATE_200,
             border_width=1.0,
-            color="#FFFFFF",
+            color=Colors.WHITE,
         )
         native_col = Column(cross_axis_alignment=CrossAxisAlignment.START)
         native_col.add_widget(
             Row([
-                Icon(Icons.PHONE_ANDROID, size=22, color="#7C3AED"),
+                Icon(Icons.PHONE_ANDROID, size=22, color=Colors.VIOLET_600),
                 SizedBox(width=8),
                 Text(
                     "Native Device Integrations",
                     font_size=16,
                     font_weight=FontWeight.BOLD,
-                    color="#0F172A",
+                    color=Colors.SLATE_900,
                 ),
             ])
         )
@@ -1002,7 +1007,7 @@ class PyShopWindow(MainWindow):
             Text(
                 "Trigger real system features using Flutter's official url_launcher package directly from Python:",
                 font_size=13,
-                color="#64748B",
+                color=Colors.SLATE_500,
             )
         )
         native_col.add_spacing(12)
@@ -1014,13 +1019,13 @@ class PyShopWindow(MainWindow):
                 OutlinedButton(
                     "Call Support",
                     icon=Icons.PHONE,
-                    color="#059669",
+                    color=Colors.EMERALD_600,
                     on_click=lambda: url_launcher.make_call("+18005550199"),
                 ),
                 OutlinedButton(
                     "Send Email",
                     icon=Icons.EMAIL,
-                    color="#1E3A8A",
+                    color=Colors.NAVY,
                     on_click=lambda: url_launcher.send_email(
                         "support@pyshop.io",
                         subject="Question regarding PyShop order",
@@ -1029,7 +1034,7 @@ class PyShopWindow(MainWindow):
                 OutlinedButton(
                     "API Docs",
                     icon=Icons.OPEN_IN_NEW,
-                    color="#64748B",
+                    color=Colors.SLATE_500,
                     on_click=lambda: url_launcher.open_url("https://fakestoreapi.com"),
                 ),
             ],
@@ -1044,20 +1049,20 @@ class PyShopWindow(MainWindow):
             margin=8,
             elevation=1.0,
             border_radius=12,
-            border_color="#E2E8F0",
+            border_color=Colors.SLATE_200,
             border_width=1.0,
-            color="#F8FAFC",
+            color=Colors.SLATE_50,
         )
         specs_col = Column(cross_axis_alignment=CrossAxisAlignment.START)
         specs_col.add_widget(
-            Text("PyFlutter High-Performance Stack", font_size=14, font_weight=FontWeight.BOLD, color="#0F172A")
+            Text("PyFlutter High-Performance Stack", font_size=14, font_weight=FontWeight.BOLD, color=Colors.SLATE_900)
         )
         specs_col.add_spacing(6)
-        specs_col.add_widget(Text("• Rendering Engine: Flutter 3.24 Impeller GPU Pipeline (120 FPS)", font_size=12, color="#475569"))
+        specs_col.add_widget(Text("• Rendering Engine: Flutter 3.24 Impeller GPU Pipeline (120 FPS)", font_size=12, color=Colors.SLATE_600))
         specs_col.add_spacing(3)
-        specs_col.add_widget(Text("• Logic & Reactive State: Python 3.12 OOP Runtime", font_size=12, color="#475569"))
+        specs_col.add_widget(Text("• Logic & Reactive State: Python 3.12 OOP Runtime", font_size=12, color=Colors.SLATE_600))
         specs_col.add_spacing(3)
-        specs_col.add_widget(Text("• Bridge Protocol: Rust Binary Memory Relay & Protobuf IR", font_size=12, color="#475569"))
+        specs_col.add_widget(Text("• Bridge Protocol: Rust Binary Memory Relay & Protobuf IR", font_size=12, color=Colors.SLATE_600))
         specs_card.add_widget(specs_col)
         items.append(specs_card)
 
@@ -1077,14 +1082,14 @@ class PyShopWindow(MainWindow):
         header = DrawerHeader(
             Column([
                 Row([
-                    Icon(Icons.STOREFRONT, size=32, color="#FFFFFF"),
+                    Icon(Icons.STOREFRONT, size=32, color=Colors.WHITE),
                     SizedBox(width=10),
-                    Text("PyShop Global", font_size=20, font_weight=FontWeight.BOLD, color="#FFFFFF"),
+                    Text("PyShop Global", font_size=20, font_weight=FontWeight.BOLD, color=Colors.WHITE),
                 ]),
                 SizedBox(height=6),
-                Text("Curated Tech • VIP Lounge", font_size=13, color="#BFDBFE"),
+                Text("Curated Tech • VIP Lounge", font_size=13, color=Colors.BLUE_200),
             ], main_axis_alignment=MainAxisAlignment.CENTER, cross_axis_alignment=CrossAxisAlignment.START),
-            background_color="#1E3A8A",
+            background_color=Colors.NAVY,
         )
 
         drawer_items = Column(cross_axis_alignment=CrossAxisAlignment.STRETCH)
@@ -1093,7 +1098,7 @@ class PyShopWindow(MainWindow):
         drawer_items.add_widget(
             ListTile(
                 title="Store Catalog",
-                leading=Icon(Icons.STOREFRONT, color="#1E3A8A"),
+                leading=Icon(Icons.STOREFRONT, color=Colors.NAVY),
                 selected=(self.current_tab == 0),
                 on_tap=lambda: self.switch_tab(0),
             )
@@ -1101,7 +1106,7 @@ class PyShopWindow(MainWindow):
         drawer_items.add_widget(
             ListTile(
                 title=f"My Bag ({self.cart_count})",
-                leading=Icon(Icons.SHOPPING_BAG, color="#059669"),
+                leading=Icon(Icons.SHOPPING_BAG, color=Colors.EMERALD_600),
                 selected=(self.current_tab == 1),
                 on_tap=lambda: self.switch_tab(1),
             )
@@ -1109,7 +1114,7 @@ class PyShopWindow(MainWindow):
         drawer_items.add_widget(
             ListTile(
                 title="VIP Account & Support",
-                leading=Icon(Icons.PERSON, color="#7C3AED"),
+                leading=Icon(Icons.PERSON, color=Colors.VIOLET_600),
                 selected=(self.current_tab == 2),
                 on_tap=lambda: self.switch_tab(2),
             )
@@ -1119,37 +1124,37 @@ class PyShopWindow(MainWindow):
             ListTile(
                 title="Refresh Catalog",
                 subtitle="Sync with remote API",
-                leading=Icon(Icons.REFRESH, color="#475569"),
+                leading=Icon(Icons.REFRESH, color=Colors.SLATE_600),
                 on_tap=self.sync_remote_catalog,
             )
         )
 
-        return Drawer(drawer_items, background_color="#FFFFFF")
+        return Drawer(drawer_items, background_color=Colors.WHITE)
 
     def build_app_bar(self) -> AppBar:
         """Constructs the Material 3 Top AppBar with action badges."""
         badge_child = IconButton(
             Icons.SHOPPING_BAG_OUTLINED,
-            color="#FFFFFF",
+            color=Colors.WHITE,
             on_pressed=lambda: self.switch_tab(1),
         )
         cart_badge = Badge(
             badge_child,
             label=str(self.cart_count) if self.cart_count > 0 else None,
             is_small=(self.cart_count == 0),
-            background_color="#DC2626",
-            text_color="#FFFFFF",
+            background_color=Colors.RED_600,
+            text_color=Colors.WHITE,
         )
 
         return AppBar(
-            title=Text("PyShop", font_size=20, font_weight=FontWeight.BOLD, color="#FFFFFF"),
-            background_color="#1E3A8A",
+            title=Text("PyShop", font_size=20, font_weight=FontWeight.BOLD, color=Colors.WHITE),
+            background_color=Colors.NAVY,
             elevation=2.0,
             scrolled_under_elevation=4.0,
             actions=[
                 IconButton(
                     Icons.REFRESH,
-                    color="#FFFFFF",
+                    color=Colors.WHITE,
                     on_pressed=self.sync_remote_catalog,
                 ),
                 cart_badge,
@@ -1164,8 +1169,8 @@ class PyShopWindow(MainWindow):
             fab = FloatingActionButton.extended(
                 f"Cart ({self.cart_count})",
                 icon=Icons.SHOPPING_BAG,
-                background_color="#1E3A8A",
-                foreground_color="#FFFFFF",
+                background_color=Colors.NAVY,
+                foreground_color=Colors.WHITE,
                 elevation=4.0,
                 on_pressed=lambda: self.switch_tab(1),
             ) if self.cart_count > 0 else None
@@ -1185,8 +1190,8 @@ class PyShopWindow(MainWindow):
                 BottomNavigationBarItem(Icons.PERSON, "Account"),
             ],
             current_index=self.current_tab,
-            selected_color="#1E3A8A",
-            unselected_color="#64748B",
+            selected_color=Colors.NAVY,
+            unselected_color=Colors.SLATE_500,
             on_tap=self.switch_tab,
         )
 
@@ -1198,7 +1203,7 @@ class PyShopWindow(MainWindow):
             floating_action_button=fab,
             floating_action_button_location=FloatingActionButtonLocation.END_FLOAT,
             bottom_navigation_bar=bottom_nav,
-            background_color="#F8FAFC",
+            background_color=Colors.SLATE_50,
         )
 
         # 4. Wrap with Material 3 MaterialApp & ThemeData
@@ -1206,7 +1211,7 @@ class PyShopWindow(MainWindow):
             scaffold,
             title="PyShop",
             theme=ThemeData(
-                color_scheme=ColorScheme.from_seed("#1E3A8A"),
+                color_scheme=ColorScheme.from_seed(Colors.NAVY),
                 use_material3=True,
             ),
             theme_mode=ThemeMode.LIGHT,

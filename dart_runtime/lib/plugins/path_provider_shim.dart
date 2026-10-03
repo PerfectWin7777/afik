@@ -1,9 +1,8 @@
 import 'dart:async';
-import 'dart:io';
-
+import 'package:path_provider/path_provider.dart' as pp;
 import 'plugin_registry.dart';
 
-/// Provides paths to standard system directories (matching path_provider).
+/// Real native directory paths using Flutter's path_provider package.
 class PathProviderShim implements PyFlutterPlugin {
   @override
   Future<dynamic> handleMethodCall(String method, Map<String, String> args) async {
@@ -11,44 +10,28 @@ class PathProviderShim implements PyFlutterPlugin {
       case 'getApplicationDocumentsDirectory':
       case 'get_app_documents_directory':
       case 'get_documents_dir':
-        if (Platform.isWindows) {
-          final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\';
-          return '$userProfile\\Documents';
-        } else if (Platform.isMacOS || Platform.isLinux) {
-          final home = Platform.environment['HOME'] ?? '/';
-          return '$home/Documents';
-        } else {
-          return Directory.systemTemp.path;
-        }
+        final dir = await pp.getApplicationDocumentsDirectory();
+        return dir.path;
 
       case 'getTemporaryDirectory':
       case 'get_temporary_directory':
       case 'get_temp_dir':
-        return Directory.systemTemp.path;
+        final dir = await pp.getTemporaryDirectory();
+        return dir.path;
 
       case 'getApplicationSupportDirectory':
       case 'get_app_support_directory':
-        if (Platform.isWindows) {
-          final appData = Platform.environment['APPDATA'] ?? Directory.systemTemp.path;
-          return '$appData\\PyFlutter';
-        } else if (Platform.isMacOS) {
-          final home = Platform.environment['HOME'] ?? '/';
-          return '$home/Library/Application Support/PyFlutter';
-        } else {
-          return Directory.systemTemp.path;
-        }
+        final dir = await pp.getApplicationSupportDirectory();
+        return dir.path;
 
       case 'getDownloadsDirectory':
       case 'get_downloads_directory':
-        if (Platform.isWindows) {
-          final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\';
-          return '$userProfile\\Downloads';
-        } else if (Platform.isMacOS || Platform.isLinux) {
-          final home = Platform.environment['HOME'] ?? '/';
-          return '$home/Downloads';
-        } else {
-          return Directory.systemTemp.path;
+        final dir = await pp.getDownloadsDirectory();
+        if (dir != null) {
+          return dir.path;
         }
+        final fallback = await pp.getApplicationDocumentsDirectory();
+        return fallback.path;
 
       default:
         throw UnsupportedError('Unsupported PathProvider method: $method');

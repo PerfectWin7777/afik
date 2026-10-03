@@ -10,6 +10,7 @@ from pyflutter.plugins import (
     shared_preferences,
     path_provider,
     device_info,
+    device_info_plus,
     file_picker,
     image_picker,
     camera,
@@ -33,6 +34,7 @@ from pyflutter.plugins import (
     local_auth,
     pdf,
     syncfusion_pdfviewer,
+    syncfusion_flutter_pdfviewer,
     pdfx,
     printing,
     flutter_pdfview,
@@ -50,6 +52,7 @@ __all__ = [
     "shared_preferences",
     "path_provider",
     "device_info",
+    "device_info_plus",
     "file_picker",
     "image_picker",
     "camera",
@@ -73,6 +76,7 @@ __all__ = [
     "local_auth",
     "pdf",
     "syncfusion_pdfviewer",
+    "syncfusion_flutter_pdfviewer",
     "pdfx",
     "printing",
     "flutter_pdfview",
@@ -81,7 +85,3 @@ __all__ = [
     "call_plugin",
     "handle_plugin_response",
 ]
-
-
-
-

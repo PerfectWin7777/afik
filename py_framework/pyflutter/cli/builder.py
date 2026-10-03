@@ -1,7 +1,7 @@
 """
 PyFlutter CLI Standalone Builder.
-Builds autonomous production packages (APK, AppBundle, etc.)
-by embedding the Python app assets and native FFI bridge library (.so).
+Builds autonomous production packages (APK, AppBundle, Windows, Linux, macOS, Web)
+by embedding the Python app assets and native FFI bridge library (.so / .dll).
 """
 
 from __future__ import annotations
@@ -28,16 +28,23 @@ def find_workspace_root() -> Path:
 
 
 class PyFlutterBuilder:
-    """Orchestrates building autonomous release packages."""
+    """Orchestrates building autonomous standalone packages."""
 
     def __init__(
         self,
         target: str = "apk",
         entrypoint: str = "main.py",
-        release: bool = True,
+        release: bool = False,
         split_per_abi: bool = False,
     ):
-        self.target = target.lower()
+        raw_target = target.lower()
+        if raw_target == "bundle":
+            self.target = "appbundle"
+        elif raw_target == "ios":
+            self.target = "ipa"
+        else:
+            self.target = raw_target
+
         self.entrypoint = Path(entrypoint).resolve()
         self.release = release
         self.split_per_abi = split_per_abi
@@ -80,7 +87,17 @@ class PyFlutterBuilder:
             if py_file.name != self.entrypoint.name:
                 shutil.copy2(py_file, assets_app_dir / py_file.name)
 
-        # 4. Build native Rust FFI library
+        # Copy pyflutter.yaml if present
+        if (source_dir / "pyflutter.yaml").exists():
+            shutil.copy2(source_dir / "pyflutter.yaml", assets_app_dir / "pyflutter.yaml")
+        elif (Path.cwd() / "pyflutter.yaml").exists():
+            shutil.copy2(Path.cwd() / "pyflutter.yaml", assets_app_dir / "pyflutter.yaml")
+
+        # Copy requirements.txt if present
+        if (source_dir / "requirements.txt").exists():
+            shutil.copy2(source_dir / "requirements.txt", assets_app_dir / "requirements.txt")
+
+        # 4. Build native Rust FFI library if cargo is available
         logger.info("⚙️ Compiling native Rust FFI bridge library...")
         cargo_bin = shutil.which("cargo") or shutil.which("cargo.exe")
         if cargo_bin:
@@ -94,7 +111,7 @@ class PyFlutterBuilder:
                 logger.warning(f"Could not compile Rust bridge with cargo: {e}")
 
         # 5. Build Flutter package with Standalone flag enabled
-        logger.info("🔨 Building standalone Flutter APK with embedded FFI engine...")
+        logger.info(f"🔨 Building standalone Flutter {self.target.upper()} ({mode_str})...")
         flutter_cmd = [
             flutter_bin,
             "build",
@@ -118,7 +135,16 @@ class PyFlutterBuilder:
             )
             if res.returncode == 0:
                 logger.success(f"🎉 PyFlutter Standalone {self.target.upper()} build completed successfully!")
-                output_dir = self.dart_runtime / "build" / "app" / "outputs" / "flutter-apk"
+                output_dirs = {
+                    "apk": self.dart_runtime / "build" / "app" / "outputs" / "flutter-apk",
+                    "appbundle": self.dart_runtime / "build" / "app" / "outputs" / "bundle",
+                    "windows": self.dart_runtime / "build" / "windows",
+                    "linux": self.dart_runtime / "build" / "linux",
+                    "macos": self.dart_runtime / "build" / "macos",
+                    "web": self.dart_runtime / "build" / "web",
+                    "ipa": self.dart_runtime / "build" / "ios" / "ipa",
+                }
+                output_dir = output_dirs.get(self.target, self.dart_runtime / "build")
                 logger.info(f"📦 Output artifacts located at:\n   {output_dir}")
                 return True
         except subprocess.CalledProcessError as e:

@@ -1,24 +1,24 @@
 import 'dart:async';
 import 'dart:io';
-
+import 'package:device_info_plus/device_info_plus.dart';
 import 'plugin_registry.dart';
 
-/// Provides device and operating system metadata (matching device_info_plus).
+/// Real native device & OS metadata using Flutter's device_info_plus package.
 class DeviceInfoShim implements PyFlutterPlugin {
+  final DeviceInfoPlugin _plugin = DeviceInfoPlugin();
+
   @override
   Future<dynamic> handleMethodCall(String method, Map<String, String> args) async {
     switch (method) {
       case 'getDeviceInfo':
       case 'get_device_info':
       case 'get':
-        return {
-          'platform': Platform.operatingSystem,
-          'version': Platform.operatingSystemVersion,
-          'hostname': Platform.localHostname,
-          'numberOfProcessors': Platform.numberOfProcessors,
-          'localeName': Platform.localeName,
-          'isPhysicalDevice': !Platform.isWindows && !Platform.isLinux && !Platform.isMacOS,
-        };
+        final BaseDeviceInfo info = await _plugin.deviceInfo;
+        final Map<String, dynamic> data = Map<String, dynamic>.from(info.data);
+        data['platform'] = Platform.operatingSystem;
+        data['localeName'] = Platform.localeName;
+        data['numberOfProcessors'] = Platform.numberOfProcessors;
+        return data;
 
       case 'getPlatform':
       case 'get_platform':

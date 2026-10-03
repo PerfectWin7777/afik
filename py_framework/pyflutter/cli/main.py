@@ -108,12 +108,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     subparsers.add_parser("sync", help="Synchronize pyflutter.yaml permissions to AndroidManifest.xml and Info.plist")
 
     # `pyflutter build <target>`
-    build_parser = subparsers.add_parser("build", help="Build an autonomous standalone package (apk, appbundle, etc.)")
+    build_parser = subparsers.add_parser("build", help="Build an autonomous standalone package (apk, appbundle, windows, etc.)")
     build_parser.add_argument(
         "target",
         nargs="?",
         default="apk",
-        choices=["apk", "appbundle", "ipa", "ios", "windows", "linux", "macos"],
+        choices=["apk", "appbundle", "bundle", "ipa", "ios", "windows", "linux", "macos", "web"],
         help="Target build format (default: apk)",
     )
     build_parser.add_argument(
@@ -123,9 +123,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Path to Python app entrypoint file (default: main.py)",
     )
     build_parser.add_argument(
+        "--mode",
+        choices=["debug", "release", "profile"],
+        default=None,
+        help="Build mode: debug, release, or profile (default: debug)",
+    )
+    build_parser.add_argument(
+        "--release",
+        action="store_true",
+        help="Build in release mode",
+    )
+    build_parser.add_argument(
         "--debug",
         action="store_true",
-        help="Build in debug mode instead of release",
+        default=True,
+        help="Build in debug mode (default)",
     )
     build_parser.add_argument(
         "--split-per-abi",
@@ -228,10 +240,15 @@ def main(argv: list[str] | None = None):
 
     if args.command == "build":
         from pyflutter.cli.builder import PyFlutterBuilder
+        is_release = False
+        if args.release or args.mode == "release":
+            is_release = True
+        if args.debug or args.mode == "debug":
+            is_release = False
         builder = PyFlutterBuilder(
             target=args.target,
             entrypoint=args.entrypoint,
-            release=not args.debug,
+            release=is_release,
             split_per_abi=args.split_per_abi,
         )
         success = builder.build()

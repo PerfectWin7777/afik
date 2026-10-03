@@ -28,19 +28,38 @@ MSG_TREE_PATCH = 0x04
 MSG_PLUGIN_RESPONSE = 0x05
 
 
-def resolve_widget(widget: Any) -> Widget:
-    """Recursively resolves any Component (or object implementing build())
-    into its concrete primitive Widget tree.
-    Preserves any 'slot' property assigned by a parent layout (e.g., Scaffold or AppBar).
+def resolve_tree(widget: Any, is_root: bool = True) -> Widget:
+    """Recursively resolves all Components in the tree into a concrete primitive Widget tree in a single pass.
+    Preserves any 'slot' property assigned by a parent layout and ensures Component build() is only invoked once.
     """
+    if is_root:
+        from pyflutter.core.state import reset_call_site_counters
+        reset_call_site_counters()
+
     slot = getattr(widget, "props", {}).get("slot")
-    while hasattr(widget, "build") and callable(widget.build):
-        widget = widget.build()
-        if widget is None:
-            raise ValueError("Component build() returned None. Must return a Widget.")
-    if slot and isinstance(widget, Widget) and "slot" not in widget.props:
-        widget.props["slot"] = slot
-    return widget
+    current = widget
+    while hasattr(current, "build") and callable(current.build):
+        current = current.build()
+        if current is None:
+            raise ValueError(f"Component '{widget.__class__.__name__}.build()' returned None. Must return a Widget.")
+    if slot and isinstance(current, Widget) and "slot" not in current.props:
+        current.props["slot"] = slot
+    if hasattr(current, "children") and isinstance(current.children, list):
+        current.children = [resolve_tree(c, is_root=False) for c in current.children]
+    return current
+
+
+def resolve_widget(widget: Any) -> Widget:
+    """Backward-compatible resolution of Component or Widget."""
+    slot = getattr(widget, "props", {}).get("slot")
+    current = widget
+    while hasattr(current, "build") and callable(current.build):
+        current = current.build()
+        if current is None:
+            raise ValueError(f"Component '{widget.__class__.__name__}.build()' returned None. Must return a Widget.")
+    if slot and isinstance(current, Widget) and "slot" not in current.props:
+        current.props["slot"] = slot
+    return current
 
 
 def assign_node_ids(widget: Any, path: str = "root") -> None:
@@ -149,8 +168,12 @@ def render_tree_frame(root: Any) -> bytes:
     """Encodes `root` as a framed RenderTree message, ready to write
     directly to the Rust bridge's stdin.
     """
-    assign_node_ids(root)
-    tree = widget_pb2.RenderTree(root=widget_to_proto(root))
+    concrete_root = resolve_tree(root)
+    assign_node_ids(concrete_root)
+    from pyflutter.core.widget_base import collect_active_callback_ids, sweep_stale_callbacks
+    active_ids = collect_active_callback_ids(concrete_root)
+    sweep_stale_callbacks(active_ids)
+    tree = widget_pb2.RenderTree(root=widget_to_proto(concrete_root))
     return encode_frame(MSG_RENDER_TREE, tree.SerializeToString())
 
 

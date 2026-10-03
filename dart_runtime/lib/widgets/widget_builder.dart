@@ -305,9 +305,11 @@ Widget buildFromNode(
     case 'TextField':
     case 'TextFormField':
       final fieldKey = node.props['key'] ??
-          (node.callbackId.isNotEmpty
-              ? node.callbackId
-              : 'text_field_${node.props['placeholder'] ?? node.props['hint'] ?? 'default'}');
+          ((node.props['_nid'] != null && node.props['_nid']!.isNotEmpty)
+              ? node.props['_nid']!
+              : (node.callbackId.isNotEmpty
+                  ? node.callbackId
+                  : 'text_field_${node.props['placeholder'] ?? node.props['hint'] ?? 'default'}'));
       widget = PyTextFieldWidget(
         key: ValueKey(fieldKey),
         node: node,

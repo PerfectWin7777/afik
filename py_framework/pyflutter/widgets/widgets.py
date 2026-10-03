@@ -367,6 +367,7 @@ class Container(Widget):
                  margin: Optional[int | float] = None,
                  alignment: Optional[str] = None,
                  color: Optional[str] = None,
+                 background_color: Optional[str] = None,
                  width: Optional[int | float] = None,
                  height: Optional[int | float] = None,
                  border_radius: Optional[int | float] = None,
@@ -377,11 +378,12 @@ class Container(Widget):
                  shadow_blur: Optional[int | float] = None,
                  on_click: Optional[Callable] = None,
                  raw_props: Optional[dict[str, Any]] = None):
+        effective_color = color or background_color
         super().__init__(
             padding=padding,
             margin=margin,
             alignment=alignment,
-            color=color,
+            color=effective_color,
             width=width,
             height=height,
             border_radius=border_radius,
@@ -738,6 +740,7 @@ class Button(Widget):
         self,
         label: Any = "",
         *,
+        text: Optional[str] = None,
         key: Optional[str] = None,
         icon: Optional[str] = None,
         on_click: Optional[Callable] = None,
@@ -749,7 +752,8 @@ class Button(Widget):
         raw_props: Optional[dict[str, Any]] = None,
         **kwargs: Any,
     ):
-        actual_label = label.value if hasattr(label, "value") else label
+        raw = text if (label == "" or label is None) and text is not None else label
+        actual_label = raw.value if hasattr(raw, "value") else raw
         super().__init__(
             label=str(actual_label),
             text=str(actual_label),
@@ -816,6 +820,7 @@ class OutlinedButton(Widget):
         self,
         label: Any = "",
         *,
+        text: Optional[str] = None,
         icon: Optional[str] = None,
         on_click: Optional[Callable] = None,
         on_pressed: Optional[Callable] = None,
@@ -825,8 +830,10 @@ class OutlinedButton(Widget):
         border_radius: Optional[float] = 8.0,
         raw_props: Optional[dict[str, Any]] = None,
     ):
+        raw = text if (label == "" or label is None) and text is not None else label
         super().__init__(
-            label=str(label),
+            label=str(raw),
+            text=str(raw),
             icon=icon,
             color=color,
             border_color=border_color,
@@ -885,6 +892,7 @@ class TextButton(Widget):
         self,
         label: Any = "",
         *,
+        text: Optional[str] = None,
         icon: Optional[str] = None,
         on_click: Optional[Callable] = None,
         on_pressed: Optional[Callable] = None,
@@ -892,8 +900,10 @@ class TextButton(Widget):
         border_radius: Optional[float] = 8.0,
         raw_props: Optional[dict[str, Any]] = None,
     ):
+        raw = text if (label == "" or label is None) and text is not None else label
         super().__init__(
-            label=str(label),
+            label=str(raw),
+            text=str(raw),
             icon=icon,
             color=color,
             border_radius=border_radius,
@@ -960,10 +970,12 @@ class FloatingActionButton(Widget):
         elevation: Optional[float] = None,
         background_color: Optional[str] = None,
         foreground_color: Optional[str] = None,
+        color: Optional[str] = None,
         on_pressed: Optional[Callable] = None,
         on_click: Optional[Callable] = None,
         raw_props: Optional[dict[str, Any]] = None,
     ):
+        eff_foreground = foreground_color or color
         super().__init__(
             icon=icon,
             label=label,
@@ -971,7 +983,8 @@ class FloatingActionButton(Widget):
             mini=mini,
             elevation=elevation,
             background_color=background_color,
-            foreground_color=foreground_color,
+            foreground_color=eff_foreground,
+            color=eff_foreground,
             raw_props=raw_props,
         )
         if child is not None:
@@ -1092,6 +1105,7 @@ class TextField(Widget):
         self,
         value: str = "",
         *,
+        key: Optional[str] = None,
         controller: Optional[TextEditingController] = None,
         label: Optional[str] = None,
         label_text: Optional[str] = None,
@@ -1146,6 +1160,7 @@ class TextField(Widget):
                 b_color = border.border_color
 
         super().__init__(
+            key=key,
             value=initial_val,
             label=label or label_text,
             hint=hint_text or placeholder,

@@ -65,8 +65,18 @@ class BridgeSession:
                 f"Rust bridge process exited prematurely (exit code: {self.process.returncode})."
             )
         try:
-            assign_node_ids(root)
-            new_snapshot = widget_to_snapshot(root)
+            from pyflutter.core.render import resolve_tree
+            from pyflutter.core.state import reset_call_site_counters
+            from pyflutter.core.widget_base import collect_active_callback_ids, sweep_stale_callbacks
+
+            reset_call_site_counters()
+            concrete_root = resolve_tree(root)
+            assign_node_ids(concrete_root)
+            new_snapshot = widget_to_snapshot(concrete_root)
+
+            # Prune unreferenced callbacks from memory
+            active_ids = collect_active_callback_ids(concrete_root)
+            sweep_stale_callbacks(active_ids)
 
             if not force_full and self._last_snapshot is not None:
                 diff = diff_snapshots(self._last_snapshot, new_snapshot)
@@ -83,7 +93,7 @@ class BridgeSession:
 
             # Full tree snapshot
             self._last_snapshot = new_snapshot
-            self.process.stdin.write(render_tree_frame(root))
+            self.process.stdin.write(render_tree_frame(concrete_root))
             self.process.stdin.flush()
         except (BrokenPipeError, OSError) as e:
             raise RuntimeError(f"Failed to communicate with Rust bridge: {e}")

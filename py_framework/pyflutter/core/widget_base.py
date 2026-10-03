@@ -108,6 +108,39 @@ def invoke_callback(callback_id: str, event_data: dict[str, str]) -> None:
 def clear_callbacks() -> None:
     """Clears all registered callbacks (used during hot reload/restart)."""
     _callback_registry.clear()
+    _active_callback_generations.clear()
+
+
+_active_callback_generations: list[set[str]] = []
+
+
+def collect_active_callback_ids(widget: Any) -> set[str]:
+    """Recursively collects all callback IDs currently present in a widget tree."""
+    ids: set[str] = set()
+    cb_id = getattr(widget, "callback_id", "")
+    if cb_id:
+        ids.add(cb_id)
+    props = getattr(widget, "props", {})
+    if isinstance(props, dict):
+        for k, v in props.items():
+            if (k.endswith("_callback_id") or k == "callback_id") and isinstance(v, str) and v:
+                ids.add(v)
+    for child in getattr(widget, "children", []):
+        ids.update(collect_active_callback_ids(child))
+    return ids
+
+
+def sweep_stale_callbacks(active_ids: set[str], retain_generations: int = 2) -> None:
+    """Retains callbacks from recent frames while purging unreferenced stale callbacks to prevent memory leaks."""
+    global _active_callback_generations
+    _active_callback_generations.append(set(active_ids))
+    if len(_active_callback_generations) > retain_generations:
+        _active_callback_generations = _active_callback_generations[-retain_generations:]
+
+    surviving_ids = set().union(*_active_callback_generations) if _active_callback_generations else set()
+    stale_keys = [cid for cid in _callback_registry if cid not in surviving_ids]
+    for cid in stale_keys:
+        _callback_registry.pop(cid, None)
 
 
 class Widget:

@@ -1,11 +1,15 @@
 """
-PyFlutter syncfusion_flutter_pdfviewer alias module.
+PyFlutter syncfusion_pdfviewer backward-compatibility alias for syncfusion_flutter_pdfviewer.
 """
 
-from pyflutter.plugins.pdf import (
+from __future__ import annotations
+
+from pyflutter.plugins.syncfusion_flutter_pdfviewer import (
+    SfPdfViewer,
     PdfViewerController,
 )
 
 __all__ = [
+    "SfPdfViewer",
     "PdfViewerController",
 ]
