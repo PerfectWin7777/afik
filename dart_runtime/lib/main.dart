@@ -12,13 +12,20 @@ import 'package:flutter/material.dart';
 import 'core/color_parser.dart';
 import 'frame_buffer.dart';
 import 'ir_codec.dart';
+import 'plugins/audio_player_shim.dart';
+import 'plugins/camera_shim.dart';
+import 'plugins/connectivity_shim.dart';
 import 'plugins/device_info_shim.dart';
 import 'plugins/file_picker_shim.dart';
+import 'plugins/image_picker_shim.dart';
 import 'plugins/overlay_shim.dart';
 import 'plugins/path_provider_shim.dart';
 import 'plugins/plugin_registry.dart';
+import 'plugins/share_shim.dart';
 import 'plugins/storage_shim.dart';
 import 'plugins/url_launcher_shim.dart';
+import 'plugins/video_player_shim.dart';
+import 'plugins/webview_shim.dart';
 import 'widgets/widget_builder.dart';
 
 void main() {
@@ -30,6 +37,18 @@ void main() {
   PluginRegistry.register('device_info', DeviceInfoShim());
   PluginRegistry.register('device_info_plus', DeviceInfoShim());
   PluginRegistry.register('file_picker', FilePickerShim());
+  PluginRegistry.register('image_picker', ImagePickerShim());
+  PluginRegistry.register('camera', CameraShim());
+  PluginRegistry.register('connectivity', ConnectivityShim());
+  PluginRegistry.register('connectivity_plus', ConnectivityShim());
+  PluginRegistry.register('audioplayers', AudioPlayerShim());
+  PluginRegistry.register('audioplayer', AudioPlayerShim());
+  PluginRegistry.register('video_player', VideoPlayerShim());
+  PluginRegistry.register('share_plus', ShareShim());
+  PluginRegistry.register('share', ShareShim());
+  PluginRegistry.register('webview_flutter', WebViewShim());
+  PluginRegistry.register('webview', WebViewShim());
+
 
   runApp(const PyFlutterShellApp());
 }

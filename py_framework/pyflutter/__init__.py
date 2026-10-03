@@ -168,6 +168,9 @@ from pyflutter.widgets.widgets import (
     PopupMenuButton,
     AlertDialog,
     SimpleDialog,
+    WebView,
+    VideoPlayer,
+    CameraPreview,
 
     # Application Shell, Material 3 & Navigation
     MaterialApp,
@@ -184,6 +187,18 @@ from pyflutter.widgets.widgets import (
     TabBarView,
     DefaultTabController,
 )
+
+# ============================================================================
+# 7. Native Hardware, Media & Device Plugins
+# ============================================================================
+from pyflutter.plugins.image_picker import ImagePicker, XFile, ImageSource
+from pyflutter.plugins.camera import CameraController, CameraDescription, available_cameras
+from pyflutter.plugins.connectivity import ConnectivityResult, check_connectivity, is_connected
+from pyflutter.plugins.audioplayer import AudioPlayer, PlayerState
+from pyflutter.plugins.video_player import VideoPlayerController
+from pyflutter.plugins.share import share, share_files
+from pyflutter.plugins.webview import WebViewController
+
 
 __version__ = "0.1.0"
 
@@ -331,6 +346,9 @@ __all__ = [
     "PopupMenuButton",
     "AlertDialog",
     "SimpleDialog",
+    "WebView",
+    "VideoPlayer",
+    "CameraPreview",
     "Scaffold",
     "AppBar",
     "Drawer",
@@ -343,4 +361,22 @@ __all__ = [
     "TabBar",
     "TabBarView",
     "DefaultTabController",
+
+    # Native Plugins & Hardware
+    "ImagePicker",
+    "XFile",
+    "ImageSource",
+    "CameraController",
+    "CameraDescription",
+    "available_cameras",
+    "ConnectivityResult",
+    "check_connectivity",
+    "is_connected",
+    "AudioPlayer",
+    "PlayerState",
+    "VideoPlayerController",
+    "WebViewController",
+    "share",
+    "share_files",
 ]
+

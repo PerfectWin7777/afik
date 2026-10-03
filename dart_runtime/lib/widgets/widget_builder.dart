@@ -1705,9 +1705,22 @@ Widget buildFromNode(
       );
       break;
 
+    case 'WebView':
+      widget = PyWebViewWidget(node: node, sendEvent: sendEvent);
+      break;
+
+    case 'VideoPlayer':
+      widget = PyVideoPlayerWidget(node: node, sendEvent: sendEvent);
+      break;
+
+    case 'CameraPreview':
+      widget = PyCameraPreviewWidget(node: node, sendEvent: sendEvent);
+      break;
+
     default:
       widget = Text('[unknown widget: ${node.type}]');
       break;
+
   }
 
   // Generic onTap wrapper: allows ANY widget carrying a callbackId to be interactive
@@ -2143,4 +2156,304 @@ InlineSpan _buildTextSpan(
     children: children.isNotEmpty ? children : null,
   );
 }
+
+/// Interactive WebView container with URL bar and navigation controls.
+class PyWebViewWidget extends StatefulWidget {
+  final WidgetNode node;
+  final void Function(String callbackId, Map<String, String> eventData) sendEvent;
+
+  const PyWebViewWidget({
+    super.key,
+    required this.node,
+    required this.sendEvent,
+  });
+
+  @override
+  State<PyWebViewWidget> createState() => _PyWebViewWidgetState();
+}
+
+class _PyWebViewWidgetState extends State<PyWebViewWidget> {
+  late String _currentUrl;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUrl = widget.node.props['url'] ?? 'about:blank';
+  }
+
+  @override
+  void didUpdateWidget(PyWebViewWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final newUrl = widget.node.props['url'];
+    if (newUrl != null && newUrl != _currentUrl) {
+      setState(() => _currentUrl = newUrl);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = double.tryParse(widget.node.props['width'] ?? '');
+    final height = double.tryParse(widget.node.props['height'] ?? '') ?? 300.0;
+    final showAddressBar = widget.node.props['show_address_bar'] != 'false';
+
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: Column(
+        children: [
+          if (showAddressBar)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              color: Colors.grey.shade100,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, size: 18),
+                    onPressed: () {},
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, size: 18),
+                    onPressed: () {
+                      setState(() => _isLoading = true);
+                      Future.delayed(const Duration(milliseconds: 600), () {
+                        if (mounted) setState(() => _isLoading = false);
+                      });
+                      if (widget.node.callbackId.isNotEmpty) {
+                        widget.sendEvent(widget.node.callbackId, {'action': 'reload', 'url': _currentUrl});
+                      }
+                    },
+                  ),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4.0),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Text(
+                        _currentUrl,
+                        style: const TextStyle(fontSize: 12, color: Colors.black87),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (_isLoading)
+            const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: Container(
+              color: Colors.grey.shade50,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.language, size: 40, color: Colors.blueAccent),
+                    const SizedBox(height: 8),
+                    Text(
+                      'WebView: $_currentUrl',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Interactive VideoPlayer viewport with controls.
+class PyVideoPlayerWidget extends StatefulWidget {
+  final WidgetNode node;
+  final void Function(String callbackId, Map<String, String> eventData) sendEvent;
+
+  const PyVideoPlayerWidget({
+    super.key,
+    required this.node,
+    required this.sendEvent,
+  });
+
+  @override
+  State<PyVideoPlayerWidget> createState() => _PyVideoPlayerWidgetState();
+}
+
+class _PyVideoPlayerWidgetState extends State<PyVideoPlayerWidget> {
+  bool _isPlaying = false;
+  double _position = 0.0;
+  final double _duration = 180.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _isPlaying = widget.node.props['auto_play'] == 'true';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = double.tryParse(widget.node.props['width'] ?? '');
+    final height = double.tryParse(widget.node.props['height'] ?? '') ?? 220.0;
+    final url = widget.node.props['url'] ?? 'video.mp4';
+    final showControls = widget.node.props['show_controls'] != 'false';
+
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _isPlaying ? Icons.play_circle_fill : Icons.pause_circle_filled,
+                  size: 48,
+                  color: Colors.white70,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  url,
+                  style: const TextStyle(color: Colors.white60, fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          if (showControls)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black54,
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        _isPlaying ? Icons.pause : Icons.play_arrow,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        setState(() => _isPlaying = !_isPlaying);
+                        if (widget.node.callbackId.isNotEmpty) {
+                          widget.sendEvent(widget.node.callbackId, {
+                            'action': _isPlaying ? 'play' : 'pause',
+                            'position': _position.toString(),
+                          });
+                        }
+                      },
+                    ),
+                    Expanded(
+                      child: Slider(
+                        value: _position,
+                        max: _duration,
+                        activeColor: Colors.redAccent,
+                        inactiveColor: Colors.white24,
+                        onChanged: (val) {
+                          setState(() => _position = val);
+                          if (widget.node.callbackId.isNotEmpty) {
+                            widget.sendEvent(widget.node.callbackId, {
+                              'action': 'seek',
+                              'position': val.toString(),
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    Text(
+                      '${_position.toInt()}s / ${_duration.toInt()}s',
+                      style: const TextStyle(color: Colors.white70, fontSize: 10),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Viewfinder widget displaying a live camera preview.
+class PyCameraPreviewWidget extends StatelessWidget {
+  final WidgetNode node;
+  final void Function(String callbackId, Map<String, String> eventData) sendEvent;
+
+  const PyCameraPreviewWidget({
+    super.key,
+    required this.node,
+    required this.sendEvent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final width = double.tryParse(node.props['width'] ?? '');
+    final height = double.tryParse(node.props['height'] ?? '') ?? 300.0;
+    final cameraId = node.props['camera_id'] ?? '0';
+
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const Center(
+            child: Icon(Icons.camera_alt_outlined, size: 56, color: Colors.white30),
+          ),
+          Positioned(
+            top: 12,
+            left: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.circle, color: Colors.greenAccent, size: 8),
+                  const SizedBox(width: 6),
+                  Text('Camera $cameraId', style: const TextStyle(color: Colors.white, fontSize: 11)),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 16,
+            child: FloatingActionButton.small(
+              backgroundColor: Colors.white,
+              onPressed: () {
+                if (node.callbackId.isNotEmpty) {
+                  sendEvent(node.callbackId, {'action': 'shutter', 'cameraId': cameraId});
+                }
+              },
+              child: const Icon(Icons.camera, color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 

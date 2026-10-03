@@ -158,7 +158,145 @@ def _dispatch_local_fallback(plugin_name: str, method: str, args: dict[str, Any]
     elif plugin_name == "file_picker":
         return []
 
+    # ImagePicker
+    elif plugin_name == "image_picker":
+        img_path = str(Path(tempfile.gettempdir()) / "pyflutter_sample_image.png")
+        if not Path(img_path).exists():
+            with open(img_path, "wb") as f:
+                f.write(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82")
+        vid_path = str(Path(tempfile.gettempdir()) / "pyflutter_sample_video.mp4")
+        if not Path(vid_path).exists():
+            with open(vid_path, "w") as f:
+                f.write("sample video")
+
+        if method == "pickImage":
+            return {"path": img_path, "name": "sample.png", "size": 1024}
+        elif method == "pickVideo":
+            return {"path": vid_path, "name": "sample.mp4", "size": 2048}
+        elif method == "pickMultiImage":
+            return [{"path": img_path, "name": "sample.png", "size": 1024}]
+
+    # Camera
+    elif plugin_name == "camera":
+        img_path = str(Path(tempfile.gettempdir()) / "pyflutter_cam.jpg")
+        if not Path(img_path).exists():
+            with open(img_path, "wb") as f:
+                f.write(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xff\xd9")
+        vid_path = str(Path(tempfile.gettempdir()) / "pyflutter_vid.mp4")
+        if not Path(vid_path).exists():
+            with open(vid_path, "w") as f:
+                f.write("sample cam video")
+
+        if method == "availableCameras":
+            return [
+                {"id": "0", "name": "Back Camera", "lensFacing": "back", "sensorOrientation": 90},
+                {"id": "1", "name": "Front Camera", "lensFacing": "front", "sensorOrientation": 270},
+            ]
+        elif method == "initialize":
+            return {"cameraId": args.get("cameraId", "0"), "initialized": True}
+        elif method == "takePicture":
+            return {"path": img_path, "name": "pyflutter_cam.jpg", "size": 1024}
+        elif method == "startVideoRecording":
+            return {"recording": True}
+        elif method == "stopVideoRecording":
+            return {"path": vid_path, "name": "pyflutter_vid.mp4", "size": 2048}
+        elif method == "setFlashMode":
+            return {"flashMode": args.get("mode", "off")}
+        elif method == "setZoomLevel":
+            return {"zoom": float(args.get("zoom", 1.0))}
+        elif method == "isRecording":
+            return {"isRecording": False}
+        elif method == "dispose":
+            return {"disposed": True}
+
+    # Connectivity
+    elif plugin_name in ("connectivity", "connectivity_plus"):
+        if method == "checkConnectivity":
+            return {"status": "wifi"}
+
+    # AudioPlayers
+    elif plugin_name in ("audioplayers", "audioplayer"):
+        pid = args.get("playerId", "default")
+        if method == "play":
+            _local_storage_cache[f"_audio_state_{pid}"] = "playing"
+            return {"state": "playing"}
+        elif method == "pause":
+            _local_storage_cache[f"_audio_state_{pid}"] = "paused"
+            return {"state": "paused"}
+        elif method == "resume":
+            _local_storage_cache[f"_audio_state_{pid}"] = "playing"
+            return {"state": "playing"}
+        elif method == "stop":
+            _local_storage_cache[f"_audio_state_{pid}"] = "stopped"
+            return {"state": "stopped"}
+        elif method == "seek":
+            return {"position": float(args.get("position", 0.0))}
+        elif method == "setVolume":
+            return {"volume": float(args.get("volume", 1.0))}
+        elif method == "getDuration":
+            return {"duration": 180.0}
+        elif method == "getPosition":
+            return {"position": 0.0}
+        elif method == "getState":
+            return {"state": _local_storage_cache.get(f"_audio_state_{pid}", "stopped")}
+
+    # VideoPlayer
+    elif plugin_name == "video_player":
+        if method == "create":
+            return {"created": True}
+        elif method == "initialize":
+            return {"initialized": True, "duration": 300.0, "aspectRatio": 1.777}
+        elif method == "play":
+            return {"isPlaying": True}
+        elif method == "pause":
+            return {"isPlaying": False}
+        elif method == "seekTo":
+            return {"position": float(args.get("position", 0.0))}
+        elif method == "setVolume":
+            return {"volume": float(args.get("volume", 1.0))}
+        elif method == "setLooping":
+            return {"isLooping": args.get("looping") == "true"}
+        elif method == "getPosition":
+            return {"position": 0.0}
+        elif method == "dispose":
+            return {"disposed": True}
+
+    # Share
+    elif plugin_name in ("share_plus", "share"):
+        if method == "share":
+            return {"success": True}
+        elif method == "shareFiles":
+            return {"success": True, "count": 1}
+        elif method == "shareUri":
+            return {"success": True}
+
+    # WebView
+    elif plugin_name in ("webview", "webview_flutter"):
+        vid = args.get("viewId", "default")
+        if method == "loadUrl":
+            _local_storage_cache[f"_web_url_{vid}"] = str(args.get("url", "about:blank"))
+            return {"url": _local_storage_cache[f"_web_url_{vid}"]}
+        elif method == "loadHtml":
+            _local_storage_cache[f"_web_url_{vid}"] = "data:text/html;charset=utf-8,..."
+            return {"success": True}
+        elif method == "reload":
+            return {"reloaded": True}
+        elif method == "goBack":
+            return {"success": True}
+        elif method == "goForward":
+            return {"success": True}
+        elif method == "canGoBack":
+            return {"canGoBack": False}
+        elif method == "canGoForward":
+            return {"canGoForward": False}
+        elif method == "evaluateJavascript":
+            return "eval_result"
+        elif method == "currentUrl":
+            return {"url": _local_storage_cache.get(f"_web_url_{vid}", "about:blank")}
+
+
     return None
+
 
 
 def add_flutter_package(package_name: str) -> bool:

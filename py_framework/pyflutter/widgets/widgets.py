@@ -2688,3 +2688,129 @@ class SimpleDialog(Widget):
         if children:
             self.children.extend(children)
 
+
+class WebView(Widget):
+    """
+    An in-app web browser widget.
+    Can be controlled via a WebViewController or loaded with a static URL/HTML.
+    """
+    widget_type = "WebView"
+
+    def __init__(
+        self,
+        url: str = "about:blank",
+        *,
+        controller: Optional[Any] = None,
+        width: Optional[float] = None,
+        height: Optional[float] = None,
+        show_address_bar: bool = True,
+        on_navigation: Optional[Callable[[dict[str, Any]], None]] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        ctrl_id = getattr(controller, "view_id", None) if controller else None
+        target_url = getattr(controller, "_current_url", url) if controller else url
+        super().__init__(
+            url=str(target_url),
+            view_id=ctrl_id,
+            width=width,
+            height=height,
+            show_address_bar=show_address_bar,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        if on_navigation:
+            self.navigation.connect(on_navigation)
+
+    @property
+    def navigation(self) -> QtSignal:
+        if not hasattr(self, "_navigation_signal"):
+            self._navigation_signal = QtSignal(self, "callback_id")
+        return self._navigation_signal
+
+
+class VideoPlayer(Widget):
+    """
+    A video player widget displaying video streams, files, or assets.
+    """
+    widget_type = "VideoPlayer"
+
+    def __init__(
+        self,
+        url_or_controller: Any,
+        *,
+        auto_play: bool = False,
+        show_controls: bool = True,
+        width: Optional[float] = None,
+        height: Optional[float] = None,
+        on_player_event: Optional[Callable[[dict[str, Any]], None]] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        if hasattr(url_or_controller, "url"):
+            url = getattr(url_or_controller, "url")
+            ctrl_id = getattr(url_or_controller, "controller_id", None)
+        else:
+            url = str(url_or_controller)
+            ctrl_id = None
+
+        super().__init__(
+            url=url,
+            controller_id=ctrl_id,
+            auto_play=auto_play,
+            show_controls=show_controls,
+            width=width,
+            height=height,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        if on_player_event:
+            self.player_event.connect(on_player_event)
+
+    @property
+    def player_event(self) -> QtSignal:
+        if not hasattr(self, "_player_event_signal"):
+            self._player_event_signal = QtSignal(self, "callback_id")
+        return self._player_event_signal
+
+
+class CameraPreview(Widget):
+    """
+    A live camera viewfinder widget for displaying camera previews.
+    """
+    widget_type = "CameraPreview"
+
+    def __init__(
+        self,
+        controller_or_camera_id: Any = "0",
+        *,
+        width: Optional[float] = None,
+        height: Optional[float] = None,
+        on_shutter: Optional[Callable[[dict[str, Any]], None]] = None,
+        key: Optional[str] = None,
+        raw_props: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        cam_id = getattr(controller_or_camera_id, "camera_id", str(controller_or_camera_id))
+        super().__init__(
+            camera_id=str(cam_id),
+            width=width,
+            height=height,
+            key=key,
+            raw_props=raw_props,
+            **kwargs,
+        )
+        if on_shutter:
+            self.shutter.connect(on_shutter)
+
+    @property
+    def shutter(self) -> QtSignal:
+        if not hasattr(self, "_shutter_signal"):
+            self._shutter_signal = QtSignal(self, "callback_id")
+        return self._shutter_signal
+
+
