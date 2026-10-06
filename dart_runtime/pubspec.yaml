@@ -8,7 +8,8 @@ publish_to: 'none'
 version: 0.1.0
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.8.0 <4.0.0'
+  flutter: '>=3.32.0'   # RadioGroup, Switch.activeThumbColor
 
 dependencies:
   # dart:ffi helpers (malloc, Utf8) used by lib/bridge/ffi_bridge.dart.

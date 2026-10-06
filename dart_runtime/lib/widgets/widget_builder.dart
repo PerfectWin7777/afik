@@ -1028,7 +1028,7 @@ Widget buildFromNode(
       final value = node.props['value'] == 'true';
       widget = Switch(
         value: value,
-        activeColor: node.props.containsKey('active_color')
+        activeThumbColor: node.props.containsKey('active_color')
             ? parseHexColor(node.props['active_color']!)
             : null,
         onChanged: (newVal) {
@@ -1533,15 +1533,17 @@ Widget buildFromNode(
       final val = node.props['value'] ?? '';
       final groupVal = node.props['group_value'] ?? '';
       final activeColor = parseHexColor(node.props['active_color'] ?? '');
-      widget = Radio<String>(
-        value: val,
+      widget = RadioGroup<String>(
         groupValue: groupVal,
-        activeColor: activeColor,
         onChanged: (v) {
           if (node.callbackId.isNotEmpty) {
             sendEvent(node.callbackId, {'value': v ?? ''});
           }
         },
+        child: Radio<String>(
+          value: val,
+          activeColor: activeColor,
+        ),
       );
       break;
 
@@ -1555,17 +1557,19 @@ Widget buildFromNode(
         if (c.props['slot'] == 'title') titleW = buildFromNode(c, sendEvent);
         else if (c.props['slot'] == 'subtitle') subtitleW = buildFromNode(c, sendEvent);
       }
-      widget = RadioListTile<String>(
-        value: val,
+      widget = RadioGroup<String>(
         groupValue: groupVal,
-        activeColor: activeColor,
-        title: titleW,
-        subtitle: subtitleW,
         onChanged: (v) {
           if (node.callbackId.isNotEmpty) {
             sendEvent(node.callbackId, {'value': v ?? ''});
           }
         },
+        child: RadioListTile<String>(
+          value: val,
+          activeColor: activeColor,
+          title: titleW,
+          subtitle: subtitleW,
+        ),
       );
       break;
 
