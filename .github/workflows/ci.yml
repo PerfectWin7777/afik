@@ -1,0 +1,136 @@
+name: ci
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  schedule:
+    - cron: "17 4 * * 1"          # weekly: the full plugin catalog check
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.47.x"
+
+jobs:
+  python:
+    name: python ${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, python: "3.10" }
+          - { os: ubuntu-latest, python: "3.11" }
+          - { os: ubuntu-latest, python: "3.12" }
+          - { os: ubuntu-latest, python: "3.13" }
+          - { os: windows-latest, python: "3.12" }
+          - { os: macos-latest, python: "3.12" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: py_framework/pyproject.toml
+      - run: pip install -e "py_framework[dev]"
+      - name: Lint
+        run: ruff check py_framework
+      - name: Tests
+        working-directory: py_framework
+        run: python -m pytest -q
+
+  minimum-versions:
+    name: python 3.10 with the oldest supported dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install pytest "protobuf==4.21.12" "loguru==0.7.0" "pyyaml==6.0" -e py_framework --no-deps
+      - name: Tests
+        working-directory: py_framework
+        run: python -m pytest -q
+
+  contract:
+    name: props contract (Python / Dart)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e py_framework
+      - run: python tools/check_contract.py
+
+  rust:
+    name: rust bridge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust_bridge
+      - name: Build, lint, test
+        working-directory: rust_bridge
+        run: |
+          cargo build
+          cargo clippy --all-targets -- -D warnings
+          cargo test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e "py_framework[dev]"
+      - name: Relay tests against the real binary
+        working-directory: py_framework
+        env:
+          PYFLUTTER_REQUIRE_BRIDGE: "1"
+        run: python -m pytest -q tests/test_bridge_relay.py
+
+  dart:
+    name: dart runtime
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Analyze and test
+        working-directory: dart_runtime
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+
+  catalog:
+    name: plugin catalog installs and analyses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e py_framework
+      - name: All plugins together
+        run: python tools/verify_catalog.py --together
+      - name: Every plugin on its own (weekly or on demand)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: python tools/verify_catalog.py

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import socket
 import struct
 import subprocess
@@ -39,9 +40,16 @@ def _read_socket_frame(sock: socket.socket):
     return read_frame(sock.makefile("rb"))
 
 
-@unittest.skipIf(BINARY is None, "rust bridge binary not built")
+# The CI job that builds the bridge sets PYFLUTTER_REQUIRE_BRIDGE=1: there, a missing binary is a
+# failure instead of a silent skip.
+REQUIRE_BRIDGE = os.environ.get("PYFLUTTER_REQUIRE_BRIDGE") == "1"
+
+
+@unittest.skipIf(BINARY is None and not REQUIRE_BRIDGE, "rust bridge binary not built")
 class TestRelay(unittest.TestCase):
     def setUp(self):
+        if BINARY is None:
+            self.fail("PYFLUTTER_REQUIRE_BRIDGE=1 but rust_bridge/target/{debug,release}/pyflutter-bridge is missing")
         self.port = _free_port()
         self.proc = subprocess.Popen(
             [str(BINARY), "--dart-port", str(self.port), "--token", "s3cret"],

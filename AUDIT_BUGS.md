@@ -97,7 +97,7 @@ python ../audit/repro_core.py                         # relance les repros
 | 15 | T-15 | Dart : transport abstrait/Web, rendu incrémental, FrameBuffer (B-47, B-48, B-50) | L |
 | 16 | T-16 | Singletons → contexte d'application, navigation (B-29) | L |
 | 17 | T-17 | Packaging pip (B-53, B-54) | L |
-| 18 | T-18 | CI et qualité (B-55) | S |
+| 18 | T-18 ✅ | CI et qualité (B-55) — **fait** (workflow écrit et jamais exécuté sur GitHub) | S |
 | 19 | T-19 | Documentation obsolète (B-51) | S |
 | 20 | **Partie C** | Embarquement de l'interpréteur (B-03, B-52) | XL |
 
@@ -893,7 +893,9 @@ Plan :
 
 ---
 
-## T-18 — CI et qualité (B-55)
+## T-18 — ✅ FAIT — CI et qualité (B-55)
+
+> **Fait.** `ruff` (E, F, I ; `E501` ignoré) passe sur tout `py_framework` ; `cargo clippy --all-targets -- -D warnings` passe déjà sans modification ; `flutter analyze` ne signale plus rien (migration de `Radio`/`Switch`, Flutter ≥ 3.32 exigé par `pubspec.yaml`) ; la suite passe sur Python 3.10, 3.11, 3.12 et 3.13 (vérifié ici) et avec les plus anciennes dépendances déclarées (`protobuf 4.21.12`, `loguru 0.7.0`, `pyyaml 6.0`). `.github/workflows/ci.yml` : jobs `python` (3.10–3.13 Linux + 3.12 Windows/macOS), `minimum-versions`, `contract`, `rust` (clippy, tests, tests du relais avec `PYFLUTTER_REQUIRE_BRIDGE=1`), `dart` (analyze + test), `catalog` (`--together` à chaque fois, chaque plugin séparément chaque semaine). **Non vérifié** : l'exécution du workflow lui-même et la suite sous Windows/macOS (aucun des deux n'est disponible ici) ; le premier passage sur GitHub peut révéler des écarts de plateforme.
 
 Créer `.github/workflows/ci.yml` (texte complet, à adapter aux versions) :
 ```yaml

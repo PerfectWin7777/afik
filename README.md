@@ -226,15 +226,18 @@ Build targets: `apk`, `appbundle`, `windows`, `linux`, `macos`, `web`, `ipa` (`w
 
 ---
 
-## Tests
+## Tests and checks
 
 ```bash
-pip install pytest protobuf loguru pyyaml
-cd py_framework
-python -m pytest -q
+pip install -e "py_framework[dev]"      # the framework, pytest and ruff
+ruff check py_framework                 # lint (rules in py_framework/pyproject.toml)
+cd py_framework && python -m pytest -q  # the Python test-suite (unknown widget props raise in the tests)
+python tools/check_contract.py          # Python <-> contract <-> Dart props consistency
 ```
 
-The Rust relay tests (`tests/test_bridge_relay.py`) run the real bridge binary and are skipped when it is not built. The Dart runtime has no automated tests yet.
+The Rust relay tests (`tests/test_bridge_relay.py`) run the real bridge binary: build it first (`cd rust_bridge && cargo build`) or they are skipped; `PYFLUTTER_REQUIRE_BRIDGE=1` turns a missing binary into a failure. The Dart runtime has a small unit test (`cd dart_runtime && flutter test`) and must pass `flutter analyze`; `python tools/verify_catalog.py [--together]` installs the plugins of the catalog into a temporary runtime and analyses them (needs the Flutter SDK).
+
+The GitHub Actions workflow (`.github/workflows/ci.yml`) runs all of this: Python 3.10 to 3.13 on Linux (and 3.12 on Windows and macOS), the oldest supported dependencies, `cargo clippy -D warnings` and the relay tests, `flutter analyze` and `flutter test`, the contract check and the plugin catalog (every plugin, weekly).
 
 ---
 
