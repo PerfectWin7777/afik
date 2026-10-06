@@ -91,7 +91,7 @@ python ../audit/repro_core.py                         # relance les repros
 | 9 | T-09 | Canaux d'événements Dart→Python (B-40) | L |
 | 10 | T-10 ✅ | Suppression de prop vs valeur vide (B-25) — **fait** | S |
 | 11 | T-11 | Contrat de props partagé + validation (B-24, B-57, B-58) | L |
-| 12 | T-12 | `Component` sans devinettes (B-22) | M |
+| 12 | T-12 ✅ | `Component` sans devinettes (B-22) — **fait** | M |
 | 13 | T-13 | Petits correctifs : B-26, B-28, B-34, B-35, B-36 ✅ ; B-59 (hot reload des autres modules, watcher) reste ouvert | S |
 | 14 | T-14 ✅ | Config par projet, dépendances Flutter, permissions (B-31, B-32) — **fait** | L |
 | 15 | T-15 | Dart : transport abstrait/Web, rendu incrémental, FrameBuffer (B-47, B-48, B-50) | L |
@@ -690,7 +690,9 @@ En mode strict (`PYFLUTTER_STRICT_PROPS=1`, activé dans les tests), vérifier a
 
 ---
 
-## T-12 — `Component` sans devinettes (B-22)
+## T-12 — ✅ FAIT — `Component` sans devinettes (B-22)
+
+> Implémenté : `Component._pick_widget` (garde de type `Widget`, `str` accepté seulement pour `app_bar`), avertissement unique par classe et par alias déprécié (`root`, `body`, `column`, `row`, `appbar`, `app_bar_widget`, `fab`, `bottom_bar`), message d'erreur avec nom de classe et exemple. Collisions de noms : aucun appel interne à `.text()`/`.count()`/`.value()` sur un `Component` → shadowing inoffensif, documenté dans la docstring. Les anciens alias **fonctionnent encore** (`test_pyqt_style.py` utilise `self.column`). Correction au passage : une *méthode* nommée comme un alias (`def column(self)`) était auparavant prise pour la racine. Tests : `tests/test_component_resolution.py`.
 
 **Problème** : `Component.build()` (`core/widget_base.py`, ~ligne 672) choisit sa racine dans `_central_widget, central_widget, layout, root, body, column, row` et sa barre dans `app_bar, appbar, app_bar_widget, fab, floating_action_button, drawer, bottom_bar…`. Un attribut utilisateur du même nom (`self.body = "texte"`) casse la construction sans erreur claire.
 

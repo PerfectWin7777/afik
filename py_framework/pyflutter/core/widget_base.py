@@ -561,6 +561,9 @@ class QtSignal:
         self.emit(*args, **kwargs)
 
 
+_warned_component_aliases: set = set()
+
+
 class Component(Widget):
     """
     Pythonic component base class (equivalent to Flutter's StatelessWidget / PyQt's QMainWindow).
@@ -571,6 +574,10 @@ class Component(Widget):
         self.btn = Button("Click")
         self.btn.clicked.connect(self.on_click)
         self.layout.add_widget(self.btn)
+
+    Instance attributes may reuse the names of ``Widget`` methods (``self.count = 0``,
+    ``self.text = "x"``, ``self.value = 5``): the attribute simply hides the method on that
+    component, and the framework never calls those methods on a Component.
     """
     widget_type: str = "Component"
 
@@ -685,43 +692,80 @@ class Component(Widget):
     setStatusBar = set_status_bar
     addToolBar = add_tool_bar
 
+    def _pick_widget(
+        self,
+        names: tuple,
+        *,
+        deprecated: tuple = (),
+        preferred: str = "",
+        allow_str: bool = False,
+    ) -> Any:
+        """First attribute among ``names`` that holds a Widget (or a str when ``allow_str``).
+
+        Attributes of another type are skipped, so a user attribute that happens to share a
+        name (``self.body = "text"``) cannot break the build. Using a deprecated alias logs one
+        warning per class and name.
+        """
+        for name in names:
+            value = getattr(self, name, None)
+            if value is None:
+                continue
+            if not (isinstance(value, Widget) or (allow_str and isinstance(value, str))):
+                continue
+            if name in deprecated:
+                key = (type(self).__qualname__, name)
+                if key not in _warned_component_aliases:
+                    _warned_component_aliases.add(key)
+                    from pyflutter.core.logger import logger
+                    logger.warning(
+                        "{}.{} is a deprecated alias: use {} instead", type(self).__name__, name, preferred
+                    )
+            return value
+        return None
+
     def build(self) -> Widget:
         """
         Builds the widget subtree.
-        If not explicitly overridden, automatically synthesizes the UI tree
-        from self.central_widget, self.layout, self.column, self.row, or self._central_widget,
-        and wraps with a Scaffold if self.app_bar, self.drawer, self.fab, etc. are defined.
+        If not explicitly overridden, synthesizes the UI tree from ``self.layout`` (or
+        ``self.central_widget`` / ``set_central_widget``) and wraps it in a Scaffold when
+        ``self.app_bar``, ``self.drawer``, ``self.floating_action_button`` or
+        ``self.bottom_navigation_bar`` are defined. Only ``Widget`` instances are taken: an
+        attribute with one of these names that holds anything else (``self.body = "text"``) is
+        ignored. The older aliases (``root``, ``body``, ``column``, ``row``, ``appbar``,
+        ``app_bar_widget``, ``fab``, ``bottom_bar``) still work but log a deprecation warning once.
         """
-        central = (
-            getattr(self, "_central_widget", None)
-            or getattr(self, "central_widget", None)
-            or getattr(self, "layout", None)
-            or getattr(self, "root", None)
-            or getattr(self, "body", None)
-            or getattr(self, "column", None)
-            or getattr(self, "row", None)
+        central = self._pick_widget(
+            ("_central_widget", "layout", "central_widget", "root", "body", "column", "row"),
+            deprecated=("root", "body", "column", "row"),
+            preferred="self.layout",
         )
-
-        app_bar = (
-            getattr(self, "app_bar", None)
-            or getattr(self, "appbar", None)
-            or getattr(self, "app_bar_widget", None)
+        app_bar = self._pick_widget(
+            ("app_bar", "appbar", "app_bar_widget"),
+            deprecated=("appbar", "app_bar_widget"),
+            preferred="self.app_bar",
+            allow_str=True,
         )
-        drawer = getattr(self, "drawer", None)
-        fab = (
-            getattr(self, "floating_action_button", None)
-            or getattr(self, "fab", None)
+        drawer = self._pick_widget(("drawer",), preferred="self.drawer")
+        fab = self._pick_widget(
+            ("floating_action_button", "fab"),
+            deprecated=("fab",),
+            preferred="self.floating_action_button",
         )
-        bottom_bar = (
-            getattr(self, "bottom_navigation_bar", None)
-            or getattr(self, "bottom_bar", None)
+        bottom_bar = self._pick_widget(
+            ("bottom_navigation_bar", "bottom_bar"),
+            deprecated=("bottom_bar",),
+            preferred="self.bottom_navigation_bar",
         )
 
         if central is None:
+            name = self.__class__.__name__
             raise NotImplementedError(
-                f"Component '{self.__class__.__name__}' must implement 'build(self) -> Widget' "
-                f"or define an imperative layout attribute (e.g. self.column, self.layout, "
-                f"self.set_central_widget(w), or self.add_widget(w))."
+                f"Component '{name}' has nothing to display. Either override build():\n"
+                f"    def build(self):\n"
+                f"        return Column([Text('Hello')])\n"
+                f"or build the layout the Qt way:\n"
+                f"    self.layout = Column()\n"
+                f"    self.layout.add_widget(Text('Hello'))   # or self.add_widget(...)"
             )
 
         menu_bar = getattr(self, "_menu_bar", None)
