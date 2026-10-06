@@ -171,6 +171,12 @@ pyflutter plugin new some_other_package   # scaffolds the shim, Python module an
 pyflutter remove local_auth
 ```
 
+Each project works on its own copy of the Flutter runtime, created in `<project>/.pyflutter/runtime/` the first time you
+`run`, `build` or `add` (add `.pyflutter/` to your `.gitignore`; `pyflutter create` does). `dart_runtime/` in this repository is only
+the template, so installing plugins or declaring permissions never touches it. `pyflutter.yaml` is the source of truth: `plugins:`,
+`dependencies.flutter` (packages without a shim, saved with the version Flutter resolved) and `permissions:`. Removing a plugin or a
+permission removes it from the Android manifest and the iOS plist too.
+
 A plugin that is not installed fails with a clear error (`Plugin "x" is not installed in this runtime. Install it with: pyflutter add x`).
 When a Flutter runtime is connected, a plugin error or timeout raises `PluginError` / `PluginTimeoutError`; it is never
 replaced by simulated data, and a missing or malformed answer never reads as a success.
@@ -229,7 +235,7 @@ The Rust relay tests (`tests/test_bridge_relay.py`) run the real bridge binary a
 - [x] Callback lifecycle (sweep, pinned one-shot callbacks), deterministic state keys
 - [x] Hot reload / hot restart, reconnection resync
 - [x] Packages on demand (`pyflutter add` with a plugin catalog)
-- [ ] Per-project copy of the Flutter runtime (today `pyflutter add` edits the repository's `dart_runtime/`)
+- [x] Per-project copy of the Flutter runtime (`<project>/.pyflutter/runtime/`)
 - [ ] Embedded Python interpreter for standalone builds
 - [ ] Pip distribution with a prebuilt bridge
 - [ ] Hot reload of every project module, file watcher

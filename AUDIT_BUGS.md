@@ -55,6 +55,7 @@ python ../audit/repro_core.py                         # relance les repros
 | B-06 | Plugins sécurité et plugins « simulés » | Voir T-01 et T-20 : refus par défaut côté Python, shims réels pour les 22 entrées du catalogue (`dart_runtime/plugin_catalog/`), installés à la demande ; plus aucun shim factice dans le runtime de base | `tests/test_plugin_answers.py`, `TestSecurityPluginsRefuseByDefault`, `tools/verify_catalog.py` (22 entrées + installation groupée) |
 | B-19, B-20 | `update()` construisait l'arbre sur n'importe quel thread, sans regroupement ; callbacks et builds concurrents | `core/scheduler.py` (`FrameScheduler`, thread « pyflutter-ui »), `cli/runner.py`, `app.py` (`pf.run_on_ui`) | `tests/test_scheduler.py` (16 tests, dont un test de contention à 3 threads) |
 | B-37 | Faux « succès » des wrappers quand la réponse manque | Tous les wrappers de plugins (voir T-08 pour ce qui reste : table de timeouts, mocks hors runtime) | `tests/test_plugin_answers.py` |
+| B-31, B-32 | `pyflutter.yaml` réécrit sans ses commentaires ; `add` écrivait la version `any` et modifiait le `pubspec.yaml` du dépôt ; permissions ajoutées au manifeste du dépôt sans jamais être retirées ; gabarit pollué (« Pyshop », 11 permissions) | `core/runtime_project.py` (copie par projet), `core/config.py` (édition en texte), `cli/manifest_sync.py` (blocs générés), `plugins/catalog.py`, `cli/plugins_cmd.py` | `tests/test_project_runtime.py`, `tests/test_plugin_catalog.py` ; vérifié avec le vrai SDK Flutter |
 | B-60 | `ffi_bridge.dart` importait `package:ffi` sans le déclarer (il arrivait par `path_provider`/`file_picker`) : le runtime de base ne compilait plus sans eux | `dart_runtime/pubspec.yaml` (`ffi: ^2.1.0`) | `flutter analyze` du runtime de base |
 | B-30 | `pyflutter.yaml` mal formé = crash ou silence | `core/config.py` | `TestConfigRobustness` |
 | B-32 | Titre non échappé dans le manifeste Android | `cli/manifest_sync.py` | `audit/repro_cli.py` |
@@ -72,7 +73,6 @@ python ../audit/repro_core.py                         # relance les repros
 | ID | Fait | Reste |
 |----|------|-------|
 | B-03 | Le build échoue si `cargo` échoue ; avertit qu'il n'y a pas d'interpréteur | L'embarquement lui-même → **partie C** |
-| B-32 | Échappement XML, permissions inconnues signalées | Nettoyage des permissions retirées, copie par projet → **T-14** |
 | B-37 | Fallback local limité au mode sans runtime ; wrappers stricts | Table de timeouts par plugin, refus des plugins « sécurité » hors runtime sans variable d'environnement → **T-08** |
 
 ### 1.3 Ordre de travail recommandé pour ce qui reste
@@ -93,7 +93,7 @@ python ../audit/repro_core.py                         # relance les repros
 | 11 | T-11 | Contrat de props partagé + validation (B-24, B-57, B-58) | L |
 | 12 | T-12 | `Component` sans devinettes (B-22) | M |
 | 13 | T-13 | Petits correctifs : B-26, B-28, B-34, B-35, B-36, B-59 | S |
-| 14 | T-14 | Config par projet, dépendances Flutter, permissions (B-31, B-32) | L |
+| 14 | T-14 ✅ | Config par projet, dépendances Flutter, permissions (B-31, B-32) — **fait** | L |
 | 15 | T-15 | Dart : transport abstrait/Web, rendu incrémental, FrameBuffer (B-47, B-48, B-50) | L |
 | 16 | T-16 | Singletons → contexte d'application, navigation (B-29) | L |
 | 17 | T-17 | Packaging pip (B-53, B-54) | L |
@@ -733,7 +733,9 @@ def _purge_project_modules(project_dir: Path) -> None:
 
 ---
 
-## T-14 — Configuration par projet, dépendances Flutter, permissions (B-31, B-32)
+## T-14 — ✅ FAIT — Configuration par projet, dépendances Flutter, permissions (B-31, B-32)
+
+> **Fait** : `core/runtime_project.py` (`ProjectRuntime` : copie dans `<projet>/.pyflutter/runtime/`, rafraîchie quand le gabarit change, `build/` et `pubspec.lock` conservés), `pyflutter add/remove` d'un paquet sans shim passe par `dependencies.flutter` de `pyflutter.yaml` avec la **version résolue** (lue dans `pubspec.lock`), blocs générés `pyflutter:permissions` / `pyflutter:queries` dans le manifeste et le plist (une permission retirée disparaît), gabarit `dart_runtime/` redevenu neutre (test de garde), `plugins:` et `dependencies.flutter` édités en texte (commentaires conservés). Écarts avec la spécification ci-dessous : le fichier d'état est `.pyflutter-template.json` (empreinte + liste des fichiers) ; les réglages Android des plugins (activité, thème, minSdk, desugaring) étaient déjà réversibles depuis T-20. **Limite restante** : `PyFlutterConfig.save()` (utilisé à la création d'un projet ou pour d'autres clés) réécrit encore le fichier avec PyYAML ; seuls `plugins:` et `dependencies.flutter` sont édités en texte. La spécification d'origine suit.
 
 **Problèmes**
 1. `PyFlutterConfig.save()` (`core/config.py`) réécrit le fichier à partir de 4 champs : commentaires et clés inconnues **perdus** à chaque `pyflutter add`.
@@ -928,7 +930,7 @@ Règle : décrire **ce qui marche aujourd'hui** (mode dev par socket), séparer 
 
 ## T-20 — ✅ FAIT — Catalogue de plugins installés à la demande (`pyflutter add`)
 
-> **Fait** : `pyflutter/plugins/catalog.py` (chargement, `requires`, rendu du registrant, bloc géré de `pubspec.yaml`, copie des shims, réglages Android avec retour exact à l'état initial, `scaffold_plugin`), `cli/plugins_cmd.py` (`add`, `remove`, `plugin list`, `plugin new`), `pyflutter.yaml: plugins:`, synchronisation automatique par `run` / `build` / `sync`, côté Dart `WidgetRegistry` + `installed_plugins.dart` généré. Les 22 entrées du catalogue (5 anciennes réelles + 3 sécurité + 14 anciennement simulées) passent `flutter pub get` + `flutter analyze` seules et **toutes ensemble** (`python tools/verify_catalog.py`). Écarts avec la spécification ci-dessous : chaque plugin a son dossier `lib/plugins/installed/<nom>/` (plusieurs fichiers possibles via `files:`), le shim expose `register()` (plugins **et** widgets), `plugin.yaml` accepte `requires`, `extra_packages`, `widgets`, `android.{permissions,min_sdk,desugaring,main_activity_base,launch_theme_parent}`. **Reste à faire** : la copie de travail du runtime **par projet** (T-14) — aujourd'hui `pyflutter add` modifie le `dart_runtime/` du dépôt, partagé entre projets — et `hive`, désormais en Python pur, n'est pas dans le catalogue. Conflits de versions entre plugins : le résolveur de Dart en a révélé plusieurs (`win32` 5 contre 6 entre `device_info_plus`, `share_plus`, `file_picker`, `flutter_secure_storage` et `syncfusion_flutter_pdfviewer`) ; ils sont réglés par des plages de versions et `tools/verify_catalog.py --together` doit être relancé à chaque ajout ou changement de contrainte. La spécification d'origine suit.
+> **Fait** : `pyflutter/plugins/catalog.py` (chargement, `requires`, rendu du registrant, bloc géré de `pubspec.yaml`, copie des shims, réglages Android avec retour exact à l'état initial, `scaffold_plugin`), `cli/plugins_cmd.py` (`add`, `remove`, `plugin list`, `plugin new`), `pyflutter.yaml: plugins:`, synchronisation automatique par `run` / `build` / `sync`, côté Dart `WidgetRegistry` + `installed_plugins.dart` généré. Les 22 entrées du catalogue (5 anciennes réelles + 3 sécurité + 14 anciennement simulées) passent `flutter pub get` + `flutter analyze` seules et **toutes ensemble** (`python tools/verify_catalog.py`). Écarts avec la spécification ci-dessous : chaque plugin a son dossier `lib/plugins/installed/<nom>/` (plusieurs fichiers possibles via `files:`), le shim expose `register()` (plugins **et** widgets), `plugin.yaml` accepte `requires`, `extra_packages`, `widgets`, `android.{permissions,min_sdk,desugaring,main_activity_base,launch_theme_parent}`. `hive`, désormais en Python pur, n'est pas dans le catalogue (la copie de travail par projet est faite : T-14). Conflits de versions entre plugins : le résolveur de Dart en a révélé plusieurs (`win32` 5 contre 6 entre `device_info_plus`, `share_plus`, `file_picker`, `flutter_secure_storage` et `syncfusion_flutter_pdfviewer`) ; ils sont réglés par des plages de versions et `tools/verify_catalog.py --together` doit être relancé à chaque ajout ou changement de contrainte. La spécification d'origine suit.
 
 **Le modèle voulu** : PyFlutter ne dépend pas de tous les paquets Flutter. Pour chaque paquet qu'on décide de supporter, on lit sa documentation, on **mappe ses classes, fonctions et méthodes en Python** (module `pyflutter.plugins.<paquet>`), et un petit shim Dart traduit l'appel vers la vraie API du paquet. L'utilisateur n'obtient ce paquet dans son application que s'il a lancé `pyflutter add <paquet>`. Cela garde l'app (et donc le runtime embarqué) la plus légère possible.
 
