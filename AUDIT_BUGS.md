@@ -51,7 +51,7 @@ python ../audit/repro_core.py                         # relance les repros
 | B-14 | Module utilisateur écrasait la stdlib (`random.py`) ; mauvaise classe racine au hot reload | `cli/runner.py` (`load_app_from_file`) | `audit/repro_cli.py` |
 | B-15 | `ensure_port_free` tuait n'importe quel processus | `cli/runner.py` | revue manuelle |
 | B-16 | Relais TCP sans authentification, taille de trame illimitée | `rust_bridge/src/main.rs`, `cli/runner.py`, `main.dart` (`PYFLUTTER_TOKEN`) | `tests/test_bridge_relay.py` |
-| B-06 | Plugins sécurité : défauts « succès » côté Python, shims Dart factices | `plugins/local_auth.py`, `permission_handler.py`, `flutter_secure_storage.py` (refus par défaut) ; `dart_runtime/lib/plugins/*_shim.dart` branchés sur `local_auth ^2.3`, `permission_handler ^13`, `flutter_secure_storage ^11` ; `MainActivity.kt`, `styles.xml`, `build.gradle.kts`, `pubspec.yaml` | `TestSecurityPluginsRefuseByDefault` ; Dart non compilé |
+| B-06a | Les wrappers Python de `local_auth`, `permission_handler`, `flutter_secure_storage` répondaient « succès » par défaut | `plugins/local_auth.py`, `permission_handler.py`, `flutter_secure_storage.py` (refus par défaut, attente de 120 s pour les appels interactifs) | `TestSecurityPluginsRefuseByDefault` |
 | B-30 | `pyflutter.yaml` mal formé = crash ou silence | `core/config.py` | `TestConfigRobustness` |
 | B-32 | Titre non échappé dans le manifeste Android | `cli/manifest_sync.py` | `audit/repro_cli.py` |
 | B-33 | Plateforme du device devinée à partir de l'id | `cli/devices.py` | revue manuelle |
@@ -68,6 +68,7 @@ python ../audit/repro_core.py                         # relance les repros
 | ID | Fait | Reste |
 |----|------|-------|
 | B-03 | Le build échoue si `cargo` échoue ; avertit qu'il n'y a pas d'interpréteur | L'embarquement lui-même → **partie C** |
+| B-06b | Shims Dart réels écrits (`dart_runtime/plugin_catalog/`), non compilés par défaut ; plugin non installé → erreur claire « pyflutter add <paquet> » | Mécanique d'installation à la demande → **T-20** |
 | B-20 | Registre de callbacks verrouillé | Un seul thread d'UI pour callbacks **et** builds → **T-02** |
 | B-32 | Échappement XML, permissions inconnues signalées | Nettoyage des permissions retirées, copie par projet → **T-14** |
 | B-37 | Fallback local limité au mode sans runtime | Marquage explicite des mocks → **T-08** |
@@ -76,7 +77,8 @@ python ../audit/repro_core.py                         # relance les repros
 
 | Ordre | Ticket | Sujet | Taille |
 |------:|--------|-------|:------:|
-| 1 | T-01 ✅ | Vrais plugins sécurité (local_auth, permission_handler, secure_storage) — **fait**, côté Dart à valider sur appareil | M |
+| 1 | T-01 ✅ | Refus par défaut des plugins sécurité + shims réels rangés dans le catalogue — **fait** | M |
+| 1b | T-20 | Catalogue de plugins installés à la demande (`pyflutter add`) | L |
 | 2 | T-02 | Ordonnanceur de frames + thread d'UI unique (B-19, B-20) | M |
 | 3 | T-03 | Cycle de vie des `State` : `dispose` (B-21) | M |
 | 4 | T-04 | `FormKey` comme magasin de valeurs (B-27) | S |
@@ -109,9 +111,10 @@ Chaque ticket est autonome. Les numéros `B-xx` renvoient au rapport initial (`a
 
 ---
 
-## T-01 — ✅ FAIT — Vrais plugins sécurité : `local_auth`, `permission_handler`, `flutter_secure_storage` (B-06)
+## T-01 — ✅ FAIT — Plugins sécurité : refus par défaut + shims réels (B-06)
 
-> Fait. Reste à **valider chez vous** : `cd dart_runtime && flutter pub get && flutter analyze`, puis test sur appareil (biométrie refusée → Python reçoit `False` ; permission refusée → `DENIED` ; secret relu après redémarrage). iOS : `permission_handler` demande des réglages de build (Podfile/SPM) et des clés `Info.plist` par permission, et le dossier `ios/` n'a pas de `Podfile` tant que Flutter ne l'a pas généré : à faire au premier build iOS (voir README du package). Linux : `flutter_secure_storage` demande `libsecret-1-dev`.
+> **Fait** : (1) les wrappers Python ne rapportent un succès que sur une réponse explicite ; (2) les shims Dart réels de `local_auth`, `permission_handler` et `flutter_secure_storage` sont écrits dans `dart_runtime/plugin_catalog/<paquet>/shim.dart` (avec un `plugin.yaml` qui décrit la dépendance et les réglages natifs) mais **ne sont pas compilés dans le runtime de base** : l'app n'embarque que les paquets que le projet a installés. Tant que le plugin n'est pas installé, l'appel échoue avec « Plugin "x" is not installed in this runtime. Install it with: pyflutter add x ». (3) La mécanique d'installation est le ticket **T-20**.
+> À valider quand T-20 sera fait : `flutter pub get && flutter analyze` sur un projet qui a installé ces paquets, puis test sur appareil (biométrie refusée → `False`, permission refusée → `DENIED`, secret relu après redémarrage). iOS : réglages de build `permission_handler` par permission ; Linux : `libsecret-1-dev` pour `flutter_secure_storage`. Le texte ci-dessous reste valable comme spécification des shims.
 
 **Pourquoi c'est prioritaire** : une application qui protège une action avec la biométrie, ou qui stocke un jeton, doit pouvoir faire confiance au résultat. Aujourd'hui les shims Dart refusent (c'est le comportement sûr), mais les **wrappers Python répondent « succès » par défaut** quand la réponse est absente.
 
@@ -916,6 +919,73 @@ Fichiers qui disent le contraire de la réalité :
 - `README.md` : « production-ready », « 137/137 tests », « 1-to-1 avec pub.dev », « 100 % des plugins », chemins locaux, `pip install flarix`, Web/iOS comme cibles livrées.
 - `ROADMAP_RUN.md` : « 117 tests », « COMPLETED & VERIFIED ».
 Règle : décrire **ce qui marche aujourd'hui** (mode dev par socket), séparer clairement « fonctionne », « expérimental » (standalone), « prévu ».
+
+---
+
+## T-20 — Catalogue de plugins installés à la demande (`pyflutter add`)
+
+**Le modèle voulu** : PyFlutter ne dépend pas de tous les paquets Flutter. Pour chaque paquet qu'on décide de supporter, on lit sa documentation, on **mappe ses classes, fonctions et méthodes en Python** (module `pyflutter.plugins.<paquet>`), et un petit shim Dart traduit l'appel vers la vraie API du paquet. L'utilisateur n'obtient ce paquet dans son application que s'il a lancé `pyflutter add <paquet>`. Cela garde l'app (et donc le runtime embarqué) la plus légère possible.
+
+**Pourquoi un mécanisme est nécessaire** : Dart ne permet pas d'importer un paquet absent du `pubspec.yaml` (l'import est vérifié à la compilation). Le runtime de base ne doit donc contenir **aucun import** de paquet optionnel ; le code qui les référence est **généré** dans la copie de travail du projet (voir T-14) au moment de `pyflutter add`.
+
+**Fichiers**
+- Catalogue : `dart_runtime/plugin_catalog/<paquet>/{plugin.yaml, shim.dart}` (créé : 3 entrées).
+- Python : `py_framework/pyflutter/plugins/catalog.py` (nouveau), `plugins/manager.py` (`add_flutter_package`, `remove_flutter_package`), `cli/main.py`, `cli/manifest_sync.py`.
+- Dart de base : `dart_runtime/lib/main.dart` (appelle `registerInstalledPlugins()`), `dart_runtime/lib/plugins/installed_plugins.dart` (fichier **généré**, vide dans le gabarit).
+- Prérequis : T-14 (copie de travail du runtime par projet). Sans elle, on peut commencer en travaillant sur `dart_runtime/` directement.
+
+**Format de `plugin.yaml`** (exemple existant : `plugin_catalog/local_auth/plugin.yaml`)
+```yaml
+name: local_auth                  # nom Python/CLI
+package: local_auth               # nom pub.dev
+constraint: ^2.3.0                # contrainte pubspec
+shim: shim.dart
+shim_class: LocalAuthShim
+registers: [local_auth]           # noms sous lesquels le shim est enregistré
+python_module: pyflutter.plugins.local_auth
+android: { permissions: [biometrics], main_activity_base: FlutterFragmentActivity, launch_theme_parent: "...", min_sdk: 23 }
+ios:     { permissions: [face_id] }
+```
+
+**Algorithme de `pyflutter add <nom>`**
+1. Charger `catalog_entry(nom)` ; absent → étape 7 (paquet hors catalogue).
+2. Résoudre la copie de travail du projet (`<projet>/.pyflutter/runtime/`, T-14).
+3. `flutter pub add <package>:<constraint>` dans cette copie ; lire la version résolue dans son `pubspec.yaml` ; l'écrire dans `pyflutter.yaml` (`dependencies.flutter`).
+4. Copier `shim.dart` vers `lib/plugins/installed/<nom>_shim.dart`.
+5. Régénérer `lib/plugins/installed_plugins.dart` à partir de **tous** les paquets installés :
+   ```python
+   def render_registrant(installed: list[CatalogEntry]) -> str:
+       lines = ["// GENERATED by pyflutter. Do not edit.", "import 'plugin_registry.dart';"]
+       lines += [f"import 'installed/{e.name}_shim.dart';" for e in installed]
+       lines += ["", "void registerInstalledPlugins() {"]
+       for e in installed:
+           lines += [f"  PluginRegistry.register('{n}', {e.shim_class}());" for n in e.registers]
+       lines += ["}", ""]
+       return "\n".join(lines)
+   ```
+6. Appliquer les réglages natifs de l'entrée (permissions Android/iOS via les blocs balisés de T-14 ; `MainActivity`, thème, `minSdk` via des blocs balisés équivalents ; avertir pour ce qui reste manuel, ex. Podfile iOS).
+7. **Paquet hors catalogue** : `flutter pub add` seul, puis message : « Aucun shim fourni. Créez-en un : `pyflutter plugin new <paquet>` ».
+
+`pyflutter remove <nom>` fait l'inverse (retire le shim, régénère le registrant, `flutter pub remove`, retire les blocs natifs).
+
+**Outil pour mapper un nouveau paquet : `pyflutter plugin new <paquet>`**
+Génère un squelette que l'on remplit en lisant la documentation du paquet :
+- `plugin_catalog/<paquet>/plugin.yaml` pré-rempli (nom, `package`, contrainte lue sur pub.dev) ;
+- `plugin_catalog/<paquet>/shim.dart` avec un `switch (method)` vide et un `default: throw UnsupportedError(...)` ;
+- `py_framework/pyflutter/plugins/<paquet>.py` avec une classe vide et un exemple d'appel `call_plugin("<paquet>", "<methode>", {...})` ;
+- `py_framework/tests/test_plugin_<paquet>.py` avec le test de refus par défaut (réponse absente → échec, jamais succès).
+Règles de mapping à respecter (à écrire dans `plugin_catalog/README.md`) : une méthode Dart = une méthode Python en `snake_case` ; arguments structurés passés en JSON (T-07) ; résultat simple (`dict`/`list`/`str`/`bool`) ; **aucune valeur par défaut qui ressemble à un succès** ; durée d'attente explicite pour les appels interactifs (T-08).
+
+**Migration des paquets déjà présents** : `url_launcher`, `shared_preferences`, `path_provider`, `device_info_plus`, `file_picker` sont aujourd'hui des dépendances du `pubspec.yaml` de base. Les déplacer dans le catalogue (même procédure), et lister les plus courants dans le `pyflutter.yaml` du gabarit de `pyflutter create`. Résultat : le runtime de base ne contient que Flutter et le pont.
+
+**Tests**
+- `catalog_entry("local_auth")` charge le YAML ; une entrée inconnue renvoie `None`.
+- `render_registrant([])` est un fichier Dart valide sans import ; avec 2 entrées il contient 2 imports et les enregistrements attendus (comparaison de texte).
+- `add` puis `remove` dans un dossier temporaire (avec un faux `flutter` dans le `PATH`) laisse le projet identique à l'état initial (idempotence).
+
+**Critère de fin** : `pyflutter add local_auth` dans un projet neuf produit une application qui compile (`flutter analyze` propre) et dont `local_auth` fonctionne ; sans l'avoir ajouté, l'appel Python lève `PluginError("Plugin \"local_auth\" is not installed ...")`.
+
+**Pièges** : ne jamais éditer `lib/main.dart` à la main pour un plugin ; ne jamais importer un paquet optionnel depuis `lib/` de base ; le fichier généré est ignoré par git dans la copie de projet (`.pyflutter/` est déjà dans le `.gitignore` du gabarit).
 
 ---
 
