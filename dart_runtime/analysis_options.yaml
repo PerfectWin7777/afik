@@ -24,3 +24,10 @@ linter:
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
+
+analyzer:
+  exclude:
+    # Catalog shims import optional packages; they are analysed only once installed
+    # into a project (see tools/verify_catalog.py).
+    - plugin_catalog/**
+    - build/**

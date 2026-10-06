@@ -11,17 +11,14 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  device_info_plus: ^12.4.0
-  file_picker: ^11.0.3
+  # dart:ffi helpers (malloc, Utf8) used by lib/bridge/ffi_bridge.dart.
+  ffi: ^2.1.0
   flutter:
     sdk: flutter
-  path_provider: ^2.1.5
-  shared_preferences: ^2.5.3
-  url_launcher: ^6.3.2
-  # Deliberately no external packages: the Protobuf wire format for
-  # this POC's 3 message types is hand-decoded/encoded in
-  # lib/ir_codec.dart (no protoc-gen-dart, no `protobuf` pub package —
-  # see that file's docstring for why).
+  # The core runtime has no external package on purpose: the Protobuf wire
+  # format is hand-encoded in lib/ir_codec.dart, and every optional Flutter
+  # package (url_launcher, camera, ...) is added per project by
+  # `pyflutter add <package>` (see plugin_catalog/).
 
 dev_dependencies:
   flutter_test:

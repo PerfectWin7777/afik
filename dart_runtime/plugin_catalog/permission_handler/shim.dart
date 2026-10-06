@@ -53,3 +53,8 @@ class PermissionHandlerShim implements PyFlutterPlugin {
     return 'denied';
   }
 }
+
+/// Called by the generated `installed_plugins.dart` when this plugin is installed.
+void register() {
+  PluginRegistry.register('permission_handler', PermissionHandlerShim());
+}

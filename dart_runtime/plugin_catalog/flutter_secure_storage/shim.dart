@@ -38,3 +38,9 @@ class SecureStorageShim implements PyFlutterPlugin {
     }
   }
 }
+
+/// Called by the generated `installed_plugins.dart` when this plugin is installed.
+void register() {
+  PluginRegistry.register('flutter_secure_storage', SecureStorageShim());
+  PluginRegistry.register('secure_storage', SecureStorageShim());
+}

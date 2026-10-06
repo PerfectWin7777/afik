@@ -1,5 +1,5 @@
 import 'package:url_launcher/url_launcher.dart';
-import 'plugin_registry.dart';
+import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
 
 /// Native dispatch shim for the Flutter url_launcher package.
 class UrlLauncherShim extends PyFlutterPlugin {
@@ -38,4 +38,9 @@ class UrlLauncherShim extends PyFlutterPlugin {
         throw UnsupportedError('Method "$method" is not supported by url_launcher shim.');
     }
   }
+}
+
+/// Called by the generated `installed_plugins.dart` when this plugin is installed.
+void register() {
+  PluginRegistry.register('url_launcher', UrlLauncherShim());
 }

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
-import 'plugin_registry.dart';
+import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real native file selection dialogs using Flutter's file_picker package.
 class FilePickerShim implements PyFlutterPlugin {
@@ -67,4 +67,9 @@ class FilePickerShim implements PyFlutterPlugin {
         throw UnsupportedError('Unsupported FilePicker method: $method');
     }
   }
+}
+
+/// Called by the generated `installed_plugins.dart` when this plugin is installed.
+void register() {
+  PluginRegistry.register('file_picker', FilePickerShim());
 }

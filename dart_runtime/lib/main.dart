@@ -13,59 +13,15 @@ import 'bridge/ffi_bridge.dart';
 import 'core/color_parser.dart';
 import 'frame_buffer.dart';
 import 'ir_codec.dart';
-import 'plugins/audio_player_shim.dart';
-import 'plugins/camera_shim.dart';
-import 'plugins/connectivity_shim.dart';
-import 'plugins/device_info_shim.dart';
-import 'plugins/file_picker_shim.dart';
-import 'plugins/image_picker_shim.dart';
 import 'plugins/overlay_shim.dart';
-import 'plugins/path_provider_shim.dart';
+import 'plugins/installed_plugins.dart';
 import 'plugins/plugin_registry.dart';
-import 'plugins/share_shim.dart';
-import 'plugins/storage_shim.dart';
-import 'plugins/url_launcher_shim.dart';
-import 'plugins/video_player_shim.dart';
-import 'plugins/webview_shim.dart';
-import 'plugins/chewie_shim.dart';
-import 'plugins/hive_shim.dart';
-import 'plugins/local_notifications_shim.dart';
-import 'plugins/sqflite_shim.dart';
-import 'plugins/pdf_shim.dart';
 import 'widgets/widget_builder.dart';
 
 
 void main() {
-  // Register default static shims
-  PluginRegistry.register('url_launcher', UrlLauncherShim());
-  PluginRegistry.register('storage', StorageShim());
-  PluginRegistry.register('shared_preferences', StorageShim());
-  PluginRegistry.register('path_provider', PathProviderShim());
-  PluginRegistry.register('device_info', DeviceInfoShim());
-  PluginRegistry.register('device_info_plus', DeviceInfoShim());
-  PluginRegistry.register('file_picker', FilePickerShim());
-  PluginRegistry.register('image_picker', ImagePickerShim());
-  PluginRegistry.register('camera', CameraShim());
-  PluginRegistry.register('connectivity', ConnectivityShim());
-  PluginRegistry.register('connectivity_plus', ConnectivityShim());
-  PluginRegistry.register('audioplayers', AudioPlayerShim());
-  PluginRegistry.register('audioplayer', AudioPlayerShim());
-  PluginRegistry.register('video_player', VideoPlayerShim());
-  PluginRegistry.register('share_plus', ShareShim());
-  PluginRegistry.register('share', ShareShim());
-  PluginRegistry.register('webview_flutter', WebViewShim());
-  PluginRegistry.register('webview', WebViewShim());
-  PluginRegistry.register('chewie', ChewieShim());
-  PluginRegistry.register('hive', HiveShim());
-  PluginRegistry.register('sqflite', SqfliteShim());
-  PluginRegistry.register('flutter_local_notifications', LocalNotificationsShim());
-  PluginRegistry.register('local_notifications', LocalNotificationsShim());
-  PluginRegistry.register('pdf', PdfShim());
-  PluginRegistry.register('printing', PdfShim());
-  PluginRegistry.register('syncfusion_flutter_pdfviewer', PdfShim());
-  PluginRegistry.register('syncfusion_pdfviewer', PdfShim());
-  PluginRegistry.register('pdfx', PdfShim());
-  PluginRegistry.register('flutter_pdfview', PdfShim());
+  // Plugins installed with `pyflutter add` (generated file, empty by default)
+  registerInstalledPlugins();
 
 
 

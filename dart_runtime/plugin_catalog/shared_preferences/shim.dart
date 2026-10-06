@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'plugin_registry.dart';
+import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real native Key-Value storage using Flutter's shared_preferences package.
 class StorageShim implements PyFlutterPlugin {
@@ -66,4 +66,10 @@ class StorageShim implements PyFlutterPlugin {
         throw UnsupportedError('Unsupported Storage method: $method');
     }
   }
+}
+
+/// Called by the generated `installed_plugins.dart` when this plugin is installed.
+void register() {
+  PluginRegistry.register('storage', StorageShim());
+  PluginRegistry.register('shared_preferences', StorageShim());
 }

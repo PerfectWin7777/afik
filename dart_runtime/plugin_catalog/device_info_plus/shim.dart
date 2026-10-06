@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'plugin_registry.dart';
+import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real native device & OS metadata using Flutter's device_info_plus package.
 class DeviceInfoShim implements PyFlutterPlugin {
@@ -28,4 +28,10 @@ class DeviceInfoShim implements PyFlutterPlugin {
         throw UnsupportedError('Unsupported DeviceInfo method: $method');
     }
   }
+}
+
+/// Called by the generated `installed_plugins.dart` when this plugin is installed.
+void register() {
+  PluginRegistry.register('device_info', DeviceInfoShim());
+  PluginRegistry.register('device_info_plus', DeviceInfoShim());
 }

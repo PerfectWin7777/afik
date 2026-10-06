@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:path_provider/path_provider.dart' as pp;
-import 'plugin_registry.dart';
+import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real native directory paths using Flutter's path_provider package.
 class PathProviderShim implements PyFlutterPlugin {
@@ -37,4 +37,9 @@ class PathProviderShim implements PyFlutterPlugin {
         throw UnsupportedError('Unsupported PathProvider method: $method');
     }
   }
+}
+
+/// Called by the generated `installed_plugins.dart` when this plugin is installed.
+void register() {
+  PluginRegistry.register('path_provider', PathProviderShim());
 }

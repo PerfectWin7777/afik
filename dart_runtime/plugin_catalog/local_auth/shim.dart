@@ -40,3 +40,8 @@ class LocalAuthShim implements PyFlutterPlugin {
     }
   }
 }
+
+/// Called by the generated `installed_plugins.dart` when this plugin is installed.
+void register() {
+  PluginRegistry.register('local_auth', LocalAuthShim());
+}
