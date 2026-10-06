@@ -19,6 +19,9 @@ import 'plugins/plugin_registry.dart';
 import 'widgets/widget_builder.dart';
 
 
+/// Callback id that asks Python for the full tree (see the Rust bridge and the runner).
+const String resyncCallbackId = '__pyflutter_resync__';
+
 void main() {
   // Plugins installed with `pyflutter add` (generated file, empty by default)
   registerInstalledPlugins();
@@ -291,32 +294,50 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
       final updates = data['updates'] as List<dynamic>?;
       if (updates != null && _tree != null) {
         bool modified = false;
+        bool unknownNode = false;
         for (final item in updates) {
           final u = item as Map<String, dynamic>;
           final nid = u['id'] as String?;
           if (nid == null) continue;
           final target = findNodeById(_tree!, nid);
-          if (target != null) {
-            if (u.containsKey('props')) {
-              final p = u['props'] as Map<String, dynamic>;
-              p.forEach((k, v) {
-                if (v == null || v == '') {
-                  target.props.remove(k);
-                } else {
-                  target.props[k] = v.toString();
-                }
-              });
-              modified = true;
+          if (target == null) {
+            unknownNode = true;
+            continue;
+          }
+          if (u.containsKey('props')) {
+            final p = u['props'] as Map<String, dynamic>;
+            // An empty string is a real value; removals are listed in "remove".
+            p.forEach((k, v) {
+              if (v == null) {
+                target.props.remove(k);
+              } else {
+                target.props[k] = v.toString();
+              }
+            });
+            modified = true;
+          }
+          if (u.containsKey('remove')) {
+            for (final k in (u['remove'] as List<dynamic>)) {
+              target.props.remove(k.toString());
             }
-            if (u.containsKey('callback_id')) {
-              target.callbackId = u['callback_id'] as String? ?? '';
-              modified = true;
-            }
+            modified = true;
+          }
+          if (u.containsKey('callback_id')) {
+            target.callbackId = u['callback_id'] as String? ?? '';
+            modified = true;
           }
         }
         if (modified && mounted) {
           setState(() {});
         }
+        if (unknownNode) {
+          // The patch addressed a node this tree does not have: ask Python for the full tree.
+          debugPrint('[patch] unknown node id, requesting a full tree');
+          _sendCallbackEvent(resyncCallbackId, const {});
+        }
+      } else if (updates != null) {
+        // A patch with no tree to apply it to: ask for the full tree.
+        _sendCallbackEvent(resyncCallbackId, const {});
       }
     } catch (e) {
       debugPrint('[patch error] Failed to apply tree patch: $e');

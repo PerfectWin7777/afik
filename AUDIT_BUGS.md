@@ -89,7 +89,7 @@ python ../audit/repro_core.py                         # relance les repros
 | 7 | T-07 ✅ | Arguments structurés côté Dart (B-39) — **fait** | S |
 | 8 | T-08 ✅ | Timeouts par plugin + mocks explicites (B-41, B-37) — **fait** | S |
 | 9 | T-09 | Canaux d'événements Dart→Python (B-40) | L |
-| 10 | T-10 | Suppression de prop vs valeur vide (B-25) | S |
+| 10 | T-10 ✅ | Suppression de prop vs valeur vide (B-25) — **fait** | S |
 | 11 | T-11 | Contrat de props partagé + validation (B-24, B-57, B-58) | L |
 | 12 | T-12 | `Component` sans devinettes (B-22) | M |
 | 13 | T-13 | Petits correctifs : B-26, B-28, B-34, B-35, B-36 ✅ ; B-59 (hot reload des autres modules, watcher) reste ouvert | S |
@@ -594,7 +594,9 @@ Annulation : si `runner.quit()` est appelé pendant l'attente, réveiller tous l
 
 ---
 
-## T-10 — Suppression de prop vs valeur vide, et rejet de patch (B-25)
+## T-10 — ✅ FAIT — Suppression de prop vs valeur vide, et rejet de patch (B-25)
+
+> Implémenté : `diff_snapshots` émet `remove` ; `main.dart::_handleTreePatch` conserve les valeurs vides, applique `remove`, et sur un id inconnu (ou un patch sans arbre) envoie le callback de resync `__pyflutter_resync__` — le mécanisme de B-08 est réutilisé tel quel, **sans nouvelle trame `0x0A` ni changement Rust** (le relais laisse déjà passer les événements de callback). Tests : `tests/test_patch_protocol.py` ; `flutter analyze` inchangé.
 
 **Problème 1** : `core/render.py::diff_snapshots` encode « prop supprimée » comme `""`. Une prop dont la nouvelle valeur est réellement vide (`TextField.value` effacé) est donc **confondue** avec une suppression, et Dart (`_handleTreePatch`) retire la clé dans les deux cas.
 **Problème 2** : un patch dont l'`id` est inconnu de Dart est ignoré **sans prévenir** Python (c'est la cause racine de B-07, corrigée seulement pour le cas des clés).

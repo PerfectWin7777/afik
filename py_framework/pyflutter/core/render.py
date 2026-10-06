@@ -115,7 +115,10 @@ def diff_snapshots(old: Optional[dict], new: Optional[dict]) -> Optional[list[di
         - None: if structural change occurred (root type changed, child count changed, etc.)
                 which requires a full RenderTree rebuild.
         - list[dict]: list of granular update operations:
-          [{"id": "root.0.1", "props": {"text": "5"}, "callback_id": "..."}]
+          [{"id": "root.0.1", "props": {"text": "5"}, "remove": ["color"], "callback_id": "..."}]
+
+        ``props`` holds the props whose value is new or changed (an empty string is a real
+        value, not a removal); ``remove`` lists the props that no longer exist.
     """
     if old is None or new is None:
         return None
@@ -138,19 +141,18 @@ def diff_snapshots(old: Optional[dict], new: Optional[dict]) -> Optional[list[di
         if k not in old_props or old_props[k] != v:
             changed_props[k] = v
 
-    # Check for removed props
-    for k in old_props:
-        if k not in new_props:
-            changed_props[k] = ""  # empty string indicates prop removal
+    removed_props = [k for k in old_props if k not in new_props]
 
     old_cb = old.get("callback_id", "")
     new_cb = new.get("callback_id", "")
     cb_changed = (old_cb != new_cb)
 
-    if changed_props or cb_changed:
+    if changed_props or removed_props or cb_changed:
         op: dict[str, Any] = {"id": new.get("_nid", "")}
         if changed_props:
             op["props"] = changed_props
+        if removed_props:
+            op["remove"] = removed_props
         if cb_changed:
             op["callback_id"] = new_cb
         updates.append(op)
