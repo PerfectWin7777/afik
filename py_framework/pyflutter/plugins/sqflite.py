@@ -5,14 +5,29 @@ SQLite database storage for structured relational data.
 
 from __future__ import annotations
 
-import json
+import re
 import sqlite3
 from typing import Any, Callable, Optional
 from pyflutter.plugins.manager import call_plugin
 
 
+_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$")
+
+
+def _ident(name: str) -> str:
+    """Validates a table/column name before it is interpolated into SQL."""
+    name = str(name)
+    if not _IDENTIFIER.match(name):
+        raise ValueError(f"Invalid SQL identifier: {name!r}")
+    return name
+
+
 class Database:
-    """Manages an active SQLite database instance."""
+    """Manages an active SQLite database instance.
+
+    SQLite runs in-process through Python's sqlite3 module, which is the single
+    source of truth. Errors are raised (never replaced by fake row ids).
+    """
 
     def __init__(self, path: str, version: int = 1):
         self.path = str(path)
@@ -27,31 +42,21 @@ class Database:
 
     def execute(self, sql: str, params: Optional[list[Any]] = None) -> bool:
         """Executes a DDL or non-query SQL command."""
-        call_plugin("sqflite", "execute", {"db": self.path, "sql": sql})
-        try:
-            conn = self._get_local()
-            conn.execute(sql, params or [])
-            conn.commit()
-        except Exception:
-            pass
+        conn = self._get_local()
+        conn.execute(sql, params or [])
+        conn.commit()
         return True
 
     def insert(self, table: str, values: dict[str, Any]) -> int:
         """Inserts a record into the table and returns the row ID."""
-        call_plugin("sqflite", "insert", {
-            "db": self.path,
-            "table": str(table),
-            "values": json.dumps(values),
-        })
-        try:
-            conn = self._get_local()
-            cols = ", ".join(values.keys())
-            placeholders = ", ".join("?" * len(values))
-            cur = conn.execute(f"INSERT INTO {table} ({cols}) VALUES ({placeholders})", list(values.values()))
-            conn.commit()
-            return cur.lastrowid or 1
-        except Exception:
-            return 1
+        conn = self._get_local()
+        cols = ", ".join(_ident(c) for c in values.keys())
+        placeholders = ", ".join("?" * len(values))
+        cur = conn.execute(
+            f"INSERT INTO {_ident(table)} ({cols}) VALUES ({placeholders})", list(values.values())
+        )
+        conn.commit()
+        return cur.lastrowid
 
     def query(
         self,
@@ -62,23 +67,18 @@ class Database:
         order_by: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> list[dict[str, Any]]:
-        """Queries rows from a table."""
-        res = call_plugin("sqflite", "query", {"db": self.path, "table": str(table)})
-        if isinstance(res, list) and len(res) > 0:
-            return [dict(r) for r in res]
-        try:
-            conn = self._get_local()
-            sql = f"SELECT * FROM {table}"
-            if where:
-                sql += f" WHERE {where}"
-            if order_by:
-                sql += f" ORDER BY {order_by}"
-            if limit:
-                sql += f" LIMIT {limit}"
-            cur = conn.execute(sql, where_args or [])
-            return [dict(row) for row in cur.fetchall()]
-        except Exception:
-            return []
+        """Queries rows from a table. `where` / `order_by` are SQL fragments written by
+        the developer: pass user input through `where_args` placeholders only."""
+        conn = self._get_local()
+        sql = f"SELECT * FROM {_ident(table)}"
+        if where:
+            sql += f" WHERE {where}"
+        if order_by:
+            sql += f" ORDER BY {order_by}"
+        if limit is not None:
+            sql += f" LIMIT {int(limit)}"
+        cur = conn.execute(sql, where_args or [])
+        return [dict(row) for row in cur.fetchall()]
 
     def update(
         self,
@@ -89,25 +89,16 @@ class Database:
         where_args: Optional[list[Any]] = None,
     ) -> int:
         """Updates rows in a table and returns the count of affected rows."""
-        call_plugin("sqflite", "update", {
-            "db": self.path,
-            "table": str(table),
-            "values": json.dumps(values),
-            "where": str(where or ""),
-        })
-        try:
-            conn = self._get_local()
-            sets = ", ".join(f"{col} = ?" for col in values.keys())
-            sql = f"UPDATE {table} SET {sets}"
-            args = list(values.values())
-            if where:
-                sql += f" WHERE {where}"
-                args.extend(where_args or [])
-            cur = conn.execute(sql, args)
-            conn.commit()
-            return cur.rowcount
-        except Exception:
-            return 1
+        conn = self._get_local()
+        sets = ", ".join(f"{_ident(col)} = ?" for col in values.keys())
+        sql = f"UPDATE {_ident(table)} SET {sets}"
+        args = list(values.values())
+        if where:
+            sql += f" WHERE {where}"
+            args.extend(where_args or [])
+        cur = conn.execute(sql, args)
+        conn.commit()
+        return cur.rowcount
 
     def delete(
         self,
@@ -117,34 +108,22 @@ class Database:
         where_args: Optional[list[Any]] = None,
     ) -> int:
         """Deletes rows matching where criteria."""
-        call_plugin("sqflite", "delete", {
-            "db": self.path,
-            "table": str(table),
-            "where": str(where or ""),
-        })
-        try:
-            conn = self._get_local()
-            sql = f"DELETE FROM {table}"
-            if where:
-                sql += f" WHERE {where}"
-            cur = conn.execute(sql, where_args or [])
-            conn.commit()
-            return cur.rowcount
-        except Exception:
-            return 1
+        conn = self._get_local()
+        sql = f"DELETE FROM {_ident(table)}"
+        if where:
+            sql += f" WHERE {where}"
+        cur = conn.execute(sql, where_args or [])
+        conn.commit()
+        return cur.rowcount
 
     def raw_query(self, sql: str, params: Optional[list[Any]] = None) -> list[dict[str, Any]]:
         """Executes a raw SQL SELECT query."""
-        try:
-            conn = self._get_local()
-            cur = conn.execute(sql, params or [])
-            return [dict(row) for row in cur.fetchall()]
-        except Exception:
-            return []
+        conn = self._get_local()
+        cur = conn.execute(sql, params or [])
+        return [dict(row) for row in cur.fetchall()]
 
     def close(self) -> bool:
         """Closes the database connection."""
-        call_plugin("sqflite", "close", {"db": self.path})
         if self._local_conn:
             self._local_conn.close()
             self._local_conn = None
@@ -157,11 +136,8 @@ def open_database(
     on_create: Optional[Callable[[Database, int], None]] = None,
 ) -> Database:
     """Opens or creates a SQLite database."""
-    call_plugin("sqflite", "openDatabase", {"db": str(path), "version": str(version)})
     db = Database(path, version)
+    db._get_local()
     if on_create:
-        try:
-            on_create(db, version)
-        except Exception:
-            pass
+        on_create(db, version)
     return db

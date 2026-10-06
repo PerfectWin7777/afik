@@ -110,7 +110,11 @@ class PyFlutterBuilder:
                 subprocess.run(build_cmd, cwd=str(self.rust_bridge), check=True)
                 logger.success("Native Rust FFI bridge compiled successfully.")
             except Exception as e:
-                logger.warning(f"Could not compile Rust bridge with cargo: {e}")
+                logger.error(f"Could not compile the Rust bridge with cargo: {e}")
+                return False
+        else:
+            logger.error("cargo not found in PATH: the native Rust bridge cannot be built.")
+            return False
 
         # 5. Build Flutter package with Standalone flag enabled
         logger.info(f"🔨 Building standalone Flutter {self.target.upper()} ({mode_str})...")
@@ -150,6 +154,10 @@ class PyFlutterBuilder:
                 }
                 output_dir = output_dirs.get(self.target, self.dart_runtime / "build")
                 logger.info(f"📦 Output artifacts located at:\n   {output_dir}")
+                logger.warning(
+                    "No Python interpreter is embedded in this build yet (see PYFLUTTER_VISION.md §3.6): "
+                    "the packaged app can render but will not run your Python code on a device."
+                )
                 return True
         except subprocess.CalledProcessError as e:
             logger.error(f"Flutter build failed with exit code {e.returncode}")

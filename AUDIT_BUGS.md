@@ -13,6 +13,21 @@ Repros (depuis la racine du dépôt, `pip install pytest protobuf loguru pyyaml`
 
 ---
 
+## Statut des corrections (mis à jour)
+
+**Corrigés et couverts par des tests** (`py_framework/tests/test_audit_regressions.py`, `test_bridge_relay.py` — ce dernier lance le vrai binaire Rust) :
+B-01, B-02 (RPC non bloquant, erreurs explicites ; le fallback local n'est utilisé que sans runtime connecté), B-04 (`--release`/`--profile`, `remove_flutter_package`), B-05 (port transmis au Dart), B-07, B-08 (resync après reconnexion, un thread par client), B-09, B-10, B-11, B-12, B-13, B-14 (module nommé `pyflutter_app_<nom>`, classe conservée au hot reload), B-15, B-16 (jeton de session + limite de trame), B-30, B-32, B-33, B-38 (sqlite réel, identifiants validés, erreurs propagées), B-42, B-43, B-46, B-49, plus la fiabilité de la boucle d'événements (B-20 partiel : registre de callbacks verrouillé).
+
+**Corrigés côté Dart/Rust mais non compilés ici** (pas de SDK Flutter ; `cargo build` OK) : B-05, B-43, B-46, B-49 et le handshake `hello` du client Dart. À vérifier avec `flutter run`.
+
+**Corrigés partiellement** : B-06 (`local_auth`, `permission_handler`, `secure_storage` refusent désormais au lieu de simuler un succès ; les vrais packages restent à brancher), B-03 (le build échoue si `cargo` échoue et avertit qu'aucun interpréteur n'est embarqué ; l'embarquement lui-même reste à faire), B-37 (fallback local limité au mode hors runtime).
+
+**Ouverts** : B-17, B-18, B-19, B-21 (dispose des `State` — le faire mal casserait l'état des pages empilées), B-22, B-23, B-24, B-27, B-29, B-31, B-34 à B-36, B-39 à B-41, B-44, B-45, B-47, B-48, B-50 à B-55, et toute la section 4.
+
+**Nouveau bug trouvé pendant les corrections (corrigé)** — B-56 🟠 [V] : `infer_call_site_key` (`core/state.py`) ignorait toute frame dont le **nom de fichier** finit par `state.py`, `widget_base.py` ou `render.py`. Un projet utilisateur avec un fichier `state.py` (très courant) donnait la **même clé** à tous les `StatefulComponent` d'une même ligne → états partagés. Le test se fait maintenant sur le nom de **module** (`pyflutter.*`).
+
+---
+
 ## 0. Résumé — les 10 problèmes qui comptent le plus
 
 | # | Sév. | Problème |

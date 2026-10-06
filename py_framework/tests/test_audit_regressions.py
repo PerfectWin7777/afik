@@ -187,3 +187,17 @@ class TestBuildFlags(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSqflite(unittest.TestCase):
+    def test_real_rows_and_identifier_validation(self):
+        from pyflutter.plugins import sqflite
+        db = sqflite.open_database(":memory:")
+        db.execute("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)")
+        self.assertEqual(db.insert("items", {"name": "a"}), 1)
+        self.assertEqual(db.insert("items", {"name": "b"}), 2)
+        self.assertEqual([r["name"] for r in db.query("items", order_by="id")], ["a", "b"])
+        with self.assertRaises(ValueError):
+            db.insert("items; DROP TABLE items", {"name": "x"})
+        with self.assertRaises(Exception):
+            db.insert("missing_table", {"name": "x"})
