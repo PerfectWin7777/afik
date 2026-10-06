@@ -16,7 +16,7 @@ from pyflutter.core.widget_base import (
 )
 from pyflutter.core.navigation import Navigator
 from pyflutter.core.logger import logger
-from pyflutter.app import run, update
+from pyflutter.app import run, run_on_ui, update
 
 # ============================================================================
 # 2. Design System, Material 3 Styling & Typography
@@ -263,6 +263,7 @@ __all__ = [
     # Application & State
     "run",
     "update",
+    "run_on_ui",
     "logger",
     "Navigator",
     "Widget",

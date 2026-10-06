@@ -9,7 +9,6 @@ import atexit
 import importlib
 import importlib.util
 import os
-import queue
 import secrets
 import shutil
 import socket
@@ -23,6 +22,7 @@ from typing import Any, Optional
 from pyflutter.core.logger import logger
 from pyflutter.cli.devices import select_device, setup_adb_port_forward
 from pyflutter.core.bridge import BridgeSession, RESYNC_CALLBACK_ID
+from pyflutter.core.scheduler import FrameScheduler
 from pyflutter.core.widget_base import invoke_callback, clear_callbacks
 
 
@@ -329,11 +329,11 @@ class PyFlutterRunner:
         self.app = None
         self.is_running = False
         self.tree_lock = threading.RLock()
-        self._building = False
-        self._rebuild_requested = False
         self._event_thread: Optional[threading.Thread] = None
-        self._callback_queue: queue.Queue = queue.Queue()
-        self._callback_thread: Optional[threading.Thread] = None
+        # One UI thread runs the user callbacks, then builds and sends the tree (see
+        # core/scheduler.py). The bridge reader thread above only reads frames.
+        self.scheduler = FrameScheduler(self._render_frame)
+        self._force_full_next_frame = False
         atexit.register(self.quit, exit_sys=False)
 
         # Load project configuration if pyflutter.yaml exists
@@ -425,8 +425,7 @@ class PyFlutterRunner:
         logger.success("Initial UI tree sent to Bridge.")
 
         # 7. Start threads: Event receiver & Keypress handler
-        self._callback_thread = threading.Thread(target=self._callback_worker, daemon=True)
-        self._callback_thread.start()
+        self.scheduler.start()
         self._event_thread = threading.Thread(target=self._event_loop, daemon=True)
         self._event_thread.start()
 
@@ -537,59 +536,50 @@ class PyFlutterRunner:
                 continue
 
             if msg_type == MSG_CALLBACK_EVENT and event:
-                # Never run user code on this thread: it must keep reading the
-                # bridge so plugin answers (called from callbacks) can arrive.
-                self._callback_queue.put(event)
+                # Never run user code on this thread: it must keep reading the bridge so
+                # that plugin answers (awaited by a callback) can arrive. Callbacks run on
+                # the UI thread, in the order they were received.
+                self.scheduler.post(lambda e=event: self._handle_callback_event(e))
 
-        self._callback_queue.put(None)
+    def _handle_callback_event(self, event) -> None:
+        """Runs on the UI thread: one user callback, then a frame."""
+        if event.callback_id == RESYNC_CALLBACK_ID:
+            # A Dart client (re)connected and its tree is outdated.
+            logger.debug("Dart client requested a full tree resync")
+            if self.session:
+                self.session.reset_snapshot()
+            self._force_full_next_frame = True
+            self.scheduler.request_frame()
+            return
+        logger.debug("Event received: {}", event.callback_id)
+        invoke_callback(event.callback_id, dict(event.event_data))
+        self.scheduler.request_frame()
 
-    def _callback_worker(self):
-        """Runs user callbacks sequentially, then re-renders the tree."""
-        while True:
-            event = self._callback_queue.get()
-            if event is None or not self.is_running:
-                break
-            try:
-                if event.callback_id == RESYNC_CALLBACK_ID:
-                    # A Dart client (re)connected and its tree is outdated.
-                    logger.debug("Dart client requested a full tree resync")
-                    if self.session:
-                        self.session.reset_snapshot()
-                    self._render_and_send(force_full=True)
-                    continue
-                logger.debug("Event received: {}", event.callback_id)
-                invoke_callback(event.callback_id, dict(event.event_data))
-                self.push_update()
-            except Exception as e:
-                if self.is_running:
-                    logger.opt(exception=True).error("Error handling callback event {}: {}", event.callback_id, e)
+    def _render_frame(self) -> None:
+        """Called by the scheduler on the UI thread for every frame."""
+        force_full, self._force_full_next_frame = self._force_full_next_frame, False
+        self._render_and_send(force_full=force_full)
 
     def _render_and_send(self, force_full: bool = False) -> None:
-        """Builds and sends the tree. Updates requested during a build are coalesced
-        into one extra rebuild instead of re-entering (and deadlocking on) the lock."""
+        """Builds the tree and sends it (a full tree or a patch)."""
+        if not (self.session and self.app):
+            return
         with self.tree_lock:
-            if self._building:
-                self._rebuild_requested = True
-                return
-            self._building = True
-            try:
-                while True:
-                    self._rebuild_requested = False
-                    tree = self._build_and_tag_tree()
-                    self.session.send_tree(tree, force_full=force_full)
-                    force_full = False
-                    if not self._rebuild_requested:
-                        break
-            finally:
-                self._building = False
+            tree = self._build_and_tag_tree()
+            self.session.send_tree(tree, force_full=force_full)
 
     def push_update(self):
-        """Pushes an asynchronous tree update to the bridge and connected device."""
-        if self.session and self.app:
-            try:
-                self._render_and_send()
-            except Exception as e:
-                logger.opt(exception=True).error("Failed to push async update: {}", e)
+        """Asks for a new frame. Safe from any thread; many calls cost one build."""
+        if not (self.session and self.app):
+            return
+        if self.scheduler.running:
+            self.scheduler.request_frame()
+            return
+        # Before the UI thread exists (start-up, tests) there is nobody to coalesce for.
+        try:
+            self._render_and_send()
+        except Exception as e:
+            logger.opt(exception=True).error("Failed to push update: {}", e)
 
     def hot_reload(self):
         """Performs a fast Hot Reload (reloads Python module while preserving state, pushes diff patch)."""
@@ -608,10 +598,7 @@ class PyFlutterRunner:
                 self.app = new_app
 
             # Rebuild tree and push diff
-            if self.session and self.app:
-                with self.tree_lock:
-                    tree = self._build_and_tag_tree()
-                    self.session.send_tree(tree)
+            self._render_and_send()
 
             # Forward reload to Flutter engine if active
             if self.flutter_process and self.flutter_process.stdin:
@@ -640,10 +627,7 @@ class PyFlutterRunner:
             prefer = type(self.app).__name__ if self.app is not None else None
             self.app_module, self.app = load_app_from_file(self.entrypoint, prefer_class=prefer)
 
-            if self.session and self.app:
-                with self.tree_lock:
-                    tree = self._build_and_tag_tree()
-                    self.session.send_tree(tree, force_full=True)
+            self._render_and_send(force_full=True)
 
             if self.flutter_process and self.flutter_process.stdin:
                 try:
@@ -662,6 +646,7 @@ class PyFlutterRunner:
             return
         logger.info("\n👋 [PyFlutter] Quitting...")
         self.is_running = False
+        self.scheduler.stop()
 
         if self.flutter_process:
             try:
@@ -754,10 +739,11 @@ class PyFlutterRunner:
                     break
 
     def _handle_key(self, key: str):
+        # Reloading re-executes user code and rebuilds the tree: do it on the UI thread.
         if key == "r":
-            self.hot_reload()
+            self.scheduler.post(self.hot_reload)
         elif key == "R":
-            self.hot_restart()
+            self.scheduler.post(self.hot_restart)
         elif key in ("q", "Q"):
             self.quit()
         elif key in ("h", "H", "?"):

@@ -31,7 +31,7 @@ class FakeSession:
 def run(mode, via_callback):
     sess=FakeSession(mode)
     r = PyFlutterRunner.__new__(PyFlutterRunner)
-    r.session=sess; r.is_running=True; r.tree_lock=threading.RLock(); r._building=False; r._rebuild_requested=False; r._callback_queue=queue.Queue(); r._event_thread=None; r.app=type("A",(),{"build":lambda s: pf.Text("x")})(); r.debug_banner=None
+    r.session=sess; r.is_running=True; r.tree_lock=threading.RLock(); r._event_thread=None; r._force_full_next_frame=False; r.app=type("A",(),{"build":lambda s: pf.Text("x")})(); r.debug_banner=None
     appmod.set_active_runner(r)
     result={}
     def handler():
@@ -46,7 +46,8 @@ def run(mode, via_callback):
         ev = widget_pb2.CallbackEvent(callback_id=cid)
         sess.inbox.put((MSG_CALLBACK_EVENT, ev))
         r.is_running=True
-        threading.Thread(target=r._callback_worker, daemon=True).start()
+        from pyflutter.core.scheduler import FrameScheduler
+        r.scheduler = FrameScheduler(lambda: None); r.scheduler.start()
         th=threading.Thread(target=r._event_loop, daemon=True); r._event_thread=th; th.start()
         time.sleep(1.0)
     else:

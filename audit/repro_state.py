@@ -55,7 +55,9 @@ class FakeSession:
     def send_tree(self, tree, force_full=False):
         resolve_tree(tree)
 runner = PyFlutterRunner.__new__(PyFlutterRunner)
-runner.tree_lock = threading.RLock(); runner._building=False; runner._rebuild_requested=False; runner.session = FakeSession(); runner.debug_banner=None; runner.is_running=True
+runner.tree_lock = threading.RLock(); runner.session = FakeSession(); runner.debug_banner=None; runner.is_running=True
+from pyflutter.core.scheduler import FrameScheduler
+runner.scheduler = FrameScheduler(lambda: None); runner._force_full_next_frame = False
 sig = pf.Signal(0)
 class InitSetsState(pf.State):
     def init_state(self): sig.value = 1      # or self.set_state(...)

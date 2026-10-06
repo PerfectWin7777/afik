@@ -33,6 +33,19 @@ def update() -> None:
         _active_runner.push_update()
 
 
+def run_on_ui(fn: Any) -> None:
+    """Runs ``fn()`` on the application's UI thread, where all state must be touched.
+
+    Call it from your own threads (timers, network workers) instead of changing widgets or
+    signals directly. Without a running application it simply calls ``fn()``.
+    """
+    runner = _active_runner
+    if runner is not None and getattr(runner, "scheduler", None) is not None and runner.scheduler.running:
+        runner.scheduler.post(fn)
+    else:
+        fn()
+
+
 def run(
     app: Any = None,
     *,
