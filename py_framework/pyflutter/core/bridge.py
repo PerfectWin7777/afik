@@ -93,7 +93,7 @@ class BridgeSession:
 
             # Full tree snapshot
             self._last_snapshot = new_snapshot
-            self.process.stdin.write(render_tree_frame(concrete_root))
+            self.process.stdin.write(render_tree_frame(concrete_root, resolved=True))
             self.process.stdin.flush()
         except (BrokenPipeError, OSError) as e:
             raise RuntimeError(f"Failed to communicate with Rust bridge: {e}")

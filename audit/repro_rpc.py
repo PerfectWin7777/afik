@@ -31,21 +31,26 @@ class FakeSession:
 def run(mode, via_callback):
     sess=FakeSession(mode)
     r = PyFlutterRunner.__new__(PyFlutterRunner)
-    r.session=sess; r.is_running=True; r.tree_lock=threading.Lock(); r.app=type("A",(),{"build":lambda s: pf.Text("x")})(); r.debug_banner=None
+    r.session=sess; r.is_running=True; r.tree_lock=threading.RLock(); r._building=False; r._rebuild_requested=False; r._callback_queue=queue.Queue(); r._event_thread=None; r.app=type("A",(),{"build":lambda s: pf.Text("x")})(); r.debug_banner=None
     appmod.set_active_runner(r)
     result={}
     def handler():
         t0=time.time()
-        result["val"]=manager.call_plugin("local_auth","authenticate",{}, timeout=2.0)
+        try:
+            result["val"]=manager.call_plugin("local_auth","authenticate",{}, timeout=2.0)
+        except Exception as e:
+            result["val"]=f"{type(e).__name__}: {e}"
         result["dt"]=time.time()-t0
     if via_callback:
         cid = wb._register_callback(handler)
         ev = widget_pb2.CallbackEvent(callback_id=cid)
         sess.inbox.put((MSG_CALLBACK_EVENT, ev))
-        th=threading.Thread(target=r._event_loop, daemon=True); th.start()
-        time.sleep(3.0)
+        r.is_running=True
+        threading.Thread(target=r._callback_worker, daemon=True).start()
+        th=threading.Thread(target=r._event_loop, daemon=True); r._event_thread=th; th.start()
+        time.sleep(1.0)
     else:
-        th=threading.Thread(target=r._event_loop, daemon=True); th.start()
+        th=threading.Thread(target=r._event_loop, daemon=True); r._event_thread=th; th.start()
         handler()
     r.is_running=False
     appmod.set_active_runner(None)

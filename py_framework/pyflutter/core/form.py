@@ -58,7 +58,7 @@ class TextEditingController:
             try:
                 listener()
             except Exception as e:
-                logger.error("Error in TextEditingController listener: %s", e)
+                logger.error("Error in TextEditingController listener: {}", e)
 
     def __repr__(self) -> str:
         return f"TextEditingController(text={self._text!r})"

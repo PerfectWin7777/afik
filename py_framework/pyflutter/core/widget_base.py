@@ -6,11 +6,20 @@ Lightweight, zero-dependency, and fully typed for IDE autocomplete and embedded 
 from __future__ import annotations
 
 import itertools
+import threading
 import uuid
+from collections import OrderedDict
 from typing import Any, Callable, Optional
 
 
 _callback_registry: dict[str, Callable] = {}
+_registry_lock = threading.RLock()
+
+# Callbacks that are not attached to any widget (SnackBar action, dialog buttons).
+# They survive frame sweeps, are one-shot (invoking one removes its whole group)
+# and the oldest ones are evicted past _MAX_PINNED so they can never leak.
+_pinned_callbacks: "OrderedDict[str, Optional[str]]" = OrderedDict()
+_MAX_PINNED = 64
 
 
 def _register_callback(
@@ -34,7 +43,26 @@ def _register_callback(
     else:
         return str(fn_or_id)
 
-    _callback_registry[callback_id] = target_fn
+    with _registry_lock:
+        _callback_registry[callback_id] = target_fn
+    return callback_id
+
+
+def _register_pinned_callback(
+    callback_id: str,
+    fn: Callable,
+    group: Optional[str] = None,
+) -> str:
+    """Registers a one-shot callback that is not tied to a widget of the tree.
+
+    All callbacks sharing the same `group` are discarded as soon as one of them fires.
+    """
+    with _registry_lock:
+        _callback_registry[callback_id] = fn
+        _pinned_callbacks[callback_id] = group
+        while len(_pinned_callbacks) > _MAX_PINNED:
+            old_id, _ = _pinned_callbacks.popitem(last=False)
+            _callback_registry.pop(old_id, None)
     return callback_id
 
 
@@ -92,8 +120,18 @@ def _call_callable(target: Callable, *args: Any, **kwargs: Any) -> Any:
 
 def invoke_callback(callback_id: str, event_data: dict[str, str]) -> None:
     """Invokes a registered callback with optional event data."""
-    fn = _callback_registry.get(callback_id)
+    with _registry_lock:
+        fn = _callback_registry.get(callback_id)
+        if callback_id in _pinned_callbacks:
+            group = _pinned_callbacks.pop(callback_id)
+            _callback_registry.pop(callback_id, None)
+            if group is not None:
+                for cid in [c for c, g in _pinned_callbacks.items() if g == group]:
+                    _pinned_callbacks.pop(cid, None)
+                    _callback_registry.pop(cid, None)
     if fn is None:
+        from pyflutter.core.logger import logger
+        logger.debug("Ignoring event for unknown or expired callback {}", callback_id)
         return
     try:
         if event_data:
@@ -102,13 +140,15 @@ def invoke_callback(callback_id: str, event_data: dict[str, str]) -> None:
             _call_callable(fn)
     except Exception as e:
         from pyflutter.core.logger import logger
-        logger.error(f"Error inside callback {callback_id}: {e}", exc_info=True)
+        logger.opt(exception=True).error("Error inside callback {}: {}", callback_id, e)
 
 
 def clear_callbacks() -> None:
     """Clears all registered callbacks (used during hot reload/restart)."""
-    _callback_registry.clear()
-    _active_callback_generations.clear()
+    with _registry_lock:
+        _callback_registry.clear()
+        _pinned_callbacks.clear()
+        _active_callback_generations.clear()
 
 
 _active_callback_generations: list[set[str]] = []
@@ -133,14 +173,18 @@ def collect_active_callback_ids(widget: Any) -> set[str]:
 def sweep_stale_callbacks(active_ids: set[str], retain_generations: int = 2) -> None:
     """Retains callbacks from recent frames while purging unreferenced stale callbacks to prevent memory leaks."""
     global _active_callback_generations
-    _active_callback_generations.append(set(active_ids))
-    if len(_active_callback_generations) > retain_generations:
-        _active_callback_generations = _active_callback_generations[-retain_generations:]
+    with _registry_lock:
+        _active_callback_generations.append(set(active_ids))
+        if len(_active_callback_generations) > retain_generations:
+            _active_callback_generations = _active_callback_generations[-retain_generations:]
 
-    surviving_ids = set().union(*_active_callback_generations) if _active_callback_generations else set()
-    stale_keys = [cid for cid in _callback_registry if cid not in surviving_ids]
-    for cid in stale_keys:
-        _callback_registry.pop(cid, None)
+        surviving_ids = set().union(*_active_callback_generations) if _active_callback_generations else set()
+        stale_keys = [
+            cid for cid in _callback_registry
+            if cid not in surviving_ids and cid not in _pinned_callbacks
+        ]
+        for cid in stale_keys:
+            _callback_registry.pop(cid, None)
 
 
 class Widget:
@@ -495,7 +539,7 @@ class QtSignal:
                 _call_callable(slot, *args, **kwargs)
             except Exception as e:
                 from pyflutter.core.logger import logger
-                logger.error(f"Error executing slot {slot} for signal {self.callback_prop}: {e}", exc_info=True)
+                logger.opt(exception=True).error("Error executing slot {} for signal {}: {}", slot, self.callback_prop, e)
 
     def __call__(self, *args: Any, **kwargs: Any) -> None:
         self.emit(*args, **kwargs)

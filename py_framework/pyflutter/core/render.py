@@ -14,6 +14,7 @@ prefix + payload.
 
 from __future__ import annotations
 
+import copy
 import json
 import struct
 from typing import Any, Optional
@@ -42,10 +43,17 @@ def resolve_tree(widget: Any, is_root: bool = True) -> Widget:
         current = current.build()
         if current is None:
             raise ValueError(f"Component '{widget.__class__.__name__}.build()' returned None. Must return a Widget.")
+    children = getattr(current, "children", None)
+    if isinstance(current, Widget) and isinstance(children, list) and children:
+        # Work on a copy: the source widgets (often cached by the user, e.g. an
+        # imperative self.layout) must keep their Component children, otherwise
+        # those components would be frozen at their first render.
+        resolved_children = [resolve_tree(c, is_root=False) for c in children]
+        current = copy.copy(current)
+        current.props = dict(current.props)
+        current.children = resolved_children
     if slot and isinstance(current, Widget) and "slot" not in current.props:
         current.props["slot"] = slot
-    if hasattr(current, "children") and isinstance(current.children, list):
-        current.children = [resolve_tree(c, is_root=False) for c in current.children]
     return current
 
 
@@ -113,6 +121,9 @@ def diff_snapshots(old: Optional[dict], new: Optional[dict]) -> Optional[list[di
         return None
     if old.get("type") != new.get("type"):
         return None
+    if old.get("_nid") != new.get("_nid"):
+        # Keyed nodes moved/replaced: Dart cannot address the new id, resend everything.
+        return None
     if len(old.get("children", [])) != len(new.get("children", [])):
         return None
 
@@ -164,15 +175,21 @@ def encode_frame(msg_type: int, payload: bytes) -> bytes:
     return header + payload
 
 
-def render_tree_frame(root: Any) -> bytes:
+def render_tree_frame(root: Any, *, resolved: bool = False, sweep: bool = True) -> bytes:
     """Encodes `root` as a framed RenderTree message, ready to write
     directly to the Rust bridge's stdin.
+
+    `resolved=True` means `root` is already a concrete tree with node ids assigned
+    (and callbacks already swept), which avoids a second resolution pass.
     """
-    concrete_root = resolve_tree(root)
-    assign_node_ids(concrete_root)
-    from pyflutter.core.widget_base import collect_active_callback_ids, sweep_stale_callbacks
-    active_ids = collect_active_callback_ids(concrete_root)
-    sweep_stale_callbacks(active_ids)
+    if resolved:
+        concrete_root = root
+    else:
+        concrete_root = resolve_tree(root)
+        assign_node_ids(concrete_root)
+        if sweep:
+            from pyflutter.core.widget_base import collect_active_callback_ids, sweep_stale_callbacks
+            sweep_stale_callbacks(collect_active_callback_ids(concrete_root))
     tree = widget_pb2.RenderTree(root=widget_to_proto(concrete_root))
     return encode_frame(MSG_RENDER_TREE, tree.SerializeToString())
 

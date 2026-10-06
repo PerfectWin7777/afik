@@ -29,11 +29,27 @@ _rpc_counter = itertools.count()
 _local_storage_cache: dict[str, Any] = {}
 
 
+class PluginError(RuntimeError):
+    """Raised when a native plugin call fails on the Dart side or cannot be delivered."""
+
+
+class PluginTimeoutError(PluginError, TimeoutError):
+    """Raised when the connected Dart runtime does not answer a plugin call in time."""
+
+
+_rpc_lock = threading.Lock()
+
+
+def _runtime_is_connected(runner: Any) -> bool:
+    return bool(runner and runner.session and runner.session.process and runner.is_running)
+
+
 def invoke_plugin_method(plugin_name: str, method: str, args: dict[str, Any]) -> None:
     """
     Invokes a fire-and-forget method on a native Flutter plugin shim.
+    Never waits for the Dart answer, so it is safe to call from any callback.
     """
-    call_plugin(plugin_name, method, args)
+    call_plugin(plugin_name, method, args, wait=False)
 
 
 def call_plugin(
@@ -41,39 +57,59 @@ def call_plugin(
     method: str,
     args: Optional[dict[str, Any]] = None,
     timeout: float = 3.0,
+    wait: bool = True,
 ) -> Any:
     """
     Invokes an RPC method on a native Flutter plugin and returns the result.
-    If a connected Dart runtime is active, dispatches over the bridge.
-    Otherwise, seamlessly executes using the local platform fallback.
+
+    - Connected Dart runtime: the call goes over the bridge. A Dart-side error
+      raises `PluginError`, a missing answer raises `PluginTimeoutError`. A failed
+      call is never replaced by simulated data.
+    - No runtime (unit tests, scripts, offline development): the local platform
+      fallback is used.
     """
     args = args or {}
     runner = get_active_runner()
 
-    if runner and runner.session and runner.session.process and runner.is_running:
-        call_id = f"c_{next(_rpc_counter)}"
-        event = threading.Event()
+    if not _runtime_is_connected(runner):
+        return _dispatch_local_fallback(plugin_name, method, args)
+
+    if wait and threading.current_thread() is getattr(runner, "_event_thread", None):
+        raise PluginError(
+            f"{plugin_name}.{method} was called from the bridge reader thread; "
+            "the answer could never be read. Call it from a callback or a worker thread."
+        )
+
+    call_id = f"c_{next(_rpc_counter)}"
+    event = threading.Event()
+    if wait:
         _pending_rpc_calls[call_id] = event
+    try:
         try:
             payload = f"{plugin_name}\x00{method}\x00{call_id}\x00{json.dumps(args)}".encode("utf-8")
-            header = struct.pack(">BI", MSG_PLUGIN_CALL, len(payload))
-            runner.session.process.stdin.write(header + payload)
-            runner.session.process.stdin.flush()
-            logger.debug(f"[plugin rpc] Dispatched {plugin_name}.{method} (call_id: {call_id})")
+        except (TypeError, ValueError) as e:
+            raise PluginError(f"Arguments of {plugin_name}.{method} are not JSON serializable: {e}") from e
+        header = struct.pack(">BI", MSG_PLUGIN_CALL, len(payload))
+        try:
+            with _rpc_lock:
+                runner.session.process.stdin.write(header + payload)
+                runner.session.process.stdin.flush()
+        except (BrokenPipeError, OSError, ValueError) as e:
+            raise PluginError(f"Bridge unavailable while calling {plugin_name}.{method}: {e}") from e
+        logger.debug(f"[plugin rpc] Dispatched {plugin_name}.{method} (call_id: {call_id})")
 
-            if event.wait(timeout=timeout):
-                res, err = _rpc_results.pop(call_id, (None, None))
-                if err:
-                    raise RuntimeError(f"Error in {plugin_name}.{method}: {err}")
-                return res
-            else:
-                logger.warning(f"[plugin timeout] {plugin_name}.{method} timed out. Using fallback.")
-        except Exception as e:
-            logger.debug(f"[plugin call error] {e}")
-        finally:
-            _pending_rpc_calls.pop(call_id, None)
-
-    return _dispatch_local_fallback(plugin_name, method, args)
+        if not wait:
+            return None
+        if not event.wait(timeout=timeout):
+            raise PluginTimeoutError(f"{plugin_name}.{method} timed out after {timeout}s")
+        res, err = _rpc_results.pop(call_id, (None, None))
+        if err:
+            raise PluginError(f"Error in {plugin_name}.{method}: {err}")
+        return res
+    finally:
+        _pending_rpc_calls.pop(call_id, None)
+        if not wait:
+            _rpc_results.pop(call_id, None)
 
 
 def handle_plugin_response(payload: bytes) -> None:
@@ -487,4 +523,42 @@ def add_flutter_package(package_name: str) -> bool:
         return True
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to install package '{package_name}':\n{e.stdout}")
+        return False
+
+
+def remove_flutter_package(package_name: str) -> bool:
+    """Removes a Flutter package from the PyFlutter runtime using `flutter pub remove`."""
+    current = Path(__file__).resolve()
+    repo_root = current.parents[3]
+    dart_runtime_dir = repo_root / "dart_runtime"
+
+    if not dart_runtime_dir.exists():
+        logger.error(f"Cannot find dart_runtime at: {dart_runtime_dir}")
+        return False
+
+    flutter_bin = shutil.which("flutter") or shutil.which("flutter.bat")
+    if not flutter_bin:
+        logger.error("Flutter binary not found in PATH.")
+        return False
+
+    logger.info(f"Removing native Flutter package '{package_name}' from {dart_runtime_dir.name}...")
+    try:
+        subprocess.run(
+            [flutter_bin, "pub", "remove", package_name],
+            cwd=str(dart_runtime_dir),
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            shell=(sys.platform == "win32"),
+        )
+        from pyflutter.core.config import PyFlutterConfig
+        config = PyFlutterConfig.find_and_load()
+        config.remove_flutter_dependency(package_name)
+        logger.success(f"Removed '{package_name}' from dart_runtime.")
+        return True
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to remove package '{package_name}':\n{e.stdout}")
         return False

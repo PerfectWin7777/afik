@@ -7,6 +7,7 @@ and Flutter-standard StatefulComponent / State architecture.
 from __future__ import annotations
 
 import contextvars
+import weakref
 from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
 from pyflutter.core.logger import logger
@@ -35,8 +36,8 @@ def infer_call_site_key(cls: type) -> str:
     import inspect
     caller = inspect.currentframe().f_back
     while caller:
-        fn = caller.f_code.co_filename
-        if not fn.endswith(("state.py", "widget_base.py", "render.py")):
+        module_name = caller.f_globals.get("__name__", "")
+        if not (module_name == "pyflutter" or module_name.startswith("pyflutter.")):
             break
         caller = caller.f_back
     if caller:
@@ -319,10 +320,23 @@ class Watch(Component):
         self._tracked_signals: set[Signal[Any]] = set()
 
     def build(self) -> Widget:
+        # A new Watch is created at every parent rebuild. The listener only holds a
+        # weak reference to it and unregisters itself once the Watch is gone, so
+        # signals never accumulate listeners (and rebuilds) across frames.
+        self_ref = weakref.ref(self)
+
         def _track(signal: Signal[Any]):
             if signal not in self._tracked_signals:
                 self._tracked_signals.add(signal)
-                signal.add_listener(self._on_signal_changed)
+
+                def _listener() -> None:
+                    watch = self_ref()
+                    if watch is None:
+                        signal.remove_listener(_listener)
+                    else:
+                        watch._on_signal_changed()
+
+                signal.add_listener(_listener)
 
         prev_listener = _active_signal_tracker.get()
         _active_signal_tracker.set(_track)

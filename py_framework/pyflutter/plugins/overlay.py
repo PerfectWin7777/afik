@@ -9,7 +9,7 @@ import uuid
 from typing import Any, Callable, Optional, Union
 
 from pyflutter.core.style import Duration
-from pyflutter.core.widget_base import _register_callback
+from pyflutter.core.widget_base import _register_pinned_callback
 from pyflutter.plugins.manager import invoke_plugin_method
 
 
@@ -48,7 +48,7 @@ def show_snack_bar(
     action_id = ""
     if action and on_action:
         action_id = f"cb_snackbar_{uuid.uuid4().hex[:8]}"
-        _register_callback(action_id, lambda *_, **__: on_action())
+        _register_pinned_callback(action_id, lambda *_, **__: on_action())
 
     args: dict[str, Any] = {
         "message": str(message),
@@ -93,15 +93,16 @@ def show_dialog(
             on_confirm=self.clear_cart,
         )
     """
+    group = f"dialog_{uuid.uuid4().hex[:8]}"
     confirm_id = ""
     if confirm_label and on_confirm:
         confirm_id = f"cb_dialog_confirm_{uuid.uuid4().hex[:8]}"
-        _register_callback(confirm_id, lambda *_, **__: on_confirm())
+        _register_pinned_callback(confirm_id, lambda *_, **__: on_confirm(), group)
 
     cancel_id = ""
     if cancel_label and on_cancel:
         cancel_id = f"cb_dialog_cancel_{uuid.uuid4().hex[:8]}"
-        _register_callback(cancel_id, lambda *_, **__: on_cancel())
+        _register_pinned_callback(cancel_id, lambda *_, **__: on_cancel(), group)
 
     args: dict[str, Any] = {
         "title": str(title),

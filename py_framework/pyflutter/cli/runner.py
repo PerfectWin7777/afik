@@ -279,7 +279,12 @@ class PyFlutterRunner:
         self.app_module = None
         self.app = None
         self.is_running = False
-        self.tree_lock = threading.Lock()
+        self.tree_lock = threading.RLock()
+        self._building = False
+        self._rebuild_requested = False
+        self._event_thread: Optional[threading.Thread] = None
+        self._callback_queue: queue.Queue = queue.Queue()
+        self._callback_thread: Optional[threading.Thread] = None
         atexit.register(self.quit, exit_sys=False)
 
         # Load project configuration if pyflutter.yaml exists
@@ -363,8 +368,10 @@ class PyFlutterRunner:
         logger.success("Initial UI tree sent to Bridge.")
 
         # 7. Start threads: Event receiver & Keypress handler
-        event_thread = threading.Thread(target=self._event_loop, daemon=True)
-        event_thread.start()
+        self._callback_thread = threading.Thread(target=self._callback_worker, daemon=True)
+        self._callback_thread.start()
+        self._event_thread = threading.Thread(target=self._event_loop, daemon=True)
+        self._event_thread.start()
 
         self._print_banner(dev_name)
         self._interactive_keyboard_loop()
@@ -471,27 +478,52 @@ class PyFlutterRunner:
                 continue
 
             if msg_type == MSG_CALLBACK_EVENT and event:
-                try:
-                    logger.debug(f"Event received: {event.callback_id}")
-                    invoke_callback(event.callback_id, dict(event.event_data))
+                # Never run user code on this thread: it must keep reading the
+                # bridge so plugin answers (called from callbacks) can arrive.
+                self._callback_queue.put(event)
 
-                    # Rebuild and send new tree (diffing is applied inside send_tree)
-                    with self.tree_lock:
-                        new_tree = self._build_and_tag_tree()
-                        self.session.send_tree(new_tree)
-                except Exception as e:
-                    if self.is_running:
-                        logger.error(f"Error handling callback event {event.callback_id}: {e}")
+        self._callback_queue.put(None)
+
+    def _callback_worker(self):
+        """Runs user callbacks sequentially, then re-renders the tree."""
+        while True:
+            event = self._callback_queue.get()
+            if event is None or not self.is_running:
+                break
+            try:
+                logger.debug("Event received: {}", event.callback_id)
+                invoke_callback(event.callback_id, dict(event.event_data))
+                self.push_update()
+            except Exception as e:
+                if self.is_running:
+                    logger.opt(exception=True).error("Error handling callback event {}: {}", event.callback_id, e)
+
+    def _render_and_send(self, force_full: bool = False) -> None:
+        """Builds and sends the tree. Updates requested during a build are coalesced
+        into one extra rebuild instead of re-entering (and deadlocking on) the lock."""
+        with self.tree_lock:
+            if self._building:
+                self._rebuild_requested = True
+                return
+            self._building = True
+            try:
+                while True:
+                    self._rebuild_requested = False
+                    tree = self._build_and_tag_tree()
+                    self.session.send_tree(tree, force_full=force_full)
+                    force_full = False
+                    if not self._rebuild_requested:
+                        break
+            finally:
+                self._building = False
 
     def push_update(self):
         """Pushes an asynchronous tree update to the bridge and connected device."""
         if self.session and self.app:
             try:
-                with self.tree_lock:
-                    tree = self._build_and_tag_tree()
-                    self.session.send_tree(tree)
+                self._render_and_send()
             except Exception as e:
-                logger.error(f"Failed to push async update: {e}")
+                logger.opt(exception=True).error("Failed to push async update: {}", e)
 
     def hot_reload(self):
         """Performs a fast Hot Reload (reloads Python module while preserving state, pushes diff patch)."""
