@@ -15,7 +15,7 @@ class FlutterSecureStorage:
     def write(self, key: str, value: str) -> bool:
         """Stores a sensitive value encrypted."""
         res = call_plugin("flutter_secure_storage", "write", {"key": str(key), "value": str(value)})
-        return bool(isinstance(res, dict) and res.get("success", True))
+        return isinstance(res, dict) and res.get("success") is True
 
     def read(self, key: str) -> Optional[str]:
         """Reads and decrypts a value."""
@@ -25,12 +25,12 @@ class FlutterSecureStorage:
     def delete(self, key: str) -> bool:
         """Deletes a key from secure storage."""
         res = call_plugin("flutter_secure_storage", "delete", {"key": str(key)})
-        return bool(isinstance(res, dict) and res.get("success", True))
+        return isinstance(res, dict) and res.get("success") is True
 
     def delete_all(self) -> bool:
         """Clears all keys in secure storage."""
-        call_plugin("flutter_secure_storage", "deleteAll", {})
-        return True
+        res = call_plugin("flutter_secure_storage", "deleteAll", {})
+        return isinstance(res, dict) and res.get("cleared") is True
 
     def read_all(self) -> dict[str, str]:
         """Reads all decrypted key-value pairs."""

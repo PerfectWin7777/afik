@@ -201,3 +201,54 @@ class TestSqflite(unittest.TestCase):
             db.insert("items; DROP TABLE items", {"name": "x"})
         with self.assertRaises(Exception):
             db.insert("missing_table", {"name": "x"})
+
+
+class TestSecurityPluginsRefuseByDefault(unittest.TestCase):
+    """A missing, unknown or malformed platform answer must never read as a success."""
+
+    BAD_ANSWERS = [None, {}, "ok", [], {"authenticated": "true"}, {"status": "weird"}]
+
+    def _with_answer(self, answer):
+        return patch("pyflutter.plugins.manager.call_plugin", return_value=answer)
+
+    def test_local_auth_refuses(self):
+        from pyflutter.plugins import local_auth
+        for answer in self.BAD_ANSWERS:
+            with patch.object(local_auth, "call_plugin", return_value=answer):
+                auth = local_auth.LocalAuthentication()
+                self.assertFalse(auth.authenticate("why"), answer)
+                self.assertFalse(auth.can_check_biometrics(), answer)
+                self.assertFalse(auth.is_device_supported(), answer)
+                self.assertFalse(auth.stop_authentication(), answer)
+                self.assertEqual(auth.get_available_biometrics(), [], answer)
+
+    def test_local_auth_accepts_only_explicit_true(self):
+        from pyflutter.plugins import local_auth
+        with patch.object(local_auth, "call_plugin", return_value={"authenticated": True}) as call:
+            self.assertTrue(local_auth.LocalAuthentication().authenticate("why"))
+            self.assertEqual(call.call_args.kwargs.get("timeout"), manager.INTERACTIVE_TIMEOUT)
+
+    def test_permission_handler_refuses(self):
+        from pyflutter.plugins import permission_handler as ph
+        for answer in self.BAD_ANSWERS:
+            with patch.object(ph, "call_plugin", return_value=answer):
+                self.assertEqual(ph.check_permission("camera"), ph.PermissionStatus.DENIED, answer)
+                self.assertEqual(ph.request_permission(ph.Permission.CAMERA), ph.PermissionStatus.DENIED, answer)
+                self.assertFalse(ph.open_app_settings(), answer)
+
+    def test_permission_handler_reads_real_statuses(self):
+        from pyflutter.plugins import permission_handler as ph
+        for raw, expected in (("granted", ph.PermissionStatus.GRANTED),
+                              ("permanentlyDenied", ph.PermissionStatus.PERMANENTLY_DENIED),
+                              ("limited", ph.PermissionStatus.LIMITED)):
+            with patch.object(ph, "call_plugin", return_value={"status": raw}):
+                self.assertEqual(ph.check_permission("camera"), expected)
+
+    def test_secure_storage_refuses(self):
+        from pyflutter.plugins import flutter_secure_storage as fss
+        for answer in self.BAD_ANSWERS:
+            with patch.object(fss, "call_plugin", return_value=answer):
+                vault = fss.FlutterSecureStorage()
+                self.assertFalse(vault.write("k", "v"), answer)
+                self.assertFalse(vault.delete("k"), answer)
+                self.assertFalse(vault.delete_all(), answer)

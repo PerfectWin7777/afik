@@ -51,6 +51,7 @@ python ../audit/repro_core.py                         # relance les repros
 | B-14 | Module utilisateur écrasait la stdlib (`random.py`) ; mauvaise classe racine au hot reload | `cli/runner.py` (`load_app_from_file`) | `audit/repro_cli.py` |
 | B-15 | `ensure_port_free` tuait n'importe quel processus | `cli/runner.py` | revue manuelle |
 | B-16 | Relais TCP sans authentification, taille de trame illimitée | `rust_bridge/src/main.rs`, `cli/runner.py`, `main.dart` (`PYFLUTTER_TOKEN`) | `tests/test_bridge_relay.py` |
+| B-06 | Plugins sécurité : défauts « succès » côté Python, shims Dart factices | `plugins/local_auth.py`, `permission_handler.py`, `flutter_secure_storage.py` (refus par défaut) ; `dart_runtime/lib/plugins/*_shim.dart` branchés sur `local_auth ^2.3`, `permission_handler ^13`, `flutter_secure_storage ^11` ; `MainActivity.kt`, `styles.xml`, `build.gradle.kts`, `pubspec.yaml` | `TestSecurityPluginsRefuseByDefault` ; Dart non compilé |
 | B-30 | `pyflutter.yaml` mal formé = crash ou silence | `core/config.py` | `TestConfigRobustness` |
 | B-32 | Titre non échappé dans le manifeste Android | `cli/manifest_sync.py` | `audit/repro_cli.py` |
 | B-33 | Plateforme du device devinée à partir de l'id | `cli/devices.py` | revue manuelle |
@@ -67,7 +68,6 @@ python ../audit/repro_core.py                         # relance les repros
 | ID | Fait | Reste |
 |----|------|-------|
 | B-03 | Le build échoue si `cargo` échoue ; avertit qu'il n'y a pas d'interpréteur | L'embarquement lui-même → **partie C** |
-| B-06 | `local_auth`, `permission_handler`, `secure_storage` côté Dart refusent au lieu de mentir | Brancher les vrais packages → **T-01** |
 | B-20 | Registre de callbacks verrouillé | Un seul thread d'UI pour callbacks **et** builds → **T-02** |
 | B-32 | Échappement XML, permissions inconnues signalées | Nettoyage des permissions retirées, copie par projet → **T-14** |
 | B-37 | Fallback local limité au mode sans runtime | Marquage explicite des mocks → **T-08** |
@@ -76,7 +76,7 @@ python ../audit/repro_core.py                         # relance les repros
 
 | Ordre | Ticket | Sujet | Taille |
 |------:|--------|-------|:------:|
-| 1 | T-01 | Vrais plugins sécurité (local_auth, permission_handler, secure_storage) | M |
+| 1 | T-01 ✅ | Vrais plugins sécurité (local_auth, permission_handler, secure_storage) — **fait**, côté Dart à valider sur appareil | M |
 | 2 | T-02 | Ordonnanceur de frames + thread d'UI unique (B-19, B-20) | M |
 | 3 | T-03 | Cycle de vie des `State` : `dispose` (B-21) | M |
 | 4 | T-04 | `FormKey` comme magasin de valeurs (B-27) | S |
@@ -109,7 +109,9 @@ Chaque ticket est autonome. Les numéros `B-xx` renvoient au rapport initial (`a
 
 ---
 
-## T-01 — Vrais plugins sécurité : `local_auth`, `permission_handler`, `flutter_secure_storage` (B-06)
+## T-01 — ✅ FAIT — Vrais plugins sécurité : `local_auth`, `permission_handler`, `flutter_secure_storage` (B-06)
+
+> Fait. Reste à **valider chez vous** : `cd dart_runtime && flutter pub get && flutter analyze`, puis test sur appareil (biométrie refusée → Python reçoit `False` ; permission refusée → `DENIED` ; secret relu après redémarrage). iOS : `permission_handler` demande des réglages de build (Podfile/SPM) et des clés `Info.plist` par permission, et le dossier `ios/` n'a pas de `Podfile` tant que Flutter ne l'a pas généré : à faire au premier build iOS (voir README du package). Linux : `flutter_secure_storage` demande `libsecret-1-dev`.
 
 **Pourquoi c'est prioritaire** : une application qui protège une action avec la biométrie, ou qui stocke un jeton, doit pouvoir faire confiance au résultat. Aujourd'hui les shims Dart refusent (c'est le comportement sûr), mais les **wrappers Python répondent « succès » par défaut** quand la réponse est absente.
 

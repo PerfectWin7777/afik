@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import Union
-from pyflutter.plugins.manager import call_plugin
+from pyflutter.plugins.manager import INTERACTIVE_TIMEOUT, call_plugin
 
 
 class Permission(str, Enum):
@@ -43,29 +43,35 @@ class PermissionStatus(str, Enum):
         return self == PermissionStatus.PERMANENTLY_DENIED
 
 
+def _parse_status(res: object) -> PermissionStatus:
+    """Anything missing, unknown or malformed is a refusal, never a grant."""
+    raw = res.get("status") if isinstance(res, dict) else None
+    try:
+        return PermissionStatus(str(raw))
+    except ValueError:
+        return PermissionStatus.DENIED
+
+
+def _permission_name(permission: Union[Permission, str]) -> str:
+    return permission.value if isinstance(permission, Permission) else str(permission)
+
+
 def check_permission(permission: Union[Permission, str]) -> PermissionStatus:
     """Checks the current authorization status of a permission."""
-    perm_val = permission.value if isinstance(permission, Permission) else str(permission)
-    res = call_plugin("permission_handler", "checkPermission", {"permission": perm_val})
-    status_str = res.get("status", "granted") if isinstance(res, dict) else "granted"
-    try:
-        return PermissionStatus(status_str.lower())
-    except ValueError:
-        return PermissionStatus.GRANTED
+    res = call_plugin("permission_handler", "checkPermission", {"permission": _permission_name(permission)})
+    return _parse_status(res)
 
 
 def request_permission(permission: Union[Permission, str]) -> PermissionStatus:
-    """Prompts the user to grant a permission."""
-    perm_val = permission.value if isinstance(permission, Permission) else str(permission)
-    res = call_plugin("permission_handler", "requestPermission", {"permission": perm_val})
-    status_str = res.get("status", "granted") if isinstance(res, dict) else "granted"
-    try:
-        return PermissionStatus(status_str.lower())
-    except ValueError:
-        return PermissionStatus.GRANTED
+    """Prompts the user to grant a permission (waits for the user's answer)."""
+    res = call_plugin(
+        "permission_handler", "requestPermission", {"permission": _permission_name(permission)},
+        timeout=INTERACTIVE_TIMEOUT,
+    )
+    return _parse_status(res)
 
 
 def open_app_settings() -> bool:
     """Opens system settings for the current application."""
     res = call_plugin("permission_handler", "openAppSettings", {})
-    return bool(isinstance(res, dict) and res.get("opened", True))
+    return isinstance(res, dict) and res.get("opened") is True

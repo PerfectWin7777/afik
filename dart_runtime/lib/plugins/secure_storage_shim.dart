@@ -1,15 +1,40 @@
 import 'dart:async';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'plugin_registry.dart';
 
-/// flutter_secure_storage is not linked into this runtime yet.
-///
-/// Secrets must never be kept in plain memory while pretending to be stored in
-/// the Keychain / KeyStore, so every call is refused.
+/// Real encrypted storage: Keychain on iOS/macOS, Keystore-backed encryption on
+/// Android (flutter_secure_storage).
 class SecureStorageShim implements PyFlutterPlugin {
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+
   @override
   Future<dynamic> handleMethodCall(String method, Map<String, String> args) async {
-    throw UnsupportedError(
-        'flutter_secure_storage is not linked into the PyFlutter runtime: '
-        '"$method" refused (no secret is stored).');
+    final key = args['key'] ?? '';
+
+    switch (method) {
+      case 'write':
+        await _storage.write(key: key, value: args['value'] ?? '');
+        return {'key': key, 'success': true};
+
+      case 'read':
+        return await _storage.read(key: key);
+
+      case 'delete':
+        await _storage.delete(key: key);
+        return {'key': key, 'success': true};
+
+      case 'deleteAll':
+        await _storage.deleteAll();
+        return {'cleared': true};
+
+      case 'readAll':
+        return await _storage.readAll();
+
+      case 'containsKey':
+        return {'containsKey': await _storage.containsKey(key: key)};
+
+      default:
+        throw UnsupportedError('SecureStorage method "$method" is not supported.');
+    }
   }
 }

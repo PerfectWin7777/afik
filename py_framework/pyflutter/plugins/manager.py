@@ -39,6 +39,9 @@ class PluginTimeoutError(PluginError, TimeoutError):
 
 _rpc_lock = threading.Lock()
 
+# Calls that wait for a human (biometric prompt, permission dialog, pickers).
+INTERACTIVE_TIMEOUT = 120.0
+
 
 def _runtime_is_connected(runner: Any) -> bool:
     return bool(runner and runner.session and runner.session.process and runner.is_running)
