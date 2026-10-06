@@ -75,7 +75,8 @@ class TestPluginRpc(unittest.TestCase):
 
     def test_offline_fallback_still_works_without_runtime(self):
         with patch.object(manager, "get_active_runner", return_value=None):
-            self.assertEqual(manager.call_plugin("local_auth", "authenticate", {}), {"authenticated": True})
+            res = manager.call_plugin("connectivity_plus", "checkConnectivity", {})
+            self.assertEqual(res, {"status": "wifi", "results": ["wifi"]})
 
 
 class TestPinnedCallbacks(unittest.TestCase):
@@ -224,9 +225,10 @@ class TestSecurityPluginsRefuseByDefault(unittest.TestCase):
 
     def test_local_auth_accepts_only_explicit_true(self):
         from pyflutter.plugins import local_auth
-        with patch.object(local_auth, "call_plugin", return_value={"authenticated": True}) as call:
+        with patch.object(local_auth, "call_plugin", return_value={"authenticated": True}):
             self.assertTrue(local_auth.LocalAuthentication().authenticate("why"))
-            self.assertEqual(call.call_args.kwargs.get("timeout"), manager.INTERACTIVE_TIMEOUT)
+        # the wait for the person is decided by the central table
+        self.assertEqual(manager.timeout_for("local_auth", "authenticate"), manager.INTERACTIVE_TIMEOUT)
 
     def test_permission_handler_refuses(self):
         from pyflutter.plugins import permission_handler as ph

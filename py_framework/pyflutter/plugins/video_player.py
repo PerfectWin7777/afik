@@ -49,7 +49,7 @@ class VideoPlayerController:
 
     def initialize(self) -> bool:
         """Opens the video and reads its metadata. True once the platform confirms it."""
-        res = call_plugin("video_player", "initialize", {"controllerId": self.controller_id}, timeout=60.0)
+        res = call_plugin("video_player", "initialize", {"controllerId": self.controller_id})
         self.is_initialized = isinstance(res, dict) and res.get("initialized") is True
         if self.is_initialized:
             if isinstance(res.get("duration"), (int, float)):

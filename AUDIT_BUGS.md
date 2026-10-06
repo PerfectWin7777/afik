@@ -73,7 +73,7 @@ python ../audit/repro_core.py                         # relance les repros
 | ID | Fait | Reste |
 |----|------|-------|
 | B-03 | Le build échoue si `cargo` échoue ; avertit qu'il n'y a pas d'interpréteur | L'embarquement lui-même → **partie C** |
-| B-37 | Fallback local limité au mode sans runtime ; wrappers stricts | Table de timeouts par plugin, refus des plugins « sécurité » hors runtime sans variable d'environnement → **T-08** |
+| B-37 | Fallback local limité au mode sans runtime ; wrappers stricts ; table de timeouts ; plugins « sécurité » refusés hors runtime (sauf `PYFLUTTER_ALLOW_INSECURE_MOCKS=1`) ; avertissement unique sur les simulations | **T-08 fait** (`tests/test_plugin_timeouts_offline.py`) |
 
 ### 1.3 Ordre de travail recommandé pour ce qui reste
 
@@ -87,7 +87,7 @@ python ../audit/repro_core.py                         # relance les repros
 | 5 | T-05 ✅ | Convention d'appel des callbacks (B-23) — **fait** (reste : convertisseurs de type par widget) | S |
 | 6 | T-06 ✅ | Signaux : égalité, mutation en place, batch (B-17, B-18) — **fait** | S |
 | 7 | T-07 ✅ | Arguments structurés côté Dart (B-39) — **fait** | S |
-| 8 | T-08 | Timeouts par plugin + mocks explicites (B-41, B-37) | S |
+| 8 | T-08 ✅ | Timeouts par plugin + mocks explicites (B-41, B-37) — **fait** | S |
 | 9 | T-09 | Canaux d'événements Dart→Python (B-40) | L |
 | 10 | T-10 | Suppression de prop vs valeur vide (B-25) | S |
 | 11 | T-11 | Contrat de props partagé + validation (B-24, B-57, B-58) | L |
@@ -485,7 +485,9 @@ Notez le choix : une valeur non-chaîne devient du **JSON** (`jsonEncode`), pas 
 
 ---
 
-## T-08 — Timeouts par plugin et mocks explicites (B-41, B-37)
+## T-08 — ✅ FAIT — Timeouts par plugin et mocks explicites (B-41, B-37)
+
+> Implémenté dans `plugins/manager.py` : `PLUGIN_TIMEOUTS` / `timeout_for` (entrée `(plugin, "*")` pour tout un plugin ; un `timeout=` explicite l'emporte ; les wrappers n'ont plus de valeurs en dur sauf `audioplayers`/`webview_flutter` qui laissent le choix à l'appelant), `cancel_pending_calls` (appelée par `runner.quit()` et à la fin de la lecture du pont), `OFFLINE_REFUSED` + `PYFLUTTER_ALLOW_INSECURE_MOCKS=1`, avertissement `[offline]` unique par plugin. Tests : `tests/test_plugin_timeouts_offline.py`. Le refus offline s'applique à **toutes** les méthodes de `local_auth`, `permission_handler` et `flutter_secure_storage` (pas seulement `authenticate`), car `isDeviceSupported → True` ou `checkPermission → granted` mentent aussi.
 
 **Problème**
 - Le timeout par défaut de 3 s (5 s pour `MethodChannel`) est trop court pour les appels **interactifs** : sélecteur de fichier, caméra, authentification, demande de permission, partage.

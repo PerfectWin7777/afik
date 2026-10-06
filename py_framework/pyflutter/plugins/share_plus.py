@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from typing import Optional
 
-from pyflutter.plugins.manager import INTERACTIVE_TIMEOUT, call_plugin
+from pyflutter.plugins.manager import call_plugin
 
 
 def _shared(res: object) -> bool:
@@ -28,7 +28,7 @@ def share(
         args["subject"] = str(subject)
     if title:
         args["title"] = str(title)
-    return _shared(call_plugin("share_plus", "share", args, timeout=INTERACTIVE_TIMEOUT))
+    return _shared(call_plugin("share_plus", "share", args))
 
 
 def share_files(
@@ -42,12 +42,12 @@ def share_files(
         args["text"] = str(text)
     if subject:
         args["subject"] = str(subject)
-    return _shared(call_plugin("share_plus", "shareFiles", args, timeout=INTERACTIVE_TIMEOUT))
+    return _shared(call_plugin("share_plus", "shareFiles", args))
 
 
 def share_uri(uri: str) -> bool:
     """Shares a URI via the system share sheet."""
-    return _shared(call_plugin("share_plus", "shareUri", {"uri": str(uri)}, timeout=INTERACTIVE_TIMEOUT))
+    return _shared(call_plugin("share_plus", "shareUri", {"uri": str(uri)}))
 
 
 __all__ = [

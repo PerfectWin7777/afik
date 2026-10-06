@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import base64
 from typing import Any, Optional
-from pyflutter.plugins.manager import INTERACTIVE_TIMEOUT, call_plugin
+from pyflutter.plugins.manager import call_plugin
 
 
 def pick_files(
@@ -28,7 +28,7 @@ def pick_files(
     if allowed_extensions:
         args["allowed_extensions"] = ",".join(allowed_extensions)
 
-    res = call_plugin("file_picker", "pickFiles", args, timeout=INTERACTIVE_TIMEOUT)
+    res = call_plugin("file_picker", "pickFiles", args)
     return list(res) if isinstance(res, list) else []
 
 
@@ -37,7 +37,7 @@ def get_directory_path(*, initial_directory: Optional[str] = None) -> Optional[s
     args: dict[str, Any] = {}
     if initial_directory:
         args["initial_directory"] = str(initial_directory)
-    res = call_plugin("file_picker", "getDirectoryPath", args, timeout=INTERACTIVE_TIMEOUT)
+    res = call_plugin("file_picker", "getDirectoryPath", args)
     return str(res) if isinstance(res, str) and res else None
 
 
@@ -55,5 +55,5 @@ def save_file(
     }
     if initial_directory:
         args["initial_directory"] = str(initial_directory)
-    res = call_plugin("file_picker", "saveFile", args, timeout=INTERACTIVE_TIMEOUT)
+    res = call_plugin("file_picker", "saveFile", args)
     return str(res) if isinstance(res, str) and res else None

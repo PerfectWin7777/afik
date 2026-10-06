@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 from pyflutter.plugins.image_picker import XFile
-from pyflutter.plugins.manager import INTERACTIVE_TIMEOUT, call_plugin
+from pyflutter.plugins.manager import call_plugin
 
 
 class CameraDescription:
@@ -56,15 +56,14 @@ class CameraController:
     def initialize(self) -> bool:
         """Initializes the camera hardware for preview and capture."""
         res = call_plugin(
-            "camera", "initialize", {"cameraId": self.camera_id, "resolution": self.resolution},
-            timeout=INTERACTIVE_TIMEOUT,  # may wait for the camera permission prompt
+            "camera", "initialize", {"cameraId": self.camera_id, "resolution": self.resolution}
         )
         self.is_initialized = isinstance(res, dict) and res.get("initialized") is True
         return self.is_initialized
 
     def take_picture(self) -> Optional[XFile]:
         """Captures a still image from the camera."""
-        res = call_plugin("camera", "takePicture", {"cameraId": self.camera_id}, timeout=30.0)
+        res = call_plugin("camera", "takePicture", {"cameraId": self.camera_id})
         if isinstance(res, dict) and "path" in res:
             return XFile(res["path"], res.get("name"), int(res.get("size", 0)))
         return None
@@ -77,7 +76,7 @@ class CameraController:
 
     def stop_video_recording(self) -> Optional[XFile]:
         """Stops recording video and returns the captured video file."""
-        res = call_plugin("camera", "stopVideoRecording", {"cameraId": self.camera_id}, timeout=30.0)
+        res = call_plugin("camera", "stopVideoRecording", {"cameraId": self.camera_id})
         self._is_recording = False
         if isinstance(res, dict) and "path" in res:
             return XFile(res["path"], res.get("name"), int(res.get("size", 0)))

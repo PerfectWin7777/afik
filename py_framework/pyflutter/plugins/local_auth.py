@@ -5,7 +5,7 @@ Provides biometric authentication (Fingerprint, TouchID, FaceID, Windows Hello).
 
 from __future__ import annotations
 
-from pyflutter.plugins.manager import INTERACTIVE_TIMEOUT, call_plugin
+from pyflutter.plugins.manager import call_plugin
 
 
 class LocalAuthentication:
@@ -36,7 +36,7 @@ class LocalAuthentication:
         res = call_plugin("local_auth", "authenticate", {
             "localizedReason": str(localized_reason),
             "biometricOnly": "true" if biometric_only else "false",
-        }, timeout=INTERACTIVE_TIMEOUT)
+        })
         # Only an explicit `authenticated: true` from the platform counts as success.
         return isinstance(res, dict) and res.get("authenticated") is True
 

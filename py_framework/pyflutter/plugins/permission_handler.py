@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import Union
-from pyflutter.plugins.manager import INTERACTIVE_TIMEOUT, call_plugin
+from pyflutter.plugins.manager import call_plugin
 
 
 class Permission(str, Enum):
@@ -66,7 +66,6 @@ def request_permission(permission: Union[Permission, str]) -> PermissionStatus:
     """Prompts the user to grant a permission (waits for the user's answer)."""
     res = call_plugin(
         "permission_handler", "requestPermission", {"permission": _permission_name(permission)},
-        timeout=INTERACTIVE_TIMEOUT,
     )
     return _parse_status(res)
 

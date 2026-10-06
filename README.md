@@ -191,7 +191,7 @@ replaced by simulated data, and a missing or malformed answer never reads as a s
 | `syncfusion_flutter_pdfviewer`, `pdfx`, `flutter_pdfview`, `printing` | `pyflutter.plugins.<name>` | PDF viewers (`SfPdfViewer`, `PdfView`, `PDFView`), page rendering, print and share. Syncfusion needs its own licence |
 | `hive`, `sqflite` | `pyflutter.plugins.hive`, `pyflutter.plugins.sqflite` | Pure Python (JSON boxes, `sqlite3`), no Flutter package |
 
-Without a connected Flutter runtime (unit tests, scripts) plugin calls use a small local simulation so code can be tested offline.
+Without a connected Flutter runtime (unit tests, scripts) plugin calls use a small local simulation so code can be tested offline. The first call of each simulated plugin logs an `[offline] ... is simulated` warning, and the security plugins (`local_auth`, `permission_handler`, `flutter_secure_storage`) refuse instead of faking an answer unless `PYFLUTTER_ALLOW_INSECURE_MOCKS=1` is set (meant for tests). Calls that wait for a person (pickers, permission prompts, authentication, sharing) wait up to 120 s, the others 3 s.
 
 To check a catalog change: `python tools/verify_catalog.py` (needs the Flutter SDK) installs every plugin into a temporary copy of the
 runtime, runs `flutter pub get` and `flutter analyze`, then installs them all together to catch version conflicts.

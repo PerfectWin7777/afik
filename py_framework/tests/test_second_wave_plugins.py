@@ -9,6 +9,7 @@ Unit tests for the second wave of essential Flutter packages:
 - local_auth
 """
 
+import os
 import unittest
 
 import pyflutter as pf
@@ -24,6 +25,22 @@ from pyflutter.plugins import (
     local_auth,
     video_player,
 )
+
+
+_previous_mock_setting = os.environ.get("PYFLUTTER_ALLOW_INSECURE_MOCKS")
+
+
+def setUpModule():
+    # These tests exercise the offline simulation of the security plugins, which is refused
+    # by default (see tests/test_plugin_timeouts_offline.py).
+    os.environ["PYFLUTTER_ALLOW_INSECURE_MOCKS"] = "1"
+
+
+def tearDownModule():
+    if _previous_mock_setting is None:
+        os.environ.pop("PYFLUTTER_ALLOW_INSECURE_MOCKS", None)
+    else:
+        os.environ["PYFLUTTER_ALLOW_INSECURE_MOCKS"] = _previous_mock_setting
 
 
 class TestChewiePluginAndWidget(unittest.TestCase):

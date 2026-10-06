@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from pyflutter.plugins.manager import INTERACTIVE_TIMEOUT, call_plugin
+from pyflutter.plugins.manager import call_plugin
 
 
 class Printing:
@@ -22,7 +22,7 @@ class Printing:
         res = call_plugin("printing", "printPdf", {
             "path": str(path_or_name),
             "name": str(document_name or path_or_name),
-        }, timeout=INTERACTIVE_TIMEOUT)
+        })
         return isinstance(res, dict) and res.get("printed") is True
 
     @staticmethod
@@ -31,13 +31,13 @@ class Printing:
         res = call_plugin("printing", "sharePdf", {
             "path": str(path),
             "name": str(filename or path),
-        }, timeout=INTERACTIVE_TIMEOUT)
+        })
         return isinstance(res, dict) and res.get("shared") is True
 
     @staticmethod
     def layout_pdf(path: str) -> bool:
         """Shows the print preview/layout dialog for a PDF file."""
-        res = call_plugin("printing", "layoutPdf", {"path": str(path)}, timeout=INTERACTIVE_TIMEOUT)
+        res = call_plugin("printing", "layoutPdf", {"path": str(path)})
         return isinstance(res, dict) and res.get("completed") is True
 
 

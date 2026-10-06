@@ -525,8 +525,15 @@ class PyFlutterRunner:
     def _event_loop(self):
         """Listens for incoming frames (CallbackEvents and PluginResponses) from Flutter."""
         from pyflutter.core.render import MSG_CALLBACK_EVENT, MSG_PLUGIN_RESPONSE
-        from pyflutter.plugins.manager import handle_plugin_response
+        from pyflutter.plugins.manager import cancel_pending_calls, handle_plugin_response
 
+        try:
+            self._read_events(MSG_CALLBACK_EVENT, MSG_PLUGIN_RESPONSE, handle_plugin_response)
+        finally:
+            # Nothing will answer the calls still waiting once the stream is over.
+            cancel_pending_calls("bridge closed")
+
+    def _read_events(self, MSG_CALLBACK_EVENT, MSG_PLUGIN_RESPONSE, handle_plugin_response) -> None:
         while self.is_running and self.session:
             try:
                 event_pair = self.session.next_event()
@@ -661,6 +668,8 @@ class PyFlutterRunner:
         logger.info("\n👋 [PyFlutter] Quitting...")
         self.is_running = False
         self.scheduler.stop()
+        from pyflutter.plugins.manager import cancel_pending_calls
+        cancel_pending_calls("bridge closed")
 
         if self.flutter_process:
             try:

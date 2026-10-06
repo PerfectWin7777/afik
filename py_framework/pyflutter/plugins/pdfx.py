@@ -32,12 +32,12 @@ class PdfDocument:
     @classmethod
     def open_file(cls, path: str) -> "PdfDocument":
         """Opens a PDF from the local filesystem."""
-        return cls._from_answer(call_plugin("pdfx", "openPdf", {"path": str(path)}, timeout=30.0), str(path))
+        return cls._from_answer(call_plugin("pdfx", "openPdf", {"path": str(path)}), str(path))
 
     @classmethod
     def open_asset(cls, asset_name: str) -> "PdfDocument":
         """Opens a PDF bundled as an application asset."""
-        res = call_plugin("pdfx", "openPdf", {"url": str(asset_name), "isAsset": "true"}, timeout=30.0)
+        res = call_plugin("pdfx", "openPdf", {"url": str(asset_name), "isAsset": "true"})
         return cls._from_answer(res, str(asset_name))
 
     def render_page(self, page_number: int, scale: float = 2.0) -> dict[str, Any]:
@@ -49,7 +49,7 @@ class PdfDocument:
             "documentId": self.document_id,
             "pageNumber": str(page_number),
             "scale": str(scale),
-        }, timeout=30.0)
+        })
         if not (isinstance(res, dict) and res.get("rendered") is True):
             raise PluginError(f"pdfx could not render page {page_number}: unexpected answer {res!r}")
         return dict(res)

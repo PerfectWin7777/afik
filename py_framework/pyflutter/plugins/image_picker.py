@@ -9,7 +9,7 @@ import os
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
-from pyflutter.plugins.manager import INTERACTIVE_TIMEOUT, call_plugin
+from pyflutter.plugins.manager import call_plugin
 
 
 class ImageSource(str, Enum):
@@ -61,7 +61,7 @@ class ImagePicker:
         if image_quality is not None:
             args["imageQuality"] = str(image_quality)
 
-        res = call_plugin("image_picker", "pickImage", args, timeout=INTERACTIVE_TIMEOUT)
+        res = call_plugin("image_picker", "pickImage", args)
         if isinstance(res, dict) and "path" in res:
             return XFile(res["path"], res.get("name"), int(res.get("size", 0)))
         return None
@@ -72,14 +72,14 @@ class ImagePicker:
     ) -> Optional[XFile]:
         """Prompts the user to pick a video from gallery or record with camera."""
         source_val = source.value if isinstance(source, ImageSource) else str(source)
-        res = call_plugin("image_picker", "pickVideo", {"source": source_val}, timeout=INTERACTIVE_TIMEOUT)
+        res = call_plugin("image_picker", "pickVideo", {"source": source_val})
         if isinstance(res, dict) and "path" in res:
             return XFile(res["path"], res.get("name"), int(res.get("size", 0)))
         return None
 
     def pick_multi_image(self) -> list[XFile]:
         """Prompts the user to pick multiple images."""
-        res = call_plugin("image_picker", "pickMultiImage", {}, timeout=INTERACTIVE_TIMEOUT)
+        res = call_plugin("image_picker", "pickMultiImage", {})
         if isinstance(res, list):
             items = []
             for item in res:

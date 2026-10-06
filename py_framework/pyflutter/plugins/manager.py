@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import os
 import shutil
 import struct
 import subprocess
@@ -51,6 +52,52 @@ def require(res: Any, key: str, what: str) -> dict:
 
 # Calls that wait for a human (biometric prompt, permission dialog, pickers).
 INTERACTIVE_TIMEOUT = 120.0
+DEFAULT_TIMEOUT = 3.0
+
+# Time the Dart side may take, per (plugin, method); ("plugin", "*") covers every other method
+# of that plugin. Anything not listed gets DEFAULT_TIMEOUT. An explicit ``timeout=`` always wins.
+PLUGIN_TIMEOUTS: dict[tuple[str, str], float] = {
+    # a human answers
+    ("local_auth", "authenticate"): INTERACTIVE_TIMEOUT,
+    ("permission_handler", "requestPermission"): INTERACTIVE_TIMEOUT,
+    ("file_picker", "pickFiles"): INTERACTIVE_TIMEOUT,
+    ("file_picker", "getDirectoryPath"): INTERACTIVE_TIMEOUT,
+    ("file_picker", "saveFile"): INTERACTIVE_TIMEOUT,
+    ("image_picker", "pickImage"): INTERACTIVE_TIMEOUT,
+    ("image_picker", "pickVideo"): INTERACTIVE_TIMEOUT,
+    ("image_picker", "pickMultiImage"): INTERACTIVE_TIMEOUT,
+    ("share_plus", "share"): INTERACTIVE_TIMEOUT,
+    ("share_plus", "shareFiles"): INTERACTIVE_TIMEOUT,
+    ("share_plus", "shareUri"): INTERACTIVE_TIMEOUT,
+    ("printing", "printPdf"): INTERACTIVE_TIMEOUT,
+    ("printing", "sharePdf"): INTERACTIVE_TIMEOUT,
+    ("printing", "layoutPdf"): INTERACTIVE_TIMEOUT,
+    ("camera", "initialize"): INTERACTIVE_TIMEOUT,          # camera permission prompt
+    ("flutter_local_notifications", "initialize"): INTERACTIVE_TIMEOUT,  # notification permission
+    # slow, but nobody to wait for
+    ("camera", "takePicture"): 30.0,
+    ("camera", "stopVideoRecording"): 30.0,
+    ("pdfx", "*"): 30.0,
+    ("video_player", "initialize"): 60.0,
+}
+
+
+def timeout_for(plugin_name: str, method: str) -> float:
+    """The default wait for ``plugin_name.method`` (see :data:`PLUGIN_TIMEOUTS`)."""
+    return PLUGIN_TIMEOUTS.get(
+        (plugin_name, method), PLUGIN_TIMEOUTS.get((plugin_name, "*"), DEFAULT_TIMEOUT)
+    )
+
+
+def cancel_pending_calls(reason: str = "bridge closed") -> None:
+    """Wakes every call waiting for an answer; each one raises ``PluginError(reason)``.
+
+    Called when the bridge goes away (quit, Dart disconnected) so that nothing keeps waiting for
+    an answer that can no longer arrive.
+    """
+    for call_id, event in list(_pending_rpc_calls.items()):
+        _rpc_results[call_id] = (None, reason)
+        event.set()
 
 
 def _runtime_is_connected(runner: Any) -> bool:
@@ -69,7 +116,7 @@ def call_plugin(
     plugin_name: str,
     method: str,
     args: Optional[dict[str, Any]] = None,
-    timeout: float = 3.0,
+    timeout: Optional[float] = None,
     wait: bool = True,
 ) -> Any:
     """
@@ -79,12 +126,20 @@ def call_plugin(
       raises `PluginError`, a missing answer raises `PluginTimeoutError`. A failed
       call is never replaced by simulated data.
     - No runtime (unit tests, scripts, offline development): the local platform
-      fallback is used.
+      fallback is used. It is a simulation: the first call of each plugin logs a warning, and
+      the security plugins (see :data:`OFFLINE_REFUSED`) refuse unless
+      ``PYFLUTTER_ALLOW_INSECURE_MOCKS=1``.
+
+    ``timeout`` defaults to :func:`timeout_for` (``PLUGIN_TIMEOUTS``): 3 s for ordinary calls,
+    120 s for the ones that wait for a person.
     """
     args = args or {}
+    if timeout is None:
+        timeout = timeout_for(plugin_name, method)
     runner = get_active_runner()
 
     if not _runtime_is_connected(runner):
+        _check_offline_allowed(plugin_name, method)
         return _dispatch_local_fallback(plugin_name, method, args)
 
     if wait and threading.current_thread() is getattr(runner, "_event_thread", None):
@@ -138,6 +193,29 @@ def handle_plugin_response(payload: bytes) -> None:
             event.set()
     except Exception as e:
         logger.error(f"Error decoding plugin response: {e}")
+
+
+# Plugins whose answer people rely on for security decisions: a simulated "authenticated",
+# "granted" or secret store would be a lie, so they refuse when no Flutter runtime is connected.
+OFFLINE_REFUSED = frozenset({
+    "local_auth", "permission_handler", "flutter_secure_storage", "secure_storage",
+})
+# Offline answers that are real or explicit enough not to need a warning.
+_OFFLINE_NO_WARNING = frozenset({"__method_channel__", "path_provider"})
+_offline_warned: set[str] = set()
+
+
+def _check_offline_allowed(plugin_name: str, method: str) -> None:
+    """Refuses security plugins offline, and warns once per plugin that the answer is simulated."""
+    if plugin_name in OFFLINE_REFUSED and os.environ.get("PYFLUTTER_ALLOW_INSECURE_MOCKS") != "1":
+        raise PluginError(
+            f"{plugin_name}.{method} is unavailable offline: no Flutter runtime is connected, and "
+            "a simulated answer would not be trustworthy. Run the app on a device, or set "
+            "PYFLUTTER_ALLOW_INSECURE_MOCKS=1 for tests."
+        )
+    if plugin_name not in _OFFLINE_NO_WARNING and plugin_name not in _offline_warned:
+        _offline_warned.add(plugin_name)
+        logger.warning("[offline] {} is simulated (no Flutter runtime connected)", plugin_name)
 
 
 def _dispatch_local_fallback(plugin_name: str, method: str, args: dict[str, Any]) -> Any:
