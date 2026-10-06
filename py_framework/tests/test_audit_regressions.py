@@ -124,8 +124,10 @@ class TestTreeResolution(unittest.TestCase):
             def create_state(self):
                 return S()
 
-        a, b = W(), W()
-        self.assertNotEqual(a.key, b.key)
+        tree = resolve_tree(pf.Column([W(), W()]))
+        self.assertEqual(len(tree.children), 2)
+        from pyflutter.core import state as st
+        self.assertEqual(len(st._state_registry), 2)     # two siblings, two distinct states
 
 
 class TestWatchListeners(unittest.TestCase):

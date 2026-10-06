@@ -66,7 +66,7 @@ python ../audit/repro_core.py                         # relance les repros
 | B-44, B-45 | `unwrap`/`panic` dans le relais ; dépendances inutiles | `rust_bridge/src/main.rs`, `Cargo.toml` | `cargo build` |
 | B-46 | La lib FFI de dev détournait le transport TCP | `dart_runtime/lib/main.dart` | non compilé (Dart) |
 | B-49 | Résultat non sérialisable = aucune réponse envoyée à Python | `dart_runtime/lib/main.dart` | non compilé (Dart) |
-| B-56 | Clés d'état partagées si le projet a un fichier `state.py` | `core/state.py` (`infer_call_site_key`) | `test_stateful_keys_independent_of_user_file_name` |
+| B-56 | Clés d'état partagées si le projet a un fichier `state.py` | Clés structurelles (T-03) : plus de nom de fichier dans l'identité | `test_stateful_keys_independent_of_user_file_name`, `tests/test_state_identity.py` |
 
 ### 1.2 Corrigés en partie (reste à faire : voir tickets)
 
@@ -82,7 +82,7 @@ python ../audit/repro_core.py                         # relance les repros
 | 1 | T-01 ✅ | Refus par défaut des plugins sécurité + shims réels rangés dans le catalogue — **fait** | M |
 | 1b | T-20 ✅ | Catalogue de plugins installés à la demande (`pyflutter add`) — **fait** (reste la copie de travail par projet : T-14) | L |
 | 2 | T-02 ✅ | Ordonnanceur de frames + thread d'UI unique (B-19, B-20) — **fait** | M |
-| 3 | T-03 | Cycle de vie des `State` : `dispose` (B-21) | M |
+| 3 | T-03 ✅ | Cycle de vie des `State` : `dispose` (B-21) — **fait** | M |
 | 4 | T-04 ✅ | `FormKey` comme magasin de valeurs (B-27) — **fait** | S |
 | 5 | T-05 ✅ | Convention d'appel des callbacks (B-23) — **fait** (reste : convertisseurs de type par widget) | S |
 | 6 | T-06 ✅ | Signaux : égalité, mutation en place, batch (B-17, B-18) — **fait** | S |
@@ -287,7 +287,9 @@ class _FrameScheduler:
 
 ---
 
-## T-03 — Cycle de vie des `State` : `dispose` quand le widget quitte l'arbre (B-21)
+## T-03 — ✅ FAIT — Cycle de vie des `State` : `dispose` quand le widget quitte l'arbre (B-21)
+
+> **Fait** en deux commits. (1) Marquer-et-balayer (`core/state.py::begin_frame/sweep_states/dispose_state`, `core/render.py::resolve_tree`) avec protection des pages couvertes du `Navigator` (propriétaire = page en cours de résolution, `MaterialApp`). (2) Clé **structurelle** : chemin `root/Column[0]/Counter[2]` calculé par le résolveur (`_build_position`), `key=` explicite = identité dans le parent ; plus aucune clé `fichier:ligne` (`infer_call_site_key` et les compteurs sont supprimés). Un `StatefulComponent` construit hors arbre (appel direct de `build()`) garde son état sur l'instance. Tests : `tests/test_state_lifecycle.py`, `tests/test_state_identity.py`. Reste du hot reload complet (modules du projet, watcher) : B-59.
 
 **Problème** : `State.dispose()` n'est appelé qu'au hot restart. `_state_registry` (`core/state.py`) ne se vide jamais : timers/threads lancés dans `init_state` continuent, la mémoire croît. De plus la clé d'état est `fichier:ligne#index`, donc **éditer le fichier** déplace les lignes et casse l'association au hot reload.
 

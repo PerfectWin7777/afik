@@ -152,6 +152,16 @@ python main.py
 
 ---
 
+## State lifecycle
+
+A `StatefulComponent` keeps its `State` between frames. The state is matched by **where the widget sits in the tree** (widget types and positions from the root, like Flutter), never by source line, so editing the code does not lose it. Rules:
+
+- `State.dispose()` is called once when the widget leaves the tree (a removed branch, a popped page) and on a hot restart: stop timers, threads and subscriptions there.
+- A page covered by another one in the `Navigator` keeps its states until it is popped.
+- In a list that can be reordered, filtered or inserted into, give each stateful widget a `key=`: its state then follows the key inside its parent instead of the position.
+
+---
+
 ## Native packages
 
 PyFlutter does **not** try to expose every pub.dev package automatically, and it does not put

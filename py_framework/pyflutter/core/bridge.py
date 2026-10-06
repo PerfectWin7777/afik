@@ -78,13 +78,11 @@ class BridgeSession:
             )
         try:
             from pyflutter.core.render import resolve_tree
-            from pyflutter.core.state import reset_call_site_counters
             from pyflutter.core.widget_base import collect_active_callback_ids, sweep_stale_callbacks
 
             if resolved:
                 concrete_root = root
             else:
-                reset_call_site_counters()
                 concrete_root = resolve_tree(root)
             assign_node_ids(concrete_root)
             new_snapshot = widget_to_snapshot(concrete_root)

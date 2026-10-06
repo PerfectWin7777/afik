@@ -39,19 +39,32 @@ def resolve_tree(widget: Any, is_root: bool = True) -> Widget:
     if not is_root:
         return _resolve_node(widget)
 
-    from pyflutter.core.state import begin_frame, reset_call_site_counters, sweep_states
-    reset_call_site_counters()
+    from pyflutter.core.state import begin_frame, sweep_states
     begin_frame()
     resolved = _resolve_node(widget)      # a build that raises leaves every state alone
     sweep_states()
     return resolved
 
 
-def _resolve_node(widget: Any) -> Widget:
+def _segment(child: Any, index: int) -> str:
+    """One step of a node's path: the widget type and its key or position among its siblings."""
+    props = getattr(child, "props", None)
+    key = props.get("key") if isinstance(props, dict) else None
+    return f"{type(child).__name__}[{key if key else index}]"
+
+
+def _resolve_node(widget: Any, path: str = "root", parent_path: str = "") -> Widget:
+    from pyflutter.core.state import _build_position
+
     slot = getattr(widget, "props", {}).get("slot")
     current = widget
+    depth = 0
     while hasattr(current, "build") and callable(current.build):
+        # A component may return another component: each level gets its own identity.
+        _build_position.set((f"{path}~{depth}" if depth else path, parent_path))
         current = current.build()
+        _build_position.set(None)
+        depth += 1
         if current is None:
             raise ValueError(f"Component '{widget.__class__.__name__}.build()' returned None. Must return a Widget.")
     children = getattr(current, "children", None)
@@ -59,10 +72,10 @@ def _resolve_node(widget: Any) -> Widget:
         # Work on a copy: the source widgets (often cached by the user, e.g. an
         # imperative self.layout) must keep their Component children, otherwise
         # those components would be frozen at their first render.
-        if current.widget_type == "MaterialApp":
-            resolved_children = [_resolve_page(c) for c in children]
-        else:
-            resolved_children = [_resolve_node(c) for c in children]
+        resolve_child = _resolve_page if current.widget_type == "MaterialApp" else _resolve_node
+        resolved_children = [
+            resolve_child(c, f"{path}/{_segment(c, i)}", path) for i, c in enumerate(children)
+        ]
         current = copy.copy(current)
         current.props = dict(current.props)
         current.children = resolved_children
@@ -71,12 +84,12 @@ def _resolve_node(widget: Any) -> Widget:
     return current
 
 
-def _resolve_page(page: Any) -> Widget:
+def _resolve_page(page: Any, path: str = "root", parent_path: str = "") -> Widget:
     """Resolves one Navigator page; the states created under it belong to that page."""
     from pyflutter.core.state import _current_owner, page_owner_token
     token = _current_owner.set(page_owner_token(page))
     try:
-        return _resolve_node(page)
+        return _resolve_node(page, path, parent_path)
     finally:
         _current_owner.reset(token)
 

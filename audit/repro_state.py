@@ -34,7 +34,7 @@ class App:
 app = App()
 for i in range(3):
     tree = app.build()          # like runner._build_and_tag_tree (before send_tree reset)
-    st.reset_call_site_counters(); r = resolve_tree(tree)
+    r = resolve_tree(tree)
     print("frame", i, [c.props["text"] for c in r.children])
 print("registry size:", len(st._state_registry))
 # simulate popped screen: states are never disposed

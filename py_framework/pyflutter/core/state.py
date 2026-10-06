@@ -38,31 +38,22 @@ _active_signal_tracker: contextvars.ContextVar[Optional[Callable[[Signal[Any]], 
 )
 
 _state_registry: dict[Any, State] = {}
-_call_site_counters: dict[tuple[str, int], int] = {}
 
 
-def reset_call_site_counters() -> None:
-    """Resets call-site counters at the start of a frame build."""
-    _call_site_counters.clear()
+# --- State identity ------------------------------------------------------------------------
+#
+# A State is found again on the next frame by *where its widget sits in the tree*: the chain of
+# widget types and positions from the root ("root/Column[0]/Counter[2]"), exactly what Flutter
+# matches on. It does not depend on source files or line numbers, so editing the code (hot
+# reload) does not lose the state. Widgets in a list that can be reordered, inserted into or
+# filtered must be given an explicit ``key=``: the state then follows the key inside its parent
+# instead of the position.
 
-
-def infer_call_site_key(cls: type) -> str:
-    """Infers a deterministic, stable key for a stateful widget based on its caller code location."""
-    import inspect
-    caller = inspect.currentframe().f_back
-    while caller:
-        module_name = caller.f_globals.get("__name__", "")
-        if not (module_name == "pyflutter" or module_name.startswith("pyflutter.")):
-            break
-        caller = caller.f_back
-    if caller:
-        base_name = caller.f_code.co_filename.replace("\\", "/").split("/")[-1]
-        line = caller.f_lineno
-        loc = (base_name, line)
-        idx = _call_site_counters.get(loc, 0)
-        _call_site_counters[loc] = idx + 1
-        return f"{cls.__name__}@{base_name}:{line}#{idx}"
-    return f"{cls.__name__}#auto"
+# (path of this node, path of its parent), set by the resolver right before it builds a node
+# and consumed by the StatefulComponent being built. Outside a resolution it is None.
+_build_position: contextvars.ContextVar[Optional[tuple[str, str]]] = contextvars.ContextVar(
+    "_build_position", default=None
+)
 
 
 # --- State lifecycle: mark and sweep ------------------------------------------------------
@@ -134,7 +125,6 @@ def sweep_states() -> list["State"]:
 
 def clear_state_registry() -> None:
     """Disposes and forgets every cached State (used during hot restart)."""
-    reset_call_site_counters()
     states = list(_state_registry.values())
     _state_registry.clear()
     for state in states:
@@ -579,17 +569,36 @@ class StatefulComponent(Component):
 
     def __init__(self, *, key: Optional[Any] = None, **props: Any):
         super().__init__(**props)
-        self.key = key if key is not None else infer_call_site_key(self.__class__)
+        # An explicit key makes the state follow the key inside its parent; without one the
+        # state is matched by its position in the tree (see _build_position).
+        self.key = key
         self._state: Optional[State] = None
 
     def create_state(self) -> State:
         raise NotImplementedError("StatefulComponent must implement create_state()")
 
-    def get_or_create_state(self) -> State:
+    def _registry_key(self) -> Optional[tuple]:
+        """Identity of this widget's State, or None when it has no place in a tree.
+
+        The resolver publishes the position of the node it is building; it is consumed here, so a
+        component that calls another component's build() by hand does not reuse it.
+        """
+        position = _build_position.get()
+        if position is not None:
+            _build_position.set(None)
+        if position is None:
+            # Built outside a tree: only an explicit key can identify the state (globally).
+            return (self.__class__, "", "key", self.key) if self.key is not None else None
+        path, parent_path = position
         if self.key is not None:
-            registry_key = (self.__class__, self.key)
-            if registry_key in _state_registry:
-                existing_state = _state_registry[registry_key]
+            return (self.__class__, parent_path, "key", self.key)
+        return (self.__class__, path)
+
+    def get_or_create_state(self) -> State:
+        registry_key = self._registry_key()
+        if registry_key is not None:
+            existing_state = _state_registry.get(registry_key)
+            if existing_state is not None:
                 existing_state._last_seen_frame = _frame_id
                 existing_state._owner_token = _current_owner.get()
                 old_w = existing_state._widget
@@ -598,16 +607,16 @@ class StatefulComponent(Component):
                     existing_state.did_update_widget(old_w)
                 self._state = existing_state
                 return existing_state
-            else:
-                new_state = self.create_state()
-                new_state._widget = self
-                new_state._last_seen_frame = _frame_id
-                new_state._owner_token = _current_owner.get()
-                _state_registry[registry_key] = new_state
-                new_state.init_state()
-                self._state = new_state
-                return new_state
+            new_state = self.create_state()
+            new_state._widget = self
+            new_state._last_seen_frame = _frame_id
+            new_state._owner_token = _current_owner.get()
+            _state_registry[registry_key] = new_state
+            new_state.init_state()
+            self._state = new_state
+            return new_state
 
+        # Not resolved from a tree (a direct build() call): the state belongs to this instance.
         if self._state is None:
             self._state = self.create_state()
             self._state._widget = self
