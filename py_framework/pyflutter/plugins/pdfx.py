@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import itertools
 from typing import Any, Optional
+
 from pyflutter.plugins.manager import PluginError, call_plugin
 from pyflutter.widgets.widgets import PdfView, PdfViewPinch
-
 
 _pdf_counter = itertools.count()
 

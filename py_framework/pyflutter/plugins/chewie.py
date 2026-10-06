@@ -5,7 +5,6 @@ Provides enhanced video playback controllers and full-screen Material UI wrapper
 
 from __future__ import annotations
 
-from typing import Any, Optional
 from pyflutter.plugins.manager import call_plugin, require
 from pyflutter.plugins.video_player import VideoPlayerController
 
@@ -62,7 +61,7 @@ class ChewieController:
         self.video_player_controller.dispose()
 
 
-from pyflutter.widgets.widgets import Chewie
+from pyflutter.widgets.widgets import Chewie  # noqa: E402  (re-export; widgets import this module)
 
 __all__ = [
     "ChewieController",

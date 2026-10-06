@@ -13,15 +13,15 @@ import unittest
 
 import pyflutter as pf
 from pyflutter.plugins import (
-    image_picker,
+    audioplayer,
+    audioplayers,
     camera,
     connectivity,
     connectivity_plus,
-    audioplayer,
-    audioplayers,
-    video_player,
+    image_picker,
     share,
     share_plus,
+    video_player,
     webview,
     webview_flutter,
 )

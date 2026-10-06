@@ -6,6 +6,7 @@ Provides camera hardware discovery, capture control, and viewfinder integration.
 from __future__ import annotations
 
 from typing import Any, Optional
+
 from pyflutter.plugins.image_picker import XFile
 from pyflutter.plugins.manager import call_plugin
 
@@ -105,7 +106,7 @@ class CameraController:
         return isinstance(res, dict) and res.get("disposed") is True
 
 
-from pyflutter.widgets.widgets import CameraPreview
+from pyflutter.widgets.widgets import CameraPreview  # noqa: E402  (re-export; widgets import this module)
 
 __all__ = [
     "CameraDescription",

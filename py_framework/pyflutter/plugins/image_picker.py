@@ -9,6 +9,7 @@ import os
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
+
 from pyflutter.plugins.manager import call_plugin
 
 

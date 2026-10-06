@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,7 +10,8 @@ from unittest.mock import MagicMock, patch
 import yaml
 
 import pyflutter as pf
-from pyflutter.cli import creator, main as cli
+from pyflutter.cli import creator
+from pyflutter.cli import main as cli
 from pyflutter.cli.runner import PyFlutterRunner
 from pyflutter.core.bridge import BridgeSession
 from pyflutter.plugins import overlay

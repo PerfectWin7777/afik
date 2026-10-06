@@ -8,13 +8,11 @@ from __future__ import annotations
 
 import struct
 import subprocess
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 from pyflutter.core.render import (
     MSG_CALLBACK_EVENT,
     MSG_PLUGIN_RESPONSE,
-    MSG_RENDER_TREE,
-    MSG_TREE_PATCH,
     assign_node_ids,
     decode_callback_event,
     diff_snapshots,
@@ -23,7 +21,6 @@ from pyflutter.core.render import (
     widget_to_snapshot,
 )
 from pyflutter.core.widget_base import Widget, invoke_callback
-
 
 # Sent by the Rust relay when a Dart client connected and its tree is outdated.
 RESYNC_CALLBACK_ID = "__pyflutter_resync__"

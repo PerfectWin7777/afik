@@ -8,8 +8,6 @@ from __future__ import annotations
 import re
 import sqlite3
 from typing import Any, Callable, Optional
-from pyflutter.plugins.manager import call_plugin
-
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$")
 

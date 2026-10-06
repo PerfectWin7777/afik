@@ -6,15 +6,13 @@ by embedding the Python app assets and native FFI bridge library (.so / .dll).
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 from typing import Optional
 
-from pyflutter.core.logger import logger
 from pyflutter.core.config import PyFlutterConfig
+from pyflutter.core.logger import logger
 from pyflutter.core.runtime_project import ProjectRuntime
 
 

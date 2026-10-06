@@ -7,10 +7,10 @@ from __future__ import annotations
 
 import re
 import weakref
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Optional
 
-from pyflutter.core.widget_base import Widget
 from pyflutter.core.logger import logger
+from pyflutter.core.widget_base import Widget
 
 
 class TextEditingController:

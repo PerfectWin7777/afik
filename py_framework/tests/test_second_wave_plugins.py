@@ -15,17 +15,16 @@ import unittest
 import pyflutter as pf
 from pyflutter.plugins import (
     chewie,
-    hive,
-    sqflite,
-    local_notifications,
     flutter_local_notifications,
+    flutter_secure_storage,
+    hive,
+    local_auth,
+    local_notifications,
     permission_handler,
     secure_storage,
-    flutter_secure_storage,
-    local_auth,
+    sqflite,
     video_player,
 )
-
 
 _previous_mock_setting = os.environ.get("PYFLUTTER_ALLOW_INSECURE_MOCKS")
 

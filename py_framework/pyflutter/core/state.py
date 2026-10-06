@@ -9,7 +9,7 @@ from __future__ import annotations
 import contextvars
 import threading
 import weakref
-from typing import Any, Callable, Generic, Optional, TypeVar, Union
+from typing import Any, Callable, Generic, Optional, TypeVar
 
 from pyflutter.core.logger import logger
 from pyflutter.core.widget_base import Component, Widget
@@ -235,9 +235,9 @@ class Signal(Generic[T]):
                 return
             flushing = _flushing_batch
 
-        for l in list(self._listeners):
+        for listener in list(self._listeners):
             try:
-                l()
+                listener()
             except Exception as e:
                 logger.error("Error in Signal listener: {}", e)
 

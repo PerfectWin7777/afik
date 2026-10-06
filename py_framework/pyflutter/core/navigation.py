@@ -6,7 +6,8 @@ page stack management with automatic AppBar back button synthesis.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Optional
+
 from pyflutter.core.logger import logger
 
 

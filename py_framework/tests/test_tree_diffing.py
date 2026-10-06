@@ -4,15 +4,14 @@ Validates O(N) recursive tree diffing, node ID addressing, and patch formatting.
 """
 
 import unittest
-from pyflutter import Column, Row, Text, Button, Container
+
+from pyflutter import Button, Column, Container, Row, Text
 from pyflutter.core.render import (
+    MSG_TREE_PATCH,
     assign_node_ids,
-    widget_to_snapshot,
     diff_snapshots,
     tree_patch_frame,
-    render_tree_frame,
-    MSG_TREE_PATCH,
-    MSG_RENDER_TREE,
+    widget_to_snapshot,
 )
 
 

@@ -17,15 +17,15 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
-from pyflutter.core.logger import logger
 from pyflutter.cli.devices import select_device, setup_adb_port_forward
-from pyflutter.core.bridge import BridgeSession, RESYNC_CALLBACK_ID
+from pyflutter.core.bridge import RESYNC_CALLBACK_ID, BridgeSession
+from pyflutter.core.logger import logger
 from pyflutter.core.render import resolve_tree
 from pyflutter.core.runtime_project import ProjectRuntime
 from pyflutter.core.scheduler import FrameScheduler
-from pyflutter.core.widget_base import invoke_callback, clear_callbacks
+from pyflutter.core.widget_base import clear_callbacks, invoke_callback
 
 
 def find_workspace_root() -> Path:

@@ -176,7 +176,7 @@ def _dependencies_block_span(lines: list[str]) -> tuple[int, int]:
     ``end`` is the index just after the last non-blank line of the block, so inserted lines
     stay attached to the block and not to the following section.
     """
-    start = next((i for i, l in enumerate(lines) if re.match(r"^dependencies:\s*(#.*)?$", l)), None)
+    start = next((i for i, line in enumerate(lines) if re.match(r"^dependencies:\s*(#.*)?$", line)), None)
     if start is None:
         raise CatalogError("pubspec.yaml has no `dependencies:` section.")
     end = len(lines)

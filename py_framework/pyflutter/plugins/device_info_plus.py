@@ -6,6 +6,7 @@ Provides operating system, hardware, and device information.
 from __future__ import annotations
 
 from typing import Any
+
 from pyflutter.plugins.manager import call_plugin
 
 

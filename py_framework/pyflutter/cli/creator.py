@@ -9,7 +9,6 @@ import json
 import re
 from pathlib import Path
 
-
 MAIN_PY_TEMPLATE = '''"""
 Welcome to your new PyFlutter application!
 Powered by Flutter, Material 3, and Python.

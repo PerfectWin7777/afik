@@ -6,25 +6,26 @@ AlertDialog, SimpleDialog.
 """
 
 import unittest
+
 from pyflutter import (
-    GridView,
-    Radio,
-    RadioListTile,
-    Tooltip,
-    RichText,
-    TextSpan,
+    AlertDialog,
+    Button,
     CircleAvatar,
+    GridView,
     LinearProgressIndicator,
     PopupMenuButton,
     PopupMenuItem,
+    Radio,
+    RadioListTile,
     RefreshIndicator,
-    AlertDialog,
+    RichText,
     SimpleDialog,
     Text,
-    Button,
+    TextSpan,
+    Tooltip,
 )
-from pyflutter.core.widget_base import invoke_callback
 from pyflutter.core.render import render_tree_frame
+from pyflutter.core.widget_base import invoke_callback
 
 
 class TestNewFlutterWidgets(unittest.TestCase):

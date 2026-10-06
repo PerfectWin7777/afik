@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import itertools
 from typing import Optional
-from pyflutter.plugins.manager import call_plugin, require
 
+from pyflutter.plugins.manager import call_plugin, require
 
 _video_counter = itertools.count()
 
@@ -126,7 +126,7 @@ class VideoPlayerController:
         self._is_playing = False
 
 
-from pyflutter.widgets.widgets import VideoPlayer
+from pyflutter.widgets.widgets import VideoPlayer  # noqa: E402  (re-export; widgets import this module)
 
 __all__ = [
     "VideoPlayerController",

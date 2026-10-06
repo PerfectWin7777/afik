@@ -6,6 +6,7 @@ Displays scheduled, ongoing, or immediate system notifications.
 from __future__ import annotations
 
 from typing import Any, Optional
+
 from pyflutter.plugins.manager import call_plugin
 
 

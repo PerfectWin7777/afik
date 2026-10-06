@@ -9,9 +9,7 @@ from __future__ import annotations
 import itertools
 import json
 import os
-import shutil
 import struct
-import subprocess
 import sys
 import tempfile
 import threading
@@ -225,7 +223,7 @@ def _dispatch_local_fallback(plugin_name: str, method: str, args: dict[str, Any]
         channel_name = str(args.get("channel", ""))
         method_name = str(args.get("method", method))
         arguments = args.get("arguments")
-        from pyflutter.core.channel import get_mock_method_call_handler, MethodCall
+        from pyflutter.core.channel import MethodCall, get_mock_method_call_handler
         mock = get_mock_method_call_handler(channel_name)
         if mock is not None:
             return mock(MethodCall(method_name, arguments))

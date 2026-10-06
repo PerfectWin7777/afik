@@ -5,21 +5,22 @@ Unit test suite for PyFlutter Gestures, Touch Interactions, and Implicit Animati
 from __future__ import annotations
 
 import unittest
+
 from pyflutter.core.constants import Alignment, Curves, DismissDirection
+from pyflutter.core.render import render_tree_frame
 from pyflutter.core.style import Duration
 from pyflutter.core.widget_base import invoke_callback
-from pyflutter.widgets.gestures import GestureDetector, InkWell, Dismissible
 from pyflutter.widgets.animations import (
-    Hero,
-    AnimatedContainer,
-    AnimatedOpacity,
-    AnimatedScale,
-    AnimatedRotation,
     AnimatedAlign,
+    AnimatedContainer,
     AnimatedCrossFade,
+    AnimatedOpacity,
+    AnimatedRotation,
+    AnimatedScale,
+    Hero,
 )
-from pyflutter.widgets.widgets import Container, Text, Column
-from pyflutter.core.render import render_tree_frame, resolve_widget
+from pyflutter.widgets.gestures import Dismissible, GestureDetector, InkWell
+from pyflutter.widgets.widgets import Column, Container, Text
 
 
 class TestGestures(unittest.TestCase):

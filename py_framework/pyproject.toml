@@ -29,3 +29,23 @@ include = ["pyflutter*"]
 
 [tool.setuptools.package-data]
 pyflutter = ["contract/*.json"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["pyflutter/generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+# Long lines are tolerated (docstrings, prop tables); everything else must be clean.
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests may bind lambdas to names for brevity.
+"tests/*" = ["E731"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pyflutter"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

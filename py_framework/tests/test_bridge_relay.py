@@ -9,6 +9,8 @@ import time
 import unittest
 from pathlib import Path
 
+import pyflutter as pf
+from pyflutter.core.bridge import RESYNC_CALLBACK_ID, read_frame
 from pyflutter.core.render import (
     MSG_CALLBACK_EVENT,
     MSG_RENDER_TREE,
@@ -17,9 +19,7 @@ from pyflutter.core.render import (
     render_tree_frame,
     tree_patch_frame,
 )
-from pyflutter.core.bridge import RESYNC_CALLBACK_ID, read_frame
 from pyflutter.generated import widget_pb2
-import pyflutter as pf
 
 ROOT = Path(__file__).resolve().parents[2]
 BINARY = next(

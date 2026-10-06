@@ -24,9 +24,9 @@ _framework_dir = Path(__file__).resolve().parents[2]
 if str(_framework_dir) not in sys.path:
     sys.path.insert(0, str(_framework_dir))
 
-from pyflutter import __version__
-from pyflutter.cli.devices import list_devices
-from pyflutter.cli.runner import PyFlutterRunner
+from pyflutter import __version__  # noqa: E402  (after the sys.path set-up above)
+from pyflutter.cli.devices import list_devices  # noqa: E402
+from pyflutter.cli.runner import PyFlutterRunner  # noqa: E402
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -227,8 +227,8 @@ def main(argv: list[str] | None = None):
         sys.exit(0)
 
     if args.command == "sync":
-        from pyflutter.core.config import PyFlutterConfig
         from pyflutter.cli.runner import find_workspace_root
+        from pyflutter.core.config import PyFlutterConfig
         from pyflutter.core.runtime_project import ProjectRuntime
         from pyflutter.plugins.catalog import CatalogError, prepare_runtime
         config = PyFlutterConfig.find_and_load(Path.cwd())

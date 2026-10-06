@@ -4,8 +4,9 @@ single-pass component resolution, and callback garbage collection.
 """
 
 import unittest
-from pyflutter import Column, Text, Button, TextField, Signal, SignalBuilder, StatefulWidget, State, Component
-from pyflutter.core import widget_base, render, state
+
+from pyflutter import Button, Column, Component, Signal, SignalBuilder, State, StatefulWidget, Text, TextField
+from pyflutter.core import render, state, widget_base
 
 
 class TestMemoryAndStateManagement(unittest.TestCase):

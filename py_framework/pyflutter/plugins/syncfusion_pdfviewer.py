@@ -5,8 +5,8 @@ PyFlutter syncfusion_pdfviewer backward-compatibility alias for syncfusion_flutt
 from __future__ import annotations
 
 from pyflutter.plugins.syncfusion_flutter_pdfviewer import (
-    SfPdfViewer,
     PdfViewerController,
+    SfPdfViewer,
 )
 
 __all__ = [

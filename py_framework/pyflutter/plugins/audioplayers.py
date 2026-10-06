@@ -8,6 +8,7 @@ from __future__ import annotations
 import itertools
 from enum import Enum
 from typing import Optional
+
 from pyflutter.plugins.manager import call_plugin
 
 

@@ -11,7 +11,6 @@ import uuid
 from collections import OrderedDict
 from typing import Any, Callable, Optional
 
-
 _callback_registry: dict[str, Callable] = {}
 _registry_lock = threading.RLock()
 
@@ -791,7 +790,7 @@ class Component(Widget):
 
         # Wrap in Scaffold if app-level elements are provided
         if app_bar is not None or drawer is not None or fab is not None or bottom_bar is not None:
-            from pyflutter.widgets.widgets import Scaffold, AppBar
+            from pyflutter.widgets.widgets import AppBar, Scaffold
             effective_bar = AppBar(title=app_bar) if isinstance(app_bar, str) else app_bar
             return Scaffold(
                 body=central,

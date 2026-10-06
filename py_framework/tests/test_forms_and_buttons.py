@@ -5,31 +5,26 @@ Unit test suite for PyFlutter Forms, Controllers, Validators, Dropdowns, and But
 from __future__ import annotations
 
 import unittest
+
 from pyflutter.core.form import (
+    Form,
+    FormKey,
+    OutlineInputBorder,
     TextEditingController,
     Validators,
-    FormKey,
-    Form,
-    OutlineInputBorder,
-    UnderlineInputBorder,
-    InputBorder,
 )
+from pyflutter.core.render import render_tree_frame
+from pyflutter.core.widget_base import invoke_callback
 from pyflutter.widgets.widgets import (
     Column,
-    Row,
-    Text,
-    Button,
+    DropdownButton,
+    DropdownMenu,
     ElevatedButton,
     OutlinedButton,
+    Row,
     TextButton,
-    TextField,
     TextFormField,
-    DropdownButton,
-    DropdownMenuItem,
-    DropdownMenu,
 )
-from pyflutter.core.widget_base import invoke_callback
-from pyflutter.core.render import render_tree_frame, widget_to_proto
 
 
 class TestTextEditingController(unittest.TestCase):
@@ -136,7 +131,7 @@ class TestFormAndFormKey(unittest.TestCase):
         )
 
         # Wrap in Form container
-        form = Form(
+        Form(
             form_key=form_key,
             child=Column([
                 field_email,

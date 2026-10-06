@@ -5,9 +5,8 @@ PyFlutter Syncfusion PDF Viewer plugin (matches pub.dev package: syncfusion_flut
 from __future__ import annotations
 
 import itertools
-from typing import Optional
-from pyflutter.widgets.widgets import SfPdfViewer
 
+from pyflutter.widgets.widgets import SfPdfViewer
 
 _pdf_counter = itertools.count()
 

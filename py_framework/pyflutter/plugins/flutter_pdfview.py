@@ -6,9 +6,8 @@ Provides platform-native PDF rendering views on Android and iOS.
 from __future__ import annotations
 
 import itertools
-from typing import Optional
-from pyflutter.widgets.widgets import PDFView
 
+from pyflutter.widgets.widgets import PDFView
 
 _pdf_counter = itertools.count()
 

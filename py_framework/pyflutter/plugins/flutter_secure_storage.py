@@ -6,6 +6,7 @@ Encrypted key-value storage using Keychain (iOS/macOS) and KeyStore (Android).
 from __future__ import annotations
 
 from typing import Optional
+
 from pyflutter.plugins.manager import call_plugin
 
 

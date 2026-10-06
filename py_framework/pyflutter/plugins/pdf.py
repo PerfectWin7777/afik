@@ -9,22 +9,22 @@ Consolidates and re-exports the individual PDF plugins:
 
 from __future__ import annotations
 
-from pyflutter.plugins.syncfusion_flutter_pdfviewer import (
-    SfPdfViewer,
-    PdfViewerController,
+from pyflutter.plugins.flutter_pdfview import (
+    PDFView,
+    PDFViewController,
 )
 from pyflutter.plugins.pdfx import (
-    PdfDocument,
     PdfController,
+    PdfDocument,
     PdfView,
     PdfViewPinch,
 )
 from pyflutter.plugins.printing import (
     Printing,
 )
-from pyflutter.plugins.flutter_pdfview import (
-    PDFView,
-    PDFViewController,
+from pyflutter.plugins.syncfusion_flutter_pdfviewer import (
+    PdfViewerController,
+    SfPdfViewer,
 )
 
 __all__ = [

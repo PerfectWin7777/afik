@@ -7,7 +7,6 @@ Python entrypoint, native Flutter packages, and device permissions.
 from __future__ import annotations
 
 import copy
-import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -37,7 +36,7 @@ def replace_flutter_dependencies_block(text: str, dependencies: dict[str, str]) 
     when nothing else is left in it).
     """
     lines = text.splitlines()
-    dep = next((i for i, l in enumerate(lines) if re.match(r"^dependencies\s*:", l)), None)
+    dep = next((i for i, line in enumerate(lines) if re.match(r"^dependencies\s*:", line)), None)
     entries = [f"    {name}: {_scalar(str(c))}" for name, c in dependencies.items()]
 
     if dep is None:
@@ -68,7 +67,7 @@ def replace_flutter_dependencies_block(text: str, dependencies: dict[str, str]) 
     new_end = dep + 1
     while new_end < len(lines) and (not lines[new_end].strip() or lines[new_end].startswith((" ", "\t"))):
         new_end += 1
-    if not any(l.strip() and not l.strip().startswith("#") for l in lines[dep + 1:new_end]):
+    if not any(line.strip() and not line.strip().startswith("#") for line in lines[dep + 1:new_end]):
         del lines[dep:new_end]
     return "\n".join(lines).rstrip("\n") + "\n"
 
@@ -80,7 +79,7 @@ def replace_plugins_block(text: str, plugins: list[str]) -> str:
     ``plugins`` is empty. Everything else (comments, order, other keys) is untouched.
     """
     lines = text.splitlines()
-    start = next((i for i, l in enumerate(lines) if re.match(r"^plugins\s*:", l)), None)
+    start = next((i for i, line in enumerate(lines) if re.match(r"^plugins\s*:", line)), None)
     end = start
     if start is not None:
         end = start + 1

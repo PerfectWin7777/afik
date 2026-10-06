@@ -49,7 +49,7 @@ def setup_adb_port_forward(device_id: str, port: int = 7879) -> bool:
             shell=(sys.platform == "win32"),
         )
         return True
-    except Exception as e:
+    except Exception:
         return False
 
 

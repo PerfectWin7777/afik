@@ -6,6 +6,7 @@ Provides system directory locations (documents, temp, downloads).
 from __future__ import annotations
 
 from typing import Optional
+
 from pyflutter.plugins.manager import call_plugin
 
 

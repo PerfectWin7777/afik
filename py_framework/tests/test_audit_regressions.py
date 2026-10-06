@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import queue
 import struct
-import threading
 import time
 import unittest
 from unittest.mock import patch
@@ -154,6 +153,7 @@ class TestConfigRobustness(unittest.TestCase):
     def _load(self, text):
         import pathlib
         import tempfile
+
         from pyflutter.core.config import PyFlutterConfig
         path = pathlib.Path(tempfile.mkdtemp()) / "pyflutter.yaml"
         path.write_text(text)
@@ -262,6 +262,7 @@ class TestHiveBoxesPersist(unittest.TestCase):
     def setUp(self):
         import shutil
         import tempfile
+
         from pyflutter.plugins import hive
         self.hive = hive
         self.dir = tempfile.mkdtemp()

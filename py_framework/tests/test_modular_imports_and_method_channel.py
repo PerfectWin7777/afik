@@ -10,10 +10,9 @@ Verifies that:
 from __future__ import annotations
 
 import unittest
+
 import pyflutter as pf
 from pyflutter.core.channel import (
-    MethodChannel,
-    EventChannel,
     MethodCall,
     PlatformException,
     set_mock_method_call_handler,
@@ -42,21 +41,21 @@ class TestModularImports(unittest.TestCase):
     def test_plugins_module_access(self):
         """Plugins are accessed under pyflutter.plugins."""
         from pyflutter.plugins import (
-            image_picker,
-            camera,
-            connectivity,
             audioplayer,
-            video_player,
-            share,
-            webview,
+            camera,
             chewie,
+            connectivity,
             hive,
-            sqflite,
+            image_picker,
+            local_auth,
             local_notifications,
+            pdf,
             permission_handler,
             secure_storage,
-            local_auth,
-            pdf,
+            share,
+            sqflite,
+            video_player,
+            webview,
         )
         self.assertTrue(hasattr(image_picker, "ImagePicker"))
         self.assertTrue(hasattr(camera, "CameraController"))
@@ -76,11 +75,10 @@ class TestModularImports(unittest.TestCase):
 
     def test_plugin_dedicated_widgets_import(self):
         """Widgets tied to plugins are importable directly from their plugin module."""
-        from pyflutter.plugins.camera import CameraPreview, CameraController
-        from pyflutter.plugins.webview import WebView, WebViewController
-        from pyflutter.plugins.video_player import VideoPlayer, VideoPlayerController
-        from pyflutter.plugins.chewie import Chewie, ChewieController
-        from pyflutter.plugins.pdf import SfPdfViewer, PdfView, PdfViewPinch, PDFView
+        from pyflutter.plugins.camera import CameraController, CameraPreview
+        from pyflutter.plugins.pdf import PDFView, PdfView, PdfViewPinch, SfPdfViewer
+        from pyflutter.plugins.video_player import VideoPlayer
+        from pyflutter.plugins.webview import WebView
 
         self.assertEqual(CameraPreview(CameraController("0")).widget_type, "CameraPreview")
         self.assertEqual(WebView("https://flutter.dev").widget_type, "WebView")

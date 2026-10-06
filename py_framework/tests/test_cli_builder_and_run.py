@@ -7,33 +7,33 @@ from __future__ import annotations
 
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pyflutter as pf
 from pyflutter.cli.builder import PyFlutterBuilder
 from pyflutter.cli.main import parse_args
 from pyflutter.plugins import (
-    audioplayers,
     audioplayer,
-    connectivity_plus,
+    audioplayers,
     connectivity,
-    share_plus,
-    share,
-    webview_flutter,
-    webview,
-    flutter_local_notifications,
-    local_notifications,
-    flutter_secure_storage,
-    secure_storage,
-    shared_preferences,
-    storage,
-    device_info_plus,
+    connectivity_plus,
     device_info,
-    syncfusion_flutter_pdfviewer,
-    syncfusion_pdfviewer,
+    device_info_plus,
+    flutter_local_notifications,
+    flutter_pdfview,
+    flutter_secure_storage,
+    local_notifications,
     pdfx,
     printing,
-    flutter_pdfview,
+    secure_storage,
+    share,
+    share_plus,
+    shared_preferences,
+    storage,
+    syncfusion_flutter_pdfviewer,
+    syncfusion_pdfviewer,
+    webview,
+    webview_flutter,
 )
 
 

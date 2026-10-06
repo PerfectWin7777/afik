@@ -10,11 +10,11 @@ import unittest
 
 import pyflutter as pf
 from pyflutter.plugins import (
+    flutter_pdfview,
     pdf,
-    syncfusion_pdfviewer,
     pdfx,
     printing,
-    flutter_pdfview,
+    syncfusion_pdfviewer,
 )
 
 

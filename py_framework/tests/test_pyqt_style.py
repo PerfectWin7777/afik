@@ -5,27 +5,21 @@ Slider support, smart Component.build() resolution, and Protobuf IR serializatio
 """
 
 import unittest
+
 from pyflutter import (
-    Column,
-    Row,
-    Text,
     Button,
-    ElevatedButton,
-    OutlinedButton,
-    TextButton,
-    IconButton,
-    TextField,
-    Switch,
     Checkbox,
-    Slider,
-    DropdownButton,
-    Scaffold,
-    AppBar,
+    Column,
     Component,
     MainWindow,
-    QtSignal,
+    Row,
+    Scaffold,
+    Slider,
+    Switch,
+    Text,
+    TextField,
 )
-from pyflutter.core.widget_base import invoke_callback, _callback_registry
+from pyflutter.core.widget_base import _callback_registry, invoke_callback
 
 
 class TestPyQtLayoutAssembly(unittest.TestCase):
@@ -294,7 +288,6 @@ class TestMaterialAppReactiveRootAndCallbacks(unittest.TestCase):
 
     def test_material_app_root_update(self):
         from pyflutter import MaterialApp
-        from pyflutter.core.navigation import Navigator
 
         scaffold1 = Scaffold(body=Text("Tab 0"))
         app1 = MaterialApp(scaffold1)
@@ -306,7 +299,7 @@ class TestMaterialAppReactiveRootAndCallbacks(unittest.TestCase):
         self.assertEqual(app2.children[0].children[0].props.get("value"), "Tab 1")
 
     def test_register_callback_custom_id_and_single_execution(self):
-        from pyflutter.core.widget_base import _register_callback, _call_callable
+        from pyflutter.core.widget_base import _call_callable, _register_callback
 
         # Multi-signature test
         cid = _register_callback("custom_id_123", lambda: "ok")

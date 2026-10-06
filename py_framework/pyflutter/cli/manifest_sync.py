@@ -9,12 +9,11 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from xml.sax.saxutils import escape, quoteattr
 from typing import Sequence
+from xml.sax.saxutils import escape, quoteattr
 
 from pyflutter.core.config import PyFlutterConfig
 from pyflutter.core.logger import logger
-
 
 PERMISSION_MAP_ANDROID: dict[str, list[str]] = {
     # Core & Connectivity

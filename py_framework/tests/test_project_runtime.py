@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from pyflutter.cli import manifest_sync
 from pyflutter.core.config import PyFlutterConfig, replace_flutter_dependencies_block, replace_plugins_block
-from pyflutter.core.runtime_project import ProjectRuntime, template_files
+from pyflutter.core.runtime_project import ProjectRuntime
 from pyflutter.plugins import catalog
 
 REAL_RUNTIME = Path(__file__).resolve().parents[2] / "dart_runtime"

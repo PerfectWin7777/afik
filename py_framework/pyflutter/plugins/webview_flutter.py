@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import itertools
 from typing import Any, Optional
-from pyflutter.plugins.manager import call_plugin
 
+from pyflutter.plugins.manager import call_plugin
 
 _webview_counter = itertools.count()
 
@@ -86,7 +86,7 @@ class WebViewController:
         return self._current_url
 
 
-from pyflutter.widgets.widgets import WebView
+from pyflutter.widgets.widgets import WebView  # noqa: E402  (re-export; widgets import this module)
 
 __all__ = [
     "WebViewController",
