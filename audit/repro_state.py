@@ -52,7 +52,7 @@ from pyflutter.cli.runner import PyFlutterRunner
 from pyflutter import app as appmod
 class FakeSession:
     process = object()
-    def send_tree(self, tree, force_full=False):
+    def send_tree(self, tree, force_full=False, resolved=False):
         resolve_tree(tree)
 runner = PyFlutterRunner.__new__(PyFlutterRunner)
 runner.tree_lock = threading.RLock(); runner.session = FakeSession(); runner.debug_banner=None; runner.is_running=True

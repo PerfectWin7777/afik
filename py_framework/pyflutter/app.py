@@ -6,7 +6,6 @@ or programmatically via `pf.run(App(), build="apk", mode="debug")`.
 
 from __future__ import annotations
 
-import inspect
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -77,8 +76,7 @@ def run(
             # pf.run(App(), build="windows", mode="release")
     """
     # Auto-detect calling script file
-    caller_frame = inspect.stack()[1]
-    caller_file = caller_frame.filename
+    caller_file = sys._getframe(1).f_code.co_filename
     entrypoint_path = (
         Path(caller_file).resolve()
         if caller_file and caller_file != "<stdin>"

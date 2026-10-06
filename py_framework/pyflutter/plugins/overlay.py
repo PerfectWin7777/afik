@@ -13,10 +13,31 @@ from pyflutter.core.widget_base import _register_pinned_callback
 from pyflutter.plugins.manager import invoke_plugin_method
 
 
+def _duration_to_ms(duration: Union[Duration, float, int, None], duration_ms: Optional[int]) -> int:
+    """Milliseconds to show a SnackBar: `duration` is a Duration or a number of SECONDS."""
+    if duration is not None and duration_ms is not None:
+        raise ValueError("Pass either duration= or duration_ms=, not both.")
+    if duration_ms is not None:
+        return int(duration_ms)
+    if duration is None:
+        return 4000
+    if isinstance(duration, Duration):
+        return duration.in_milliseconds
+    if isinstance(duration, (int, float)) and not isinstance(duration, bool):
+        if duration >= 100:
+            raise ValueError(
+                f"duration={duration} is in seconds (that is more than a minute and a half); "
+                "use duration_ms= for milliseconds."
+            )
+        return int(duration * 1000)
+    raise TypeError("duration must be a Duration or a number of seconds.")
+
+
 def show_snack_bar(
     message: str,
     *,
-    duration: Union[Duration, float, int] = Duration(seconds=4),
+    duration: Union[Duration, float, int, None] = None,
+    duration_ms: Optional[int] = None,
     action: Optional[str] = None,
     on_action: Optional[Callable[[], None]] = None,
     background_color: Optional[str] = None,
@@ -26,7 +47,8 @@ def show_snack_bar(
     
     Parameters:
         message: The textual notification to display.
-        duration: How long the SnackBar remains visible (default: 4 seconds).
+        duration: How long the SnackBar remains visible: a `Duration` or a number of seconds (default: 4).
+        duration_ms: The same in milliseconds, for callers that already have milliseconds.
         action: Optional label for an action button (e.g. "Undo", "Cancel").
         on_action: Callback executed when the user clicks the action button.
         background_color: Optional custom background hex color.
@@ -39,11 +61,7 @@ def show_snack_bar(
             on_action=self.undo_add,
         )
     """
-    duration_ms = 4000
-    if isinstance(duration, Duration):
-        duration_ms = duration.in_milliseconds
-    elif isinstance(duration, (int, float)):
-        duration_ms = int(duration * 1000) if duration < 100 else int(duration)
+    duration_ms = _duration_to_ms(duration, duration_ms)
 
     action_id = ""
     if action and on_action:

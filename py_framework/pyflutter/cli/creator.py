@@ -5,6 +5,7 @@ Generates production-grade, zero-boilerplate PyFlutter project templates.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -181,7 +182,7 @@ if __name__ == "__main__":
 '''
 
 PYFLUTTER_YAML_TEMPLATE = """name: {project_slug}
-description: "{description}"
+description: {description}
 version: 0.1.0
 
 # PyFlutter project configuration
@@ -249,7 +250,6 @@ pyflutter run
 ### Raccourcis disponibles pendant l'exécution :
 * `r` : **Hot Reload** (recharge le code Python instantanément sans redémarrer l'application)
 * `R` : **Hot Restart** (redémarre complètement l'application Flutter)
-* `d` : Détection et bascule des appareils connectés
 * `q` : Quitter proprement
 """
 
@@ -280,7 +280,7 @@ def create_project(
         content = (
             PYFLUTTER_YAML_TEMPLATE
             .replace("{project_slug}", slug)
-            .replace("{description}", description)
+            .replace("{description}", json.dumps(description, ensure_ascii=False))
         )
         yaml_file.write_text(content, encoding="utf-8")
 

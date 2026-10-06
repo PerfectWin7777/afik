@@ -751,17 +751,17 @@ class Component(Widget):
         message: str,
         *,
         duration: Any = None,
+        duration_ms: Optional[int] = None,
         action: Optional[str] = None,
         on_action: Optional[Callable[[], None]] = None,
         background_color: Optional[str] = None,
     ) -> None:
-        """Displays a native SnackBar notification."""
+        """Displays a native SnackBar notification (`duration` in seconds or a Duration)."""
         from pyflutter.plugins.overlay import show_snack_bar
-        from pyflutter.core.style import Duration
-        d = duration if duration is not None else Duration(seconds=4)
         show_snack_bar(
             message,
-            duration=d,
+            duration=duration,
+            duration_ms=duration_ms,
             action=action,
             on_action=on_action,
             background_color=background_color,

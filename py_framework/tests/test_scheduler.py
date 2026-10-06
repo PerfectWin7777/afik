@@ -109,7 +109,7 @@ class FakeSession:
         self.process = self
         self.stdin = self
 
-    def send_tree(self, tree, force_full=False):
+    def send_tree(self, tree, force_full=False, resolved=False):
         self.sent.append((tree, force_full))
 
     def reset_snapshot(self):

@@ -65,9 +65,12 @@ class BridgeSession:
         """Clears the cached tree snapshot (used during hot restart)."""
         self._last_snapshot = None
 
-    def send_tree(self, root: Widget, force_full: bool = False) -> None:
+    def send_tree(self, root: Widget, force_full: bool = False, resolved: bool = False) -> None:
         """Sends the widget tree to the bridge. Uses granular TreePatch diffing
         whenever possible, falling back to full RenderTree if structural changes occurred.
+
+        ``resolved=True`` says ``root`` already went through ``resolve_tree`` (the runner does it
+        to tag the root), so the Components are not built a second time.
         """
         if self.process.poll() is not None:
             raise RuntimeError(
@@ -78,8 +81,11 @@ class BridgeSession:
             from pyflutter.core.state import reset_call_site_counters
             from pyflutter.core.widget_base import collect_active_callback_ids, sweep_stale_callbacks
 
-            reset_call_site_counters()
-            concrete_root = resolve_tree(root)
+            if resolved:
+                concrete_root = root
+            else:
+                reset_call_site_counters()
+                concrete_root = resolve_tree(root)
             assign_node_ids(concrete_root)
             new_snapshot = widget_to_snapshot(concrete_root)
 

@@ -259,6 +259,7 @@ def main(argv: list[str] | None = None):
             attach_only=args.attach,
         )
         runner.start()
+        return
 
     if args.command == "build":
         from pyflutter.cli.builder import PyFlutterBuilder

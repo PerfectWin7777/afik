@@ -22,6 +22,7 @@ from typing import Any, Optional
 from pyflutter.core.logger import logger
 from pyflutter.cli.devices import select_device, setup_adb_port_forward
 from pyflutter.core.bridge import BridgeSession, RESYNC_CALLBACK_ID
+from pyflutter.core.render import resolve_tree
 from pyflutter.core.runtime_project import ProjectRuntime
 from pyflutter.core.scheduler import FrameScheduler
 from pyflutter.core.widget_base import invoke_callback, clear_callbacks
@@ -321,7 +322,7 @@ class PyFlutterRunner:
         self.attach_only = attach_only
         self.debug_banner = debug_banner
         self.root = find_workspace_root()
-        self.bridge_bin = find_bridge_binary(self.root)
+        self.bridge_bin: Optional[Path] = None   # located in start(), so building a runner never fails
 
         self.session: Optional[BridgeSession] = None
         self.flutter_process: Optional[subprocess.Popen] = None
@@ -351,6 +352,9 @@ class PyFlutterRunner:
             tree = self.app.build()
         else:
             tree = self.app
+        # Resolve first: a Component returned by build() is replaced by the widgets it builds, and
+        # the app-level props below must land on the widget that is really sent.
+        tree = resolve_tree(tree)
         show_banner = False
         if hasattr(self.app, "debug_banner"):
             show_banner = bool(self.app.debug_banner)
@@ -364,6 +368,13 @@ class PyFlutterRunner:
         """Main execution flow for `pyflutter run`."""
         if not self.entrypoint.exists():
             logger.error(f"Entrypoint file not found: {self.entrypoint}")
+            sys.exit(1)
+
+        try:
+            self.bridge_bin = find_bridge_binary(self.root)
+        except FileNotFoundError as e:
+            logger.error("{}", e)
+            logger.error("Build the bridge once with: cargo build --manifest-path {}", self.root / "rust_bridge" / "Cargo.toml")
             sys.exit(1)
 
         # 0. Sync declarative permissions to native Android and iOS manifests
@@ -569,7 +580,7 @@ class PyFlutterRunner:
             return
         with self.tree_lock:
             tree = self._build_and_tag_tree()
-            self.session.send_tree(tree, force_full=force_full)
+            self.session.send_tree(tree, force_full=force_full, resolved=True)
 
     def push_update(self):
         """Asks for a new frame. Safe from any thread; many calls cost one build."""
