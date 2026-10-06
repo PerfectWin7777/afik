@@ -54,7 +54,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-      - run: pip install pytest "protobuf==4.21.12" "loguru==0.7.0" "pyyaml==6.0" -e py_framework --no-deps
+      - run: pip install pytest "protobuf==4.21.12" "loguru==0.7.0" "pyyaml==6.0"
+      - run: pip install -e py_framework --no-deps
       - name: Tests
         working-directory: py_framework
         run: python -m pytest -q
