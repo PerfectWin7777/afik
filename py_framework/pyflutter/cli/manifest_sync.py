@@ -268,7 +268,11 @@ def sync_ios_plist(plist_path: Path, permissions: Sequence[str], app_title: str 
     return modified
 
 
-def sync_platform_metadata(workspace_root: Path, config: PyFlutterConfig) -> None:
+def sync_platform_metadata(
+    workspace_root: Path,
+    config: PyFlutterConfig,
+    extra_permissions: Sequence[str] = (),
+) -> None:
     """
     Main entry point: syncs pyflutter.yaml permissions and branding to Android and iOS.
     """
@@ -277,7 +281,7 @@ def sync_platform_metadata(workspace_root: Path, config: PyFlutterConfig) -> Non
         return
 
     app_title = config.name.replace("_", " ").title() if config.name else None
-    perms = config.permissions
+    perms = list(dict.fromkeys([*config.permissions, *extra_permissions]))
 
     # Android
     android_manifest = dart_runtime_dir / "android" / "app" / "src" / "main" / "AndroidManifest.xml"

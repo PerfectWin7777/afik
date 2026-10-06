@@ -1,13 +1,11 @@
-# Metadata read by `pyflutter add local_auth` (see AUDIT_BUGS.md, ticket T-20).
 name: local_auth
 package: local_auth
 constraint: ^2.3.0
-shim: shim.dart
-shim_class: LocalAuthShim
+files: [shim.dart]
 registers: [local_auth]
 python_module: pyflutter.plugins.local_auth
 android:
-  permissions: [biometrics]          # keys of PERMISSION_MAP_ANDROID in cli/manifest_sync.py
+  permissions: [biometrics]
   main_activity_base: FlutterFragmentActivity
   launch_theme_parent: "@style/Theme.AppCompat.DayNight.NoActionBar"
 ios:

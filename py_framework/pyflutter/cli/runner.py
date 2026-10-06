@@ -364,8 +364,12 @@ class PyFlutterRunner:
             sys.exit(1)
 
         # 0. Sync declarative permissions to native Android and iOS manifests
-        from pyflutter.cli.manifest_sync import sync_platform_metadata
-        sync_platform_metadata(self.root, self.config)
+        from pyflutter.plugins.catalog import CatalogError, prepare_runtime
+        try:
+            prepare_runtime(self.root, self.config)
+        except CatalogError as e:
+            logger.error("{}", e)
+            sys.exit(1)
 
         # 1. Device selection
         logger.info("Discovering target devices...")

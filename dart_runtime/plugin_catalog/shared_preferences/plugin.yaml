@@ -1,0 +1,6 @@
+name: shared_preferences
+package: shared_preferences
+constraint: ^2.5.3
+files: [shim.dart]
+registers: [storage, shared_preferences]
+python_module: pyflutter.plugins.shared_preferences

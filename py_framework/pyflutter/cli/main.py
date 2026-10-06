@@ -84,6 +84,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Name of the Flutter package to remove",
     )
 
+    # `pyflutter plugin list|new <package>`
+    plugin_parser = subparsers.add_parser("plugin", help="Inspect the plugin catalog or scaffold a new plugin mapping")
+    plugin_sub = plugin_parser.add_subparsers(dest="plugin_command", required=True)
+    plugin_sub.add_parser("list", help="List catalog plugins and which ones this project uses")
+    plugin_new = plugin_sub.add_parser("new", help="Create the shim, Python module and test for a new package")
+    plugin_new.add_argument("package", help="pub.dev package name (lowercase, underscores)")
+
     # `pyflutter create <name>`
     create_parser = subparsers.add_parser("create", help="Create a new PyFlutter project directory with Material 3 template")
     create_parser.add_argument(
@@ -176,14 +183,19 @@ def main(argv: list[str] | None = None):
         sys.exit(0)
 
     if args.command == "add":
-        from pyflutter.plugins.manager import add_flutter_package
-        success = add_flutter_package(args.package)
-        sys.exit(0 if success else 1)
+        from pyflutter.cli import plugins_cmd
+        sys.exit(0 if plugins_cmd.add(args.package) else 1)
 
     if args.command == "remove":
-        from pyflutter.plugins.manager import remove_flutter_package
-        success = remove_flutter_package(args.package)
-        sys.exit(0 if success else 1)
+        from pyflutter.cli import plugins_cmd
+        sys.exit(0 if plugins_cmd.remove(args.package) else 1)
+
+    if args.command == "plugin":
+        from pyflutter.cli import plugins_cmd
+        if args.plugin_command == "list":
+            plugins_cmd.list_plugins()
+            sys.exit(0)
+        sys.exit(0 if plugins_cmd.new(args.package) else 1)
 
     if args.command == "create":
         from pyflutter.cli.creator import create_project, sanitize_project_name
@@ -216,12 +228,15 @@ def main(argv: list[str] | None = None):
 
     if args.command == "sync":
         from pyflutter.core.config import PyFlutterConfig
-        from pyflutter.cli.manifest_sync import sync_platform_metadata
         from pyflutter.cli.runner import find_workspace_root
+        from pyflutter.plugins.catalog import CatalogError, prepare_runtime
         config = PyFlutterConfig.find_and_load(Path.cwd())
-        root = find_workspace_root()
-        sync_platform_metadata(root, config)
-        print("✅ Native manifests (Android & iOS) successfully synchronized with pyflutter.yaml")
+        try:
+            prepare_runtime(find_workspace_root(), config)
+        except CatalogError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+        print("Plugins and native manifests (Android & iOS) synchronized with pyflutter.yaml")
         sys.exit(0)
 
     if args.command == "run":

@@ -73,7 +73,12 @@ class PyFlutterBuilder:
         # 2. Sync metadata from pyflutter.yaml
         config = PyFlutterConfig.find_and_load(Path.cwd())
         logger.info("📦 Synchronizing platform manifests & permissions...")
-        sync_platform_metadata(self.workspace_root, config)
+        from pyflutter.plugins.catalog import CatalogError, prepare_runtime
+        try:
+            prepare_runtime(self.workspace_root, config)
+        except CatalogError as e:
+            logger.error("{}", e)
+            return False
 
         # 3. Package Python application code into assets
         assets_app_dir = self.dart_runtime / "assets" / "app"

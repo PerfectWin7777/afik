@@ -1,0 +1,8 @@
+name: url_launcher
+package: url_launcher
+constraint: ^6.3.2
+files: [shim.dart]
+registers: [url_launcher]
+python_module: pyflutter.plugins.url_launcher
+android:
+  permissions: [internet]

@@ -6,6 +6,7 @@ Python entrypoint, native Flutter packages, and device permissions.
 
 from __future__ import annotations
 
+import copy
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,6 +29,7 @@ class PyFlutterConfig:
     entrypoint: str = "main.py"
     port: int = 7879
     flutter_dependencies: dict[str, str] = field(default_factory=dict)
+    plugins: list[str] = field(default_factory=list)
     permissions: list[str] = field(default_factory=list)
     raw_config: dict[str, Any] = field(default_factory=dict)
     config_path: Optional[Path] = None
@@ -83,6 +85,9 @@ class PyFlutterConfig:
         if not isinstance(permissions, list):
             permissions = []
 
+        raw_plugins = data.get("plugins") or []
+        plugins = [str(p) for p in raw_plugins] if isinstance(raw_plugins, list) else []
+
         try:
             port = int(pyflutter_section.get("port", 7879))
         except (TypeError, ValueError):
@@ -97,6 +102,7 @@ class PyFlutterConfig:
             entrypoint=pyflutter_section.get("entrypoint", "main.py"),
             port=port,
             flutter_dependencies=deps_map,
+            plugins=plugins,
             permissions=[str(p) for p in permissions],
             raw_config=data,
             config_path=path.resolve(),
@@ -109,21 +115,30 @@ class PyFlutterConfig:
 
         target_path = path or self.config_path or (Path.cwd() / "pyflutter.yaml")
 
-        data = {
-            "name": self.name,
-            "description": self.description,
-            "version": self.version,
-            "pyflutter": {
-                "entrypoint": self.entrypoint,
-                "port": self.port,
-            },
-            "dependencies": {
-                "flutter": self.flutter_dependencies,
-            },
-        }
-
+        # Start from what is already in the file so unknown keys are not lost.
+        data = copy.deepcopy(self.raw_config) if isinstance(self.raw_config, dict) else {}
+        data["name"] = self.name
+        data["description"] = self.description
+        data["version"] = self.version
+        data.setdefault("pyflutter", {})
+        if not isinstance(data["pyflutter"], dict):
+            data["pyflutter"] = {}
+        data["pyflutter"]["entrypoint"] = self.entrypoint
+        data["pyflutter"]["port"] = self.port
+        deps = data.get("dependencies")
+        if not isinstance(deps, dict):
+            deps = {}
+        deps["flutter"] = self.flutter_dependencies
+        data["dependencies"] = deps
+        if self.plugins:
+            data["plugins"] = list(self.plugins)
+        else:
+            data.pop("plugins", None)
         if self.permissions:
             data["permissions"] = self.permissions
+        else:
+            data.pop("permissions", None)
+        self.raw_config = data
 
         with open(target_path, "w", encoding="utf-8") as f:
             yaml.dump(data, f, sort_keys=False, default_flow_style=False)
@@ -134,6 +149,22 @@ class PyFlutterConfig:
         """Adds a native Flutter package to this project's dependencies."""
         self.flutter_dependencies[package_name] = version
         self.save()
+
+    def add_plugin(self, name: str) -> bool:
+        """Adds a catalog plugin to the project. Returns False if it was already listed."""
+        if name in self.plugins:
+            return False
+        self.plugins.append(name)
+        self.save()
+        return True
+
+    def remove_plugin(self, name: str) -> bool:
+        """Removes a catalog plugin from the project. Returns False if it was not listed."""
+        if name not in self.plugins:
+            return False
+        self.plugins.remove(name)
+        self.save()
+        return True
 
     def remove_flutter_dependency(self, package_name: str) -> None:
         """Removes a native Flutter package from this project's dependencies."""

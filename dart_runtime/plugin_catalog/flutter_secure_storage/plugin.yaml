@@ -1,8 +1,7 @@
 name: flutter_secure_storage
 package: flutter_secure_storage
-constraint: ^11.2.0
-shim: shim.dart
-shim_class: SecureStorageShim
+constraint: ^10.3.4
+files: [shim.dart]
 registers: [flutter_secure_storage, secure_storage]
 python_module: pyflutter.plugins.flutter_secure_storage
 android:
