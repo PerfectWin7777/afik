@@ -6,6 +6,7 @@ Provides a reactive, typed, Flutter-standard Form API.
 from __future__ import annotations
 
 import re
+import weakref
 from typing import Any, Callable, Optional, Sequence
 
 from pyflutter.core.widget_base import Widget
@@ -198,18 +199,91 @@ class FormKey:
     """
     Manages the state and validation of a Form and its child FormFields.
     Equivalent to Flutter's GlobalKey<FormState>().
+
+    The key outlives the widgets: a ``TextFormField`` is recreated on every build, so the
+    values typed by the user and the validation errors are stored **here**, indexed by the
+    field ``name``, and every new field with the same name starts from them. Give a ``name`` to
+    every field whose value must survive a rebuild (fields without a name keep working but
+    restart from their own initial value each time the screen is rebuilt).
     """
 
     def __init__(self):
-        self._fields: list[Any] = []
+        # Live fields only: a rebuilt field replaces the previous one of the same name, and
+        # fields nobody references any more disappear on their own.
+        self._fields: "weakref.WeakSet[Any]" = weakref.WeakSet()
+        self._by_name: dict[str, "weakref.ReferenceType[Any]"] = {}
+        self._values: dict[str, str] = {}
+        self._errors: dict[str, str] = {}
+
+    # -- registration ------------------------------------------------------------------
 
     def register(self, field: Any) -> None:
-        if field not in self._fields:
-            self._fields.append(field)
+        """Adds a field and makes it start from the value and error the key remembers."""
+        self._fields.add(field)
+        name = getattr(field, "name", None)
+        if not name:
+            return
+        previous = self._by_name.get(name)
+        old = previous() if previous is not None else None
+        if old is not None and old is not field:
+            self._fields.discard(old)
+        self._by_name[name] = weakref.ref(field)
+
+        if getattr(field, "controller", None) is not None:
+            # The controller belongs to the user and already holds the typed text.
+            self._values[name] = field.value
+        elif name in self._values:
+            field.props["value"] = self._values[name]
+        else:
+            self._values[name] = str(field.props.get("value", ""))
+
+        if name in self._errors:
+            field.props["error_text"] = self._errors[name]
 
     def unregister(self, field: Any) -> None:
-        if field in self._fields:
-            self._fields.remove(field)
+        self._fields.discard(field)
+        name = getattr(field, "name", None)
+        ref = self._by_name.get(name) if name else None
+        if ref is not None and ref() is field:
+            del self._by_name[name]
+
+    # -- values ------------------------------------------------------------------------
+
+    def set_value(self, name: str, text: Any) -> None:
+        """Sets the value of a named field, in the store and in its live widget."""
+        self.set_values({name: text})
+
+    def set_values(self, values: dict[str, Any]) -> None:
+        """Sets several named values at once (for example to load a record into the form)."""
+        for name, text in values.items():
+            text = "" if text is None else str(text)
+            self._values[name] = text
+            ref = self._by_name.get(name)
+            field = ref() if ref is not None else None
+            if field is not None:
+                field.set_value(text, auto_update=False)
+        from pyflutter.app import update
+        update()
+
+    def _store_value(self, name: str, text: Any) -> None:
+        self._values[name] = "" if text is None else str(text)
+
+    def _store_error(self, name: str, error: Optional[str]) -> None:
+        if error:
+            self._errors[name] = str(error)
+        else:
+            self._errors.pop(name, None)
+
+    def get_values(self) -> dict[str, str]:
+        """Returns a dictionary of all named fields with their current values."""
+        values = dict(self._values)
+        for name, ref in self._by_name.items():
+            field = ref()
+            if field is not None:
+                values[name] = field.value
+        return values
+
+    # -- Form operations -----------------------------------------------------------------
 
     def validate(self) -> bool:
         """
@@ -232,6 +306,7 @@ class FormKey:
         for field in list(self._fields):
             if hasattr(field, "reset_field"):
                 field.reset_field()
+        self._errors.clear()
         from pyflutter.app import update
         update()
 
@@ -240,15 +315,6 @@ class FormKey:
         for field in list(self._fields):
             if hasattr(field, "save_field"):
                 field.save_field()
-
-    def get_values(self) -> dict[str, str]:
-        """Returns a dictionary of all named fields with their current values."""
-        values = {}
-        for field in self._fields:
-            name = getattr(field, "name", None)
-            if name:
-                values[name] = getattr(field, "value", "")
-        return values
 
 
 class Form(Widget):

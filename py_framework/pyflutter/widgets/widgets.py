@@ -1386,8 +1386,8 @@ class TextFormField(TextField):
             focused_border_color=focused_border_color,
             filled=filled,
             fill_color=fill_color,
-            on_change=on_change,
-            on_changed=on_changed,
+            on_change=None,
+            on_changed=None,
             on_submit=on_submit,
             on_submitted=on_submitted,
             raw_props=raw_props,
@@ -1397,6 +1397,16 @@ class TextFormField(TextField):
         self.on_saved = on_saved
         self._initial_value = actual_val
         self.form_key = form_key
+
+        # The typed text goes to the FormKey first, so the user's handler already sees it there.
+        def _remember(val: str = "") -> None:
+            if self.form_key is not None and self.name:
+                self.form_key._store_value(self.name, val)
+        self._text_changed_signal.connect(_remember)
+        change_handler = on_changed or on_change
+        if change_handler is not None:
+            self._text_changed_signal.connect(change_handler)
+
         if form_key:
             form_key.register(self)
 
@@ -1404,23 +1414,30 @@ class TextFormField(TextField):
         self.form_key = form_key
         form_key.register(self)
 
-    def validate_field(self) -> bool:
-        """Runs the validator function on this field's current value."""
-        if not self.validator:
-            self.props.pop("error_text", None)
-            return True
-        err = self.validator(self.value)
-        if err:
-            self.props["error_text"] = str(err)
-            return False
+    def set_value(self, value: str, *, auto_update: bool = True) -> "TextFormField":
+        super().set_value(value, auto_update=auto_update)
+        if self.form_key is not None and self.name:
+            self.form_key._store_value(self.name, self.value)
+        return self
+
+    def _set_error(self, error: Optional[str]) -> None:
+        if error:
+            self.props["error_text"] = str(error)
         else:
             self.props.pop("error_text", None)
-            return True
+        if self.form_key is not None and self.name:
+            self.form_key._store_error(self.name, error)
+
+    def validate_field(self) -> bool:
+        """Runs the validator function on this field's current value."""
+        err = self.validator(self.value) if self.validator else None
+        self._set_error(err)
+        return not err
 
     def reset_field(self) -> None:
         """Resets the field to its initial value and clears errors."""
-        self.set_value(self._initial_value)
-        self.props.pop("error_text", None)
+        self.set_value(self._initial_value, auto_update=False)
+        self._set_error(None)
 
     def save_field(self) -> None:
         """Invokes on_saved if defined."""

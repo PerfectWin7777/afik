@@ -83,7 +83,7 @@ python ../audit/repro_core.py                         # relance les repros
 | 1b | T-20 ✅ | Catalogue de plugins installés à la demande (`pyflutter add`) — **fait** (reste la copie de travail par projet : T-14) | L |
 | 2 | T-02 ✅ | Ordonnanceur de frames + thread d'UI unique (B-19, B-20) — **fait** | M |
 | 3 | T-03 | Cycle de vie des `State` : `dispose` (B-21) | M |
-| 4 | T-04 | `FormKey` comme magasin de valeurs (B-27) | S |
+| 4 | T-04 ✅ | `FormKey` comme magasin de valeurs (B-27) — **fait** | S |
 | 5 | T-05 ✅ | Convention d'appel des callbacks (B-23) — **fait** (reste : convertisseurs de type par widget) | S |
 | 6 | T-06 ✅ | Signaux : égalité, mutation en place, batch (B-17, B-18) — **fait** | S |
 | 7 | T-07 | Arguments structurés côté Dart (B-39) | S |
@@ -338,7 +338,9 @@ La clé `fichier:ligne#index` ne survit pas aux éditions. Remplacer par une cl�
 
 ---
 
-## T-04 — `FormKey` comme magasin de valeurs (B-27)
+## T-04 — ✅ FAIT — `FormKey` comme magasin de valeurs (B-27)
+
+> Implémenté dans `core/form.py` (`FormKey` : `_values`, `_errors`, `_by_name`, `WeakSet`, `set_value(s)`) et `TextFormField` (`widgets/widgets.py`). Tests : `tests/test_form_key_store.py`. Limite connue : un champ **sans `name`** repart de sa valeur initiale à chaque rebuild ; donner un `name` à tout champ dont la valeur doit survivre.
 
 **Problème (plus grave que décrit dans le rapport initial)** : un `TextFormField` est **recréé à chaque build** ; sa valeur Python n'est que `initial_value`. `FormKey.get_values()` et `validate()` lisent `field.value` du dernier champ enregistré, donc la valeur **réellement tapée** n'est jamais celle lue si le champ n'a pas de `controller`. De plus `FormKey._fields` garde chaque copie obsolète (fuite).
 
