@@ -51,10 +51,10 @@ Native package calls travel the same way: Python sends `{plugin, method, args}`,
 |------|-------|
 | `pyflutter run` on Android / desktop devices with hot reload (`r`) and hot restart (`R`) | Works |
 | Material widgets, reactive state, forms, navigation stack, SnackBar / dialogs | Works (coverage is partial, see `PYFLUTTER_VISION.md`) |
+| Single UI thread: callbacks and builds never overlap, many updates cost one frame (`pf.run_on_ui` for your own threads) | Works |
 | Incremental tree patches, reconnection resync, session token on the local socket | Works |
-| Native packages with a real shim | `url_launcher`, `shared_preferences`, `path_provider`, `device_info_plus`, `file_picker`; `sqflite` uses Python's `sqlite3` |
-| Native packages with a **simulated** shim (in-memory placeholder, not the real package) | `image_picker`, `camera`, `connectivity_plus`, `audioplayers`, `video_player`, `share_plus`, `webview_flutter`, `chewie`, `hive`, `flutter_local_notifications`, PDF packages |
-| Security packages (`local_auth`, `permission_handler`, `flutter_secure_storage`) | Real shims exist in `dart_runtime/plugin_catalog/`; they are installed on demand (design in `AUDIT_BUGS.md`, ticket T-20) |
+| Native packages (22 catalog plugins, see below) | Real shims calling the real Flutter packages; installed per project with `pyflutter add`. They compile (`flutter analyze`) individually and all together; they still need testing on devices |
+| `hive` boxes and `sqflite` | Implemented in Python (JSON files, `sqlite3`), no Flutter package involved |
 | Standalone app that embeds Python (APK / IPA / desktop bundle) | **Not implemented**: `pyflutter build` compiles the Flutter shell, but no Python interpreter is embedded yet |
 | Web and iOS | **Not supported yet** (the shell imports `dart:io` / `dart:ffi`; iOS needs the embedded runtime) |
 | Installation with `pip install` outside a repository clone | **Not available yet**: the CLI needs the `dart_runtime/` and `rust_bridge/` folders of this repository |
@@ -154,26 +154,41 @@ python main.py
 
 ## Native packages
 
-PyFlutter does **not** try to expose every pub.dev package automatically. The model is:
+PyFlutter does **not** try to expose every pub.dev package automatically, and it does not put
+every package in every app. The model is:
 
-1. A Python module per package (`pyflutter.plugins.<package>`) mirrors the package's classes and methods.
-2. A hand-written Dart shim receives `{plugin, method, args}` and calls the real package API.
-3. Packages are installed per project, on demand: `pyflutter add <package>` (the Flutter dependency, the shim and the native settings for that package; being finalised, see `AUDIT_BUGS.md` T-20).
+1. Each supported package has an entry in [`dart_runtime/plugin_catalog/`](dart_runtime/plugin_catalog): a `plugin.yaml`
+   (package, version, native settings) and a hand-written Dart shim that calls the real package API.
+2. A Python module `pyflutter.plugins.<package>` mirrors the package's classes and methods.
+3. A project lists the plugins it uses in `pyflutter.yaml` (`plugins:`); `pyflutter add <name>` edits that list and wires the
+   shim, the `pubspec.yaml` dependency and the native Android settings. Only those packages are compiled into the app.
 
-For a package without a shim, the generic `pf.MethodChannel(name).invoke_method(...)` can call a native channel the package exposes, but many packages use private channels, so a shim is the reliable path.
+```bash
+pyflutter plugin list                 # catalog and what this project uses
+pyflutter add local_auth              # install a catalog plugin
+pyflutter add some_other_package      # no shim yet: adds the Flutter dependency, then
+pyflutter plugin new some_other_package   # scaffolds the shim, Python module and test to fill from the package docs
+pyflutter remove local_auth
+```
 
-| Package | Python module | Shim |
+A plugin that is not installed fails with a clear error (`Plugin "x" is not installed in this runtime. Install it with: pyflutter add x`).
+When a Flutter runtime is connected, a plugin error or timeout raises `PluginError` / `PluginTimeoutError`; it is never
+replaced by simulated data, and a missing or malformed answer never reads as a success.
+
+| Plugin (pub.dev package) | Python module | Notes |
 |---|---|---|
-| `shared_preferences` | `pyflutter.plugins.shared_preferences` | Real |
-| `path_provider` | `pyflutter.plugins.path_provider` | Real |
-| `device_info_plus` | `pyflutter.plugins.device_info_plus` | Real |
-| `url_launcher` | `pyflutter.plugins.url_launcher` | Real |
-| `file_picker` | `pyflutter.plugins.file_picker` | Real |
-| `sqflite` | `pyflutter.plugins.sqflite` | Python `sqlite3` |
-| `local_auth`, `permission_handler`, `flutter_secure_storage` | `pyflutter.plugins.<name>` | Real, in `dart_runtime/plugin_catalog/` (install on demand) |
-| `image_picker`, `camera`, `connectivity_plus`, `audioplayers`, `video_player`, `share_plus`, `webview_flutter`, `chewie`, `hive`, `flutter_local_notifications`, `syncfusion_flutter_pdfviewer`, `pdfx`, `printing`, `flutter_pdfview` | `pyflutter.plugins.<name>` | Simulated placeholder |
+| `shared_preferences`, `path_provider`, `device_info_plus`, `url_launcher`, `file_picker` | `pyflutter.plugins.<name>` | Key-value storage, system folders, device info, links/phone/email, file and folder dialogs |
+| `connectivity_plus`, `share_plus`, `image_picker`, `audioplayers` | `pyflutter.plugins.<name>` | Network state, share sheet, gallery/camera picking, audio playback |
+| `flutter_local_notifications` | `pyflutter.plugins.flutter_local_notifications` | Show / cancel notifications (needs core library desugaring, applied automatically) |
+| `local_auth`, `permission_handler`, `flutter_secure_storage` | `pyflutter.plugins.<name>` | Biometrics, runtime permissions, encrypted storage |
+| `camera`, `video_player`, `chewie`, `webview_flutter` | `pyflutter.plugins.<name>` | Real widgets `CameraPreview`, `VideoPlayer`, `Chewie`, `WebView` |
+| `syncfusion_flutter_pdfviewer`, `pdfx`, `flutter_pdfview`, `printing` | `pyflutter.plugins.<name>` | PDF viewers (`SfPdfViewer`, `PdfView`, `PDFView`), page rendering, print and share. Syncfusion needs its own licence |
+| `hive`, `sqflite` | `pyflutter.plugins.hive`, `pyflutter.plugins.sqflite` | Pure Python (JSON boxes, `sqlite3`), no Flutter package |
 
-Without a connected Flutter runtime (unit tests, scripts), plugin calls use a local simulation so code can be tested offline. With a runtime connected, a plugin error or timeout raises `PluginError` / `PluginTimeoutError`; it is never replaced by simulated data.
+Without a connected Flutter runtime (unit tests, scripts) plugin calls use a small local simulation so code can be tested offline.
+
+To check a catalog change: `python tools/verify_catalog.py` (needs the Flutter SDK) installs every plugin into a temporary copy of the
+runtime, runs `flutter pub get` and `flutter analyze`, then installs them all together to catch version conflicts.
 
 ---
 
@@ -187,8 +202,9 @@ Without a connected Flutter runtime (unit tests, scripts), plugin calls use a lo
 | `pyflutter create` | `<name>` | Scaffold a project |
 | `pyflutter init` | | Initialise a project in the current directory |
 | `pyflutter sync` | | Sync `pyflutter.yaml` permissions to the Android manifest and iOS plist |
-| `pyflutter add` | `<package>` | Add a Flutter package to the runtime |
-| `pyflutter remove` | `<package>` | Remove a Flutter package from the runtime |
+| `pyflutter add` | `<package>` | Install a catalog plugin (or add a Flutter package that has no shim yet) |
+| `pyflutter remove` | `<package>` | Remove a plugin / package |
+| `pyflutter plugin` | `list` \| `new <package>` | List the plugin catalog, or scaffold the mapping of a new package |
 
 Build targets: `apk`, `appbundle`, `windows`, `linux`, `macos`, `web`, `ipa` (`web` and `ipa` are not supported yet, see above).
 
@@ -212,7 +228,8 @@ The Rust relay tests (`tests/test_bridge_relay.py`) run the real bridge binary a
 - [x] Material 3 widget catalog (partial coverage)
 - [x] Callback lifecycle (sweep, pinned one-shot callbacks), deterministic state keys
 - [x] Hot reload / hot restart, reconnection resync
-- [ ] Packages on demand (`pyflutter add` with a plugin catalog)
+- [x] Packages on demand (`pyflutter add` with a plugin catalog)
+- [ ] Per-project copy of the Flutter runtime (today `pyflutter add` edits the repository's `dart_runtime/`)
 - [ ] Embedded Python interpreter for standalone builds
 - [ ] Pip distribution with a prebuilt bridge
 - [ ] Hot reload of every project module, file watcher

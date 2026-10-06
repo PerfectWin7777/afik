@@ -52,6 +52,10 @@ python ../audit/repro_core.py                         # relance les repros
 | B-15 | `ensure_port_free` tuait n'importe quel processus | `cli/runner.py` | revue manuelle |
 | B-16 | Relais TCP sans authentification, taille de trame illimitée | `rust_bridge/src/main.rs`, `cli/runner.py`, `main.dart` (`PYFLUTTER_TOKEN`) | `tests/test_bridge_relay.py` |
 | B-06a | Les wrappers Python de `local_auth`, `permission_handler`, `flutter_secure_storage` répondaient « succès » par défaut | `plugins/local_auth.py`, `permission_handler.py`, `flutter_secure_storage.py` (refus par défaut, attente de 120 s pour les appels interactifs) | `TestSecurityPluginsRefuseByDefault` |
+| B-06 | Plugins sécurité et plugins « simulés » | Voir T-01 et T-20 : refus par défaut côté Python, shims réels pour les 22 entrées du catalogue (`dart_runtime/plugin_catalog/`), installés à la demande ; plus aucun shim factice dans le runtime de base | `tests/test_plugin_answers.py`, `TestSecurityPluginsRefuseByDefault`, `tools/verify_catalog.py` (22 entrées + installation groupée) |
+| B-19, B-20 | `update()` construisait l'arbre sur n'importe quel thread, sans regroupement ; callbacks et builds concurrents | `core/scheduler.py` (`FrameScheduler`, thread « pyflutter-ui »), `cli/runner.py`, `app.py` (`pf.run_on_ui`) | `tests/test_scheduler.py` (16 tests, dont un test de contention à 3 threads) |
+| B-37 | Faux « succès » des wrappers quand la réponse manque | Tous les wrappers de plugins (voir T-08 pour ce qui reste : table de timeouts, mocks hors runtime) | `tests/test_plugin_answers.py` |
+| B-60 | `ffi_bridge.dart` importait `package:ffi` sans le déclarer (il arrivait par `path_provider`/`file_picker`) : le runtime de base ne compilait plus sans eux | `dart_runtime/pubspec.yaml` (`ffi: ^2.1.0`) | `flutter analyze` du runtime de base |
 | B-30 | `pyflutter.yaml` mal formé = crash ou silence | `core/config.py` | `TestConfigRobustness` |
 | B-32 | Titre non échappé dans le manifeste Android | `cli/manifest_sync.py` | `audit/repro_cli.py` |
 | B-33 | Plateforme du device devinée à partir de l'id | `cli/devices.py` | revue manuelle |
@@ -68,18 +72,16 @@ python ../audit/repro_core.py                         # relance les repros
 | ID | Fait | Reste |
 |----|------|-------|
 | B-03 | Le build échoue si `cargo` échoue ; avertit qu'il n'y a pas d'interpréteur | L'embarquement lui-même → **partie C** |
-| B-06b | Shims Dart réels écrits (`dart_runtime/plugin_catalog/`), non compilés par défaut ; plugin non installé → erreur claire « pyflutter add <paquet> » | Mécanique d'installation à la demande → **T-20** |
-| B-20 | Registre de callbacks verrouillé | Un seul thread d'UI pour callbacks **et** builds → **T-02** |
 | B-32 | Échappement XML, permissions inconnues signalées | Nettoyage des permissions retirées, copie par projet → **T-14** |
-| B-37 | Fallback local limité au mode sans runtime | Marquage explicite des mocks → **T-08** |
+| B-37 | Fallback local limité au mode sans runtime ; wrappers stricts | Table de timeouts par plugin, refus des plugins « sécurité » hors runtime sans variable d'environnement → **T-08** |
 
 ### 1.3 Ordre de travail recommandé pour ce qui reste
 
 | Ordre | Ticket | Sujet | Taille |
 |------:|--------|-------|:------:|
 | 1 | T-01 ✅ | Refus par défaut des plugins sécurité + shims réels rangés dans le catalogue — **fait** | M |
-| 1b | T-20 | Catalogue de plugins installés à la demande (`pyflutter add`) | L |
-| 2 | T-02 | Ordonnanceur de frames + thread d'UI unique (B-19, B-20) | M |
+| 1b | T-20 ✅ | Catalogue de plugins installés à la demande (`pyflutter add`) — **fait** (reste la copie de travail par projet : T-14) | L |
+| 2 | T-02 ✅ | Ordonnanceur de frames + thread d'UI unique (B-19, B-20) — **fait** | M |
 | 3 | T-03 | Cycle de vie des `State` : `dispose` (B-21) | M |
 | 4 | T-04 | `FormKey` comme magasin de valeurs (B-27) | S |
 | 5 | T-05 | Convention d'appel des callbacks (B-23) | S |
@@ -114,7 +116,7 @@ Chaque ticket est autonome. Les numéros `B-xx` renvoient au rapport initial (`a
 ## T-01 — ✅ FAIT — Plugins sécurité : refus par défaut + shims réels (B-06)
 
 > **Fait** : (1) les wrappers Python ne rapportent un succès que sur une réponse explicite ; (2) les shims Dart réels de `local_auth`, `permission_handler` et `flutter_secure_storage` sont écrits dans `dart_runtime/plugin_catalog/<paquet>/shim.dart` (avec un `plugin.yaml` qui décrit la dépendance et les réglages natifs) mais **ne sont pas compilés dans le runtime de base** : l'app n'embarque que les paquets que le projet a installés. Tant que le plugin n'est pas installé, l'appel échoue avec « Plugin "x" is not installed in this runtime. Install it with: pyflutter add x ». (3) La mécanique d'installation est le ticket **T-20**.
-> À valider quand T-20 sera fait : `flutter pub get && flutter analyze` sur un projet qui a installé ces paquets, puis test sur appareil (biométrie refusée → `False`, permission refusée → `DENIED`, secret relu après redémarrage). iOS : réglages de build `permission_handler` par permission ; Linux : `libsecret-1-dev` pour `flutter_secure_storage`. Le texte ci-dessous reste valable comme spécification des shims.
+> `flutter pub get` et `flutter analyze` sont passés (via `tools/verify_catalog.py`). Reste à valider sur appareil (biométrie refusée → `False`, permission refusée → `DENIED`, secret relu après redémarrage). iOS : réglages de build `permission_handler` par permission ; Linux : `libsecret-1-dev` pour `flutter_secure_storage`. Le texte ci-dessous reste valable comme spécification des shims.
 
 **Pourquoi c'est prioritaire** : une application qui protège une action avec la biométrie, ou qui stocke un jeton, doit pouvoir faire confiance au résultat. Aujourd'hui les shims Dart refusent (c'est le comportement sûr), mais les **wrappers Python répondent « succès » par défaut** quand la réponse est absente.
 
@@ -215,7 +217,9 @@ Le même schéma vaut pour `local_auth` (`LocalAuthentication().canCheckBiometri
 
 ---
 
-## T-02 — Ordonnanceur de frames + thread d'UI unique (B-19, B-20)
+## T-02 — ✅ FAIT — Ordonnanceur de frames + thread d'UI unique (B-19, B-20)
+
+> **Fait** : `core/scheduler.py` (`FrameScheduler`) ; le runner n'a plus de thread de callbacks ni de `_building` : les callbacks (postés par le thread de lecture du pont) puis un seul build par frame s'exécutent sur le thread « pyflutter-ui » ; `pf.run_on_ui(fn)` est public ; hot reload / hot restart sont postés sur ce thread. Écarts avec la spécification ci-dessous : `flush_updates()` s'appelle `FrameScheduler.run_pending()`, et `tree_lock` (RLock) reste en filet de sécurité autour du build. Tests : `tests/test_scheduler.py`. La spécification d'origine suit.
 
 **Problème**
 - `pf.update()` → `runner.push_update()` reconstruit **et envoie** l'arbre **tout de suite, sur le thread appelant** (`cli/runner.py`, `push_update` / `_render_and_send`). 1 000 écritures de `Signal` = 1 000 rebuilds complets.
@@ -922,7 +926,9 @@ Règle : décrire **ce qui marche aujourd'hui** (mode dev par socket), séparer 
 
 ---
 
-## T-20 — Catalogue de plugins installés à la demande (`pyflutter add`)
+## T-20 — ✅ FAIT — Catalogue de plugins installés à la demande (`pyflutter add`)
+
+> **Fait** : `pyflutter/plugins/catalog.py` (chargement, `requires`, rendu du registrant, bloc géré de `pubspec.yaml`, copie des shims, réglages Android avec retour exact à l'état initial, `scaffold_plugin`), `cli/plugins_cmd.py` (`add`, `remove`, `plugin list`, `plugin new`), `pyflutter.yaml: plugins:`, synchronisation automatique par `run` / `build` / `sync`, côté Dart `WidgetRegistry` + `installed_plugins.dart` généré. Les 22 entrées du catalogue (5 anciennes réelles + 3 sécurité + 14 anciennement simulées) passent `flutter pub get` + `flutter analyze` seules et **toutes ensemble** (`python tools/verify_catalog.py`). Écarts avec la spécification ci-dessous : chaque plugin a son dossier `lib/plugins/installed/<nom>/` (plusieurs fichiers possibles via `files:`), le shim expose `register()` (plugins **et** widgets), `plugin.yaml` accepte `requires`, `extra_packages`, `widgets`, `android.{permissions,min_sdk,desugaring,main_activity_base,launch_theme_parent}`. **Reste à faire** : la copie de travail du runtime **par projet** (T-14) — aujourd'hui `pyflutter add` modifie le `dart_runtime/` du dépôt, partagé entre projets — et `hive`, désormais en Python pur, n'est pas dans le catalogue. Conflits de versions entre plugins : le résolveur de Dart en a révélé plusieurs (`win32` 5 contre 6 entre `device_info_plus`, `share_plus`, `file_picker`, `flutter_secure_storage` et `syncfusion_flutter_pdfviewer`) ; ils sont réglés par des plages de versions et `tools/verify_catalog.py --together` doit être relancé à chaque ajout ou changement de contrainte. La spécification d'origine suit.
 
 **Le modèle voulu** : PyFlutter ne dépend pas de tous les paquets Flutter. Pour chaque paquet qu'on décide de supporter, on lit sa documentation, on **mappe ses classes, fonctions et méthodes en Python** (module `pyflutter.plugins.<paquet>`), et un petit shim Dart traduit l'appel vers la vraie API du paquet. L'utilisateur n'obtient ce paquet dans son application que s'il a lancé `pyflutter add <paquet>`. Cela garde l'app (et donc le runtime embarqué) la plus légère possible.
 
