@@ -7,10 +7,10 @@ pyflutter:
   entrypoint: examples/pyshop/main.py
   port: 7879
 
-# Native Flutter packages (identical to pubspec.yaml dependencies)
-dependencies:
-  flutter:
-    url_launcher: ^6.3.0
+# Plugins from the catalog (dart_runtime/plugin_catalog), installed on demand.
+# `pyflutter add <name>` edits this list; `pyflutter run` and `build` apply it.
+plugins:
+  - url_launcher
 
 # Device permissions automatically mapped to Android / iOS
 permissions:

@@ -189,10 +189,9 @@ pyflutter:
   entrypoint: main.py
   port: 7879
 
-# Native Flutter packages (same as Flutter pubspec.yaml)
-dependencies:
-  flutter:
-    url_launcher: ^6.3.0
+# Plugins from the catalog, installed on demand (`pyflutter add <name>`, `pyflutter plugin list`).
+plugins:
+  - url_launcher
 
 # Device permissions automatically synced with Android / iOS
 permissions:
