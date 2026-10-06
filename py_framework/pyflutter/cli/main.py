@@ -229,10 +229,12 @@ def main(argv: list[str] | None = None):
     if args.command == "sync":
         from pyflutter.core.config import PyFlutterConfig
         from pyflutter.cli.runner import find_workspace_root
+        from pyflutter.core.runtime_project import ProjectRuntime
         from pyflutter.plugins.catalog import CatalogError, prepare_runtime
         config = PyFlutterConfig.find_and_load(Path.cwd())
+        runtime = ProjectRuntime.for_config(config, find_workspace_root() / "dart_runtime", Path.cwd())
         try:
-            prepare_runtime(find_workspace_root(), config)
+            prepare_runtime(runtime, config)
         except CatalogError as e:
             print(f"Error: {e}")
             sys.exit(1)

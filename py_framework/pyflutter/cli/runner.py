@@ -22,6 +22,7 @@ from typing import Any, Optional
 from pyflutter.core.logger import logger
 from pyflutter.cli.devices import select_device, setup_adb_port_forward
 from pyflutter.core.bridge import BridgeSession, RESYNC_CALLBACK_ID
+from pyflutter.core.runtime_project import ProjectRuntime
 from pyflutter.core.scheduler import FrameScheduler
 from pyflutter.core.widget_base import invoke_callback, clear_callbacks
 
@@ -321,7 +322,6 @@ class PyFlutterRunner:
         self.debug_banner = debug_banner
         self.root = find_workspace_root()
         self.bridge_bin = find_bridge_binary(self.root)
-        self.dart_runtime_dir = self.root / "dart_runtime"
 
         self.session: Optional[BridgeSession] = None
         self.flutter_process: Optional[subprocess.Popen] = None
@@ -339,6 +339,9 @@ class PyFlutterRunner:
         # Load project configuration if pyflutter.yaml exists
         from pyflutter.core.config import PyFlutterConfig
         self.config = PyFlutterConfig.find_and_load(self.entrypoint.parent)
+        # The project's own copy of the Flutter runtime (created on `start`, see ProjectRuntime).
+        self.runtime = ProjectRuntime.for_config(self.config, self.root / "dart_runtime", self.entrypoint.parent)
+        self.dart_runtime_dir = self.runtime.runtime_dir
         if self.config.config_path:
             logger.info(f"Loaded project manifest: {self.config.config_path.name} ({self.config.name} v{self.config.version})")
 
@@ -366,7 +369,7 @@ class PyFlutterRunner:
         # 0. Sync declarative permissions to native Android and iOS manifests
         from pyflutter.plugins.catalog import CatalogError, prepare_runtime
         try:
-            prepare_runtime(self.root, self.config)
+            prepare_runtime(self.runtime, self.config)
         except CatalogError as e:
             logger.error("{}", e)
             sys.exit(1)

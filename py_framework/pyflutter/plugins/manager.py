@@ -451,76 +451,14 @@ def _dispatch_local_fallback(plugin_name: str, method: str, args: dict[str, Any]
 
 
 def add_flutter_package(package_name: str) -> bool:
-    """Installs a Flutter package into the PyFlutter runtime using `flutter pub add`."""
-    current = Path(__file__).resolve()
-    repo_root = current.parents[3]
-    dart_runtime_dir = repo_root / "dart_runtime"
+    """Adds a Flutter package to the project in the current directory (`pyflutter add`)."""
+    from pyflutter.cli import plugins_cmd
 
-    if not dart_runtime_dir.exists():
-        logger.error(f"Cannot find dart_runtime at: {dart_runtime_dir}")
-        return False
-
-    flutter_bin = shutil.which("flutter") or shutil.which("flutter.bat")
-    if not flutter_bin:
-        logger.error("Flutter binary not found in PATH.")
-        return False
-
-    logger.info(f"📦 Installing native Flutter package '{package_name}' into {dart_runtime_dir.name}...")
-    try:
-        subprocess.run(
-            ["flutter", "pub", "add", package_name],
-            cwd=str(dart_runtime_dir),
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            shell=(sys.platform == "win32"),
-        )
-        logger.success(f"✅ Successfully installed '{package_name}' into dart_runtime!")
-        from pyflutter.core.config import PyFlutterConfig
-        config = PyFlutterConfig.find_and_load()
-        config.add_flutter_dependency(package_name)
-        return True
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to install package '{package_name}':\n{e.stdout}")
-        return False
+    return plugins_cmd.add(package_name)
 
 
 def remove_flutter_package(package_name: str) -> bool:
-    """Removes a Flutter package from the PyFlutter runtime using `flutter pub remove`."""
-    current = Path(__file__).resolve()
-    repo_root = current.parents[3]
-    dart_runtime_dir = repo_root / "dart_runtime"
+    """Removes a Flutter package from the project in the current directory (`pyflutter remove`)."""
+    from pyflutter.cli import plugins_cmd
 
-    if not dart_runtime_dir.exists():
-        logger.error(f"Cannot find dart_runtime at: {dart_runtime_dir}")
-        return False
-
-    flutter_bin = shutil.which("flutter") or shutil.which("flutter.bat")
-    if not flutter_bin:
-        logger.error("Flutter binary not found in PATH.")
-        return False
-
-    logger.info(f"Removing native Flutter package '{package_name}' from {dart_runtime_dir.name}...")
-    try:
-        subprocess.run(
-            [flutter_bin, "pub", "remove", package_name],
-            cwd=str(dart_runtime_dir),
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            shell=(sys.platform == "win32"),
-        )
-        from pyflutter.core.config import PyFlutterConfig
-        config = PyFlutterConfig.find_and_load()
-        config.remove_flutter_dependency(package_name)
-        logger.success(f"Removed '{package_name}' from dart_runtime.")
-        return True
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to remove package '{package_name}':\n{e.stdout}")
-        return False
+    return plugins_cmd.remove(package_name)

@@ -306,20 +306,39 @@ def plugin_permissions(entries: Iterable[CatalogEntry]) -> list[str]:
     return perms
 
 
+def plugin_queries(entries: Iterable[CatalogEntry]) -> list[str]:
+    """Android <queries> snippets (package visibility) required by the installed plugins."""
+    snippets: list[str] = []
+    for e in entries:
+        for snippet in e.android.get("queries", []) or []:
+            if snippet not in snippets:
+                snippets.append(str(snippet))
+    return snippets
+
+
 def sync_plugins(
     runtime_dir: Path,
     wanted: Iterable[str],
     *,
     run_pub_get: bool = True,
+    template_dir: Optional[Path] = None,
+    extra_dependencies: Optional[dict[str, str]] = None,
 ) -> SyncResult:
-    """Makes the Flutter runtime in ``runtime_dir`` match the ``wanted`` plugin names."""
+    """Makes the Flutter runtime in ``runtime_dir`` match the ``wanted`` plugin names.
+
+    ``template_dir`` is where the catalog lives (the framework's ``dart_runtime``); it defaults
+    to ``runtime_dir`` itself. ``extra_dependencies`` are Flutter packages declared by the project
+    that have no catalog entry (name -> version constraint).
+    """
     runtime_dir = Path(runtime_dir)
-    catalog = load_catalog(runtime_dir)
+    catalog = load_catalog(Path(template_dir) if template_dir else runtime_dir)
     entries = expand_requirements(list(dict.fromkeys(wanted)), catalog)
     result = SyncResult(plugins=[e.name for e in entries])
 
     # 1. pubspec.yaml
     deps: dict[str, str] = {}
+    for name, constraint in (extra_dependencies or {}).items():
+        deps[name] = constraint
     for e in entries:
         deps.update(e.dart_packages)
     pubspec = runtime_dir / "pubspec.yaml"
@@ -475,21 +494,41 @@ def scaffold_plugin(name: str, runtime_dir: Path, py_framework_dir: Path, constr
 # --------------------------------------------------------------------------- project level
 
 
-def prepare_runtime(workspace_root: Path, config: Any, *, run_pub_get: bool = True) -> SyncResult:
-    """Brings the Flutter runtime in line with a project before `run` / `build`.
+def prepare_runtime(runtime: Any, config: Any, *, run_pub_get: bool = True) -> SyncResult:
+    """Brings the project's Flutter runtime in line with ``pyflutter.yaml`` before `run` / `build`.
 
-    Installs the plugins listed in ``config.plugins`` and syncs the native permissions
-    declared in ``pyflutter.yaml`` plus the ones the plugins need.
+    ``runtime`` is a :class:`~pyflutter.core.runtime_project.ProjectRuntime`. It creates or
+    refreshes the project copy of the runtime, installs the plugins and extra Flutter packages
+    listed in ``config``, and writes the permissions (the ones of ``pyflutter.yaml`` plus the ones
+    the plugins need) into the Android manifest and the iOS plist.
     """
     from pyflutter.cli.manifest_sync import sync_platform_metadata
 
-    runtime_dir = Path(workspace_root) / "dart_runtime"
-    if not runtime_dir.is_dir():
-        return SyncResult()
-    result = sync_plugins(runtime_dir, config.plugins, run_pub_get=run_pub_get)
-    catalog = load_catalog(runtime_dir)
+    runtime.ensure()
+    catalog = load_catalog(runtime.template_dir)
+    catalog_packages = {e.package for e in catalog.values()}
+    extras = {n: c for n, c in config.flutter_dependencies.items() if n not in catalog_packages}
+    result = sync_plugins(
+        runtime.runtime_dir, config.plugins,
+        run_pub_get=run_pub_get, template_dir=runtime.template_dir, extra_dependencies=extras,
+    )
     entries = expand_requirements(config.plugins, catalog)
-    sync_platform_metadata(Path(workspace_root), config, extra_permissions=plugin_permissions(entries))
+    sync_platform_metadata(
+        runtime.runtime_dir, config,
+        extra_permissions=plugin_permissions(entries), extra_queries=plugin_queries(entries),
+    )
     if result.files_changed:
         logger.info("Plugins synced: {}", ", ".join(result.plugins) or "(none)")
     return result
+
+
+def resolved_version(runtime_dir: Path, package: str) -> Optional[str]:
+    """The version `flutter pub get` locked for ``package`` in ``pubspec.lock`` (None if unknown)."""
+    lock = Path(runtime_dir) / "pubspec.lock"
+    if yaml is None or not lock.exists():
+        return None
+    try:
+        data = yaml.safe_load(lock.read_text(encoding="utf-8")) or {}
+        return str(data["packages"][package]["version"])
+    except (KeyError, TypeError, ValueError):
+        return None

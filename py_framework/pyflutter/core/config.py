@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
@@ -19,6 +20,83 @@ except ImportError:
 
 
 CONFIG_FILENAMES = ["pyflutter.yaml", "pyflutter.yml"]
+
+
+def _scalar(value: str) -> str:
+    """A YAML scalar for a version constraint (quoted when it contains characters YAML would misread)."""
+    if re.fullmatch(r"\^?[0-9A-Za-z.+\-]+|any", value):
+        return value
+    return "'" + value.replace("'", "''") + "'"
+
+
+def replace_flutter_dependencies_block(text: str, dependencies: dict[str, str]) -> str:
+    """Returns ``text`` with ``dependencies: flutter:`` set to ``dependencies``.
+
+    Edited as text, like :func:`replace_plugins_block`, so comments and the rest of the file stay as
+    they are. The ``flutter:`` entry is created, replaced or removed (and ``dependencies:`` removed
+    when nothing else is left in it).
+    """
+    lines = text.splitlines()
+    dep = next((i for i, l in enumerate(lines) if re.match(r"^dependencies\s*:", l)), None)
+    entries = [f"    {name}: {_scalar(str(c))}" for name, c in dependencies.items()]
+
+    if dep is None:
+        if not entries:
+            return text
+        while lines and not lines[-1].strip():
+            lines.pop()
+        lines += ["", "dependencies:", "  flutter:"] + entries
+        return "\n".join(lines) + "\n"
+
+    end = dep + 1
+    while end < len(lines) and (not lines[end].strip() or lines[end].startswith((" ", "\t"))):
+        end += 1
+    while end > dep + 1 and not lines[end - 1].strip():
+        end -= 1                                             # blank lines belong to what follows
+
+    child = next((i for i in range(dep + 1, end) if re.match(r"^\s+flutter\s*:", lines[i])), None)
+    new_child = (["  flutter:"] + entries) if entries else []
+    if child is None:
+        lines[dep + 1:dep + 1] = new_child
+    else:
+        indent = len(lines[child]) - len(lines[child].lstrip())
+        child_end = child + 1
+        while child_end < end and (not lines[child_end].strip() or len(lines[child_end]) - len(lines[child_end].lstrip()) > indent):
+            child_end += 1
+        lines[child:child_end] = new_child
+    # `dependencies:` with no content left is dropped
+    new_end = dep + 1
+    while new_end < len(lines) and (not lines[new_end].strip() or lines[new_end].startswith((" ", "\t"))):
+        new_end += 1
+    if not any(l.strip() and not l.strip().startswith("#") for l in lines[dep + 1:new_end]):
+        del lines[dep:new_end]
+    return "\n".join(lines).rstrip("\n") + "\n"
+
+
+def replace_plugins_block(text: str, plugins: list[str]) -> str:
+    """Returns ``text`` with its top-level ``plugins:`` entry set to ``plugins``.
+
+    The entry keeps its place in the file when it exists, is appended otherwise and removed when
+    ``plugins`` is empty. Everything else (comments, order, other keys) is untouched.
+    """
+    lines = text.splitlines()
+    start = next((i for i, l in enumerate(lines) if re.match(r"^plugins\s*:", l)), None)
+    end = start
+    if start is not None:
+        end = start + 1
+        # the old entry: following indented lines, list items at column 0 and indented comments
+        while end < len(lines) and (lines[end].startswith((" ", "\t")) or re.match(r"^-\s", lines[end])):
+            end += 1
+    block = ["plugins:"] + [f"  - {name}" for name in plugins] if plugins else []
+    if start is None:
+        if not block:
+            return text
+        while lines and not lines[-1].strip():
+            lines.pop()
+        lines += [""] + block
+    else:
+        lines[start:end] = block
+    return "\n".join(lines).rstrip("\n") + "\n"
 
 
 @dataclass
@@ -147,15 +225,47 @@ class PyFlutterConfig:
 
     def add_flutter_dependency(self, package_name: str, version: str = "any") -> None:
         """Adds a native Flutter package to this project's dependencies."""
-        self.flutter_dependencies[package_name] = version
-        self.save()
+        self.set_flutter_dependencies({**self.flutter_dependencies, package_name: version})
+
+    def _write_plugins(self) -> None:
+        """Writes the ``plugins:`` list without disturbing the rest of the file.
+
+        The block is edited as text so comments and formatting survive; the file is only
+        re-dumped (which drops comments) when it does not exist yet.
+        """
+        path = self.config_path
+        if path is None or not Path(path).exists():
+            self.save()
+            return
+        text = Path(path).read_text(encoding="utf-8")
+        Path(path).write_text(replace_plugins_block(text, self.plugins), encoding="utf-8")
+        if isinstance(self.raw_config, dict):
+            if self.plugins:
+                self.raw_config["plugins"] = list(self.plugins)
+            else:
+                self.raw_config.pop("plugins", None)
+
+    def set_flutter_dependencies(self, dependencies: dict[str, str]) -> None:
+        """Sets ``dependencies.flutter`` and writes it, editing the file as text so comments survive."""
+        self.flutter_dependencies = dict(dependencies)
+        path = self.config_path
+        if path is None or not Path(path).exists():
+            self.save()
+            return
+        text = Path(path).read_text(encoding="utf-8")
+        Path(path).write_text(replace_flutter_dependencies_block(text, self.flutter_dependencies), encoding="utf-8")
+        if isinstance(self.raw_config, dict):
+            deps = self.raw_config.get("dependencies")
+            if not isinstance(deps, dict):
+                deps = self.raw_config["dependencies"] = {}
+            deps["flutter"] = dict(self.flutter_dependencies)
 
     def add_plugin(self, name: str) -> bool:
         """Adds a catalog plugin to the project. Returns False if it was already listed."""
         if name in self.plugins:
             return False
         self.plugins.append(name)
-        self.save()
+        self._write_plugins()
         return True
 
     def remove_plugin(self, name: str) -> bool:
@@ -163,11 +273,10 @@ class PyFlutterConfig:
         if name not in self.plugins:
             return False
         self.plugins.remove(name)
-        self.save()
+        self._write_plugins()
         return True
 
     def remove_flutter_dependency(self, package_name: str) -> None:
         """Removes a native Flutter package from this project's dependencies."""
         if package_name in self.flutter_dependencies:
-            del self.flutter_dependencies[package_name]
-            self.save()
+            self.set_flutter_dependencies({k: v for k, v in self.flutter_dependencies.items() if k != package_name})

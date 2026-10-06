@@ -2,25 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NFCReaderUsageDescription</key>
-	<string>This app requires NFC tag reading.</string>
-
-	<key>NSFaceIDUsageDescription</key>
-	<string>This app requires Face ID authentication for secure access.</string>
-
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app requires location access while in use.</string>
-
-	<key>NSCameraUsageDescription</key>
-	<string>This app requires camera access.</string>
-
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>This app requires speech recognition to transcribe your voice.</string>
-
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Pyshop</string>
+	<string>pyflutter_dart_runtime</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

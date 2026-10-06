@@ -37,3 +37,6 @@ dart_runtime/.metadata
 *.tmp
 .DS_Store
 Thumbs.db
+
+# Per-project Flutter runtime copies created by pyflutter run/build/add
+.pyflutter/

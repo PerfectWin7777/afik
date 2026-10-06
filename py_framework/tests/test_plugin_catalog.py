@@ -137,54 +137,98 @@ class TestSync(unittest.TestCase):
 
 
 class TestProjectCommands(unittest.TestCase):
+    """`pyflutter add / remove` work on the runtime copy of the project in the current directory."""
+
     def setUp(self):
-        self.runtime = copy_runtime()
+        self.template = copy_runtime()          # stands for the framework's dart_runtime/
+        shutil.copytree(REAL_RUNTIME / "plugin_catalog", self.template / "plugin_catalog", dirs_exist_ok=True)
         self.project = Path(tempfile.mkdtemp(prefix="pf_project_"))
         (self.project / "pyflutter.yaml").write_text(
             "name: demo\n# keep me\ncustom_key: 42\npermissions:\n  - internet\n", encoding="utf-8")
-        self.addCleanup(shutil.rmtree, self.runtime.parent, ignore_errors=True)
+        self.addCleanup(shutil.rmtree, self.template.parent, ignore_errors=True)
         self.addCleanup(shutil.rmtree, self.project, ignore_errors=True)
         self.cwd = os.getcwd()
         os.chdir(self.project)
         self.addCleanup(os.chdir, self.cwd)
-
-    def test_add_then_remove_updates_pyflutter_yaml_and_runtime(self):
         real_sync = catalog.sync_plugins
 
         def no_pub_get(rt, names, **kw):
-            return real_sync(rt, names, run_pub_get=False)
+            kw["run_pub_get"] = False
+            return real_sync(rt, names, **kw)
 
-        with patch.object(plugins_cmd, "_runtime_dir", return_value=self.runtime), \
-             patch.object(catalog, "sync_plugins", side_effect=no_pub_get):
-            self.assertTrue(plugins_cmd.add("local_auth"))
-            config = PyFlutterConfig.find_and_load(self.project)
-            self.assertEqual(config.plugins, ["local_auth"])
-            self.assertEqual(config.raw_config.get("custom_key"), 42)       # unknown keys survive
-            self.assertIn("USE_BIOMETRIC", (self.runtime / "android/app/src/main/AndroidManifest.xml").read_text(encoding="utf-8"))
-            self.assertTrue(plugins_cmd.remove("local_auth"))
-            self.assertEqual(PyFlutterConfig.find_and_load(self.project).plugins, [])
-            self.assertFalse((self.runtime / "lib/plugins/installed/local_auth").exists())
+        for patcher in (
+            patch.object(plugins_cmd, "_template_dir", return_value=self.template),
+            patch.object(catalog, "sync_plugins", side_effect=no_pub_get),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
-    def test_unknown_plugin_is_reported(self):
-        with patch.object(plugins_cmd, "_runtime_dir", return_value=self.runtime), \
-             patch("pyflutter.plugins.manager.add_flutter_package", return_value=True) as fallback:
+    def test_add_then_remove_updates_pyflutter_yaml_and_the_project_runtime(self):
+        self.assertTrue(plugins_cmd.add("local_auth"))
+        config = PyFlutterConfig.find_and_load(self.project)
+        self.assertEqual(config.plugins, ["local_auth"])
+        self.assertEqual(config.raw_config.get("custom_key"), 42)
+        text = (self.project / "pyflutter.yaml").read_text(encoding="utf-8")
+        self.assertIn("# keep me", text)                                  # comments survive
+        runtime = self.project / ".pyflutter" / "runtime"
+        self.assertIn("USE_BIOMETRIC", (runtime / "android/app/src/main/AndroidManifest.xml").read_text(encoding="utf-8"))
+        self.assertTrue((runtime / "lib/plugins/installed/local_auth/shim.dart").exists())
+        self.assertTrue(plugins_cmd.remove("local_auth"))
+        self.assertEqual(PyFlutterConfig.find_and_load(self.project).plugins, [])
+        self.assertFalse((runtime / "lib/plugins/installed/local_auth").exists())
+        self.assertNotIn("USE_BIOMETRIC", (runtime / "android/app/src/main/AndroidManifest.xml").read_text(encoding="utf-8"))
+
+    def test_the_framework_template_is_never_modified(self):
+        before = snapshot(self.template)
+        plugins_cmd.add("local_auth")
+        plugins_cmd.add("flutter_secure_storage")
+        plugins_cmd.remove("local_auth")
+        self.assertEqual(snapshot(self.template), before)
+        self.assertFalse((self.template / "lib/plugins/installed/local_auth").exists())
+
+    def test_unknown_package_is_added_as_a_dependency_with_the_resolved_version(self):
+        def fake_pub_get(cmd, cwd=None, **kw):
+            Path(cwd, "pubspec.lock").write_text(
+                "packages:\n  some_unmapped_package:\n    dependency: direct main\n    version: \"2.4.1\"\n", encoding="utf-8")
+            return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+        # exercise the real code path: pubspec change -> flutter pub get (faked) -> lock read back
+        with patch.object(catalog, "sync_plugins", side_effect=lambda rt, names, **kw: _sync_with_fake_pub_get(rt, names, fake_pub_get, **kw)):
             self.assertTrue(plugins_cmd.add("some_unmapped_package"))
-            fallback.assert_called_once_with("some_unmapped_package")
+        config = PyFlutterConfig.find_and_load(self.project)
+        self.assertEqual(config.flutter_dependencies["some_unmapped_package"], "^2.4.1")
+        pubspec = (self.project / ".pyflutter/runtime/pubspec.yaml").read_text(encoding="utf-8")
+        self.assertIn("some_unmapped_package: ^2.4.1", pubspec)
+        self.assertTrue(plugins_cmd.remove("some_unmapped_package"))
+        self.assertNotIn("some_unmapped_package", (self.project / ".pyflutter/runtime/pubspec.yaml").read_text(encoding="utf-8"))
+        self.assertEqual(PyFlutterConfig.find_and_load(self.project).flutter_dependencies, {})
 
     def test_scaffold_creates_the_mapping_skeleton(self):
         framework = Path(tempfile.mkdtemp(prefix="pf_fw_"))
         (framework / "pyflutter" / "plugins").mkdir(parents=True)
         (framework / "tests").mkdir()
         self.addCleanup(shutil.rmtree, framework, ignore_errors=True)
-        created = catalog.scaffold_plugin("my_package", self.runtime, framework)
+        created = catalog.scaffold_plugin("my_package", self.template, framework)
         names = sorted(p.name for p in created)
         self.assertEqual(names, ["my_package.py", "plugin.yaml", "shim.dart", "test_plugin_my_package.py"])
-        entry = catalog.load_entry(self.runtime / "plugin_catalog" / "my_package")
+        entry = catalog.load_entry(self.template / "plugin_catalog" / "my_package")
         self.assertEqual(entry.package, "my_package")
         with self.assertRaises(catalog.CatalogError):
-            catalog.scaffold_plugin("my_package", self.runtime, framework)
+            catalog.scaffold_plugin("my_package", self.template, framework)
         with self.assertRaises(catalog.CatalogError):
-            catalog.scaffold_plugin("Bad-Name", self.runtime, framework)
+            catalog.scaffold_plugin("Bad-Name", self.template, framework)
+
+
+def _sync_with_fake_pub_get(runtime, names, fake_pub_get, **kw):
+    """Runs the real sync_plugins with `flutter pub get` replaced by ``fake_pub_get``."""
+    real = _REAL_SYNC
+    with patch.object(catalog.shutil, "which", return_value="flutter"), \
+         patch.object(catalog.subprocess, "run", side_effect=fake_pub_get):
+        kw["run_pub_get"] = True
+        return real(runtime, names, **kw)
+
+
+_REAL_SYNC = catalog.sync_plugins
 
 
 if __name__ == "__main__":

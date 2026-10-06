@@ -166,131 +166,147 @@ QUERIES_MAP_ANDROID: dict[str, str] = {
 }
 
 
-def sync_android_manifest(manifest_path: Path, permissions: Sequence[str], app_title: str | None = None) -> bool:
+ANDROID_BEGIN = "<!-- pyflutter:permissions:begin (generated, do not edit) -->"
+ANDROID_END = "<!-- pyflutter:permissions:end -->"
+QUERIES_BEGIN = "<!-- pyflutter:queries:begin (generated, do not edit) -->"
+QUERIES_END = "<!-- pyflutter:queries:end -->"
+PLIST_BEGIN = "<!-- pyflutter:permissions:begin (generated, do not edit) -->"
+PLIST_END = "<!-- pyflutter:permissions:end -->"
+
+
+def _strip_block(text: str, begin: str, end: str) -> str:
+    """Removes a managed block (and the line break before it) from ``text``."""
+    pattern = r"[ \t]*" + re.escape(begin) + r".*?" + re.escape(end) + r"[ \t]*\n?"
+    return re.sub(pattern, "", text, flags=re.S)
+
+
+def android_permission_names(permissions: Sequence[str]) -> list[str]:
+    """Android permission names for the permission keys of pyflutter.yaml / plugins."""
+    names: list[str] = []
+    for p in permissions:
+        key = p.lower().strip()
+        if key in PERMISSION_MAP_ANDROID:
+            found = PERMISSION_MAP_ANDROID[key]
+        elif key.startswith("android.permission."):
+            found = [p.strip()]
+        elif key in PERMISSION_MAP_IOS:
+            found = []  # iOS-only key
+        else:
+            logger.warning("Unknown permission '{}' in pyflutter.yaml (ignored).", p)
+            found = []
+        for name in found:
+            if name not in names:
+                names.append(name)
+    return names
+
+
+def sync_android_manifest(
+    manifest_path: Path,
+    permissions: Sequence[str],
+    app_title: str | None = None,
+    extra_queries: Sequence[str] = (),
+) -> bool:
     """
-    Injects required uses-permission tags into AndroidManifest.xml idempotently.
+    Writes the permissions (and <queries> entries) the project needs into AndroidManifest.xml.
+
+    They live in generated blocks that are rewritten on every sync, so a permission removed
+    from pyflutter.yaml (or a plugin that is uninstalled) disappears from the manifest.
+    Permissions the manifest declares outside the blocks are left alone and not duplicated.
     """
     if not manifest_path.exists():
         return False
 
-    content = manifest_path.read_text(encoding="utf-8")
-    modified = False
+    original = manifest_path.read_text(encoding="utf-8")
+    content = _strip_block(_strip_block(original, ANDROID_BEGIN, ANDROID_END), QUERIES_BEGIN, QUERIES_END)
 
-    # 1. Update app label if title provided
+    # 1. app label
     if app_title:
-        label_pattern = r'android:label="[^"]*"'
-        new_label = f"android:label={quoteattr(app_title)}"
-        if re.search(label_pattern, content):
-            new_content = re.sub(label_pattern, lambda _m: new_label, content, count=1)
-            if new_content != content:
-                content = new_content
-                modified = True
+        content = re.sub(r'android:label="[^"]*"', lambda _m: f"android:label={quoteattr(app_title)}", content, count=1)
 
-    # 2. Gather Android permissions
-    android_perms: list[str] = []
+    # 2. permissions block, right after <manifest ...>
+    wanted = [n for n in android_permission_names(permissions) if f'android:name="{n}"' not in content]
+    if wanted:
+        tag = re.search(r"<manifest[^>]*>", content)
+        if tag:
+            lines = [f"    {ANDROID_BEGIN}"] + [f'    <uses-permission android:name="{n}"/>' for n in wanted] + [f"    {ANDROID_END}"]
+            content = content[: tag.end()] + "\n" + "\n".join(lines) + content[tag.end():]
+
+    # 3. queries block, right after <queries>
+    snippets = list(extra_queries)
     for p in permissions:
-        key = p.lower().strip()
-        if key in PERMISSION_MAP_ANDROID:
-            android_perms.extend(PERMISSION_MAP_ANDROID[key])
-        elif key.startswith("android.permission."):
-            android_perms.append(p.strip())
-        elif key not in PERMISSION_MAP_IOS:
-            logger.warning("Unknown permission '{}' in pyflutter.yaml (ignored).", p)
+        snippet = QUERIES_MAP_ANDROID.get(p.lower().strip())
+        if snippet and snippet not in snippets:
+            snippets.append(snippet)
+    if snippets:
+        opened = re.search(r"<queries>", content)
+        if opened:
+            lines = [f"        {QUERIES_BEGIN}"] + [f"        {sn}" for sn in snippets] + [f"        {QUERIES_END}"]
+            content = content[: opened.end()] + "\n" + "\n".join(lines) + content[opened.end():]
+        else:
+            logger.warning("AndroidManifest.xml has no <queries> section: package visibility entries were not written.")
 
-    # 3. Inject missing permissions
-    for perm in android_perms:
-        perm_tag = f'<uses-permission android:name="{perm}"/>'
-        if f'android:name="{perm}"' not in content:
-            # Insert right after <manifest ...>
-            manifest_tag_match = re.search(r"<manifest[^>]*>", content)
-            if manifest_tag_match:
-                insert_pos = manifest_tag_match.end()
-                content = content[:insert_pos] + f"\n    {perm_tag}" + content[insert_pos:]
-                modified = True
-
-    # 4. Inject queries intents (e.g. speech recognition)
-    for p in permissions:
-        key = p.lower().strip()
-        if key in QUERIES_MAP_ANDROID:
-            intent_snippet = QUERIES_MAP_ANDROID[key]
-            if "android.speech.RecognitionService" not in content and "<queries>" in content:
-                queries_match = re.search(r"<queries>", content)
-                if queries_match:
-                    insert_pos = queries_match.end()
-                    content = content[:insert_pos] + f"\n        {intent_snippet}" + content[insert_pos:]
-                    modified = True
-
-    if modified:
-        manifest_path.write_text(content, encoding="utf-8")
-        logger.debug(f"[sync] Updated {manifest_path.name} with permissions: {android_perms}")
-
-    return modified
+    if content == original:
+        return False
+    manifest_path.write_text(content, encoding="utf-8")
+    logger.debug("[sync] Updated {}: {}", manifest_path.name, wanted)
+    return True
 
 
 def sync_ios_plist(plist_path: Path, permissions: Sequence[str], app_title: str | None = None) -> bool:
-    """
-    Injects required permission descriptions into iOS Info.plist idempotently.
-    """
+    """Writes the usage descriptions the project needs into Info.plist (generated block)."""
     if not plist_path.exists():
         return False
 
-    content = plist_path.read_text(encoding="utf-8")
-    modified = False
+    original = plist_path.read_text(encoding="utf-8")
+    content = _strip_block(original, PLIST_BEGIN, PLIST_END)
 
-    # 1. Update display name if provided
-    if app_title:
-        if "<key>CFBundleDisplayName</key>" in content:
-            pattern = r"(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)"
-            safe_title = escape(app_title)
-            new_content = re.sub(pattern, lambda m: f"{m.group(1)}{safe_title}{m.group(2)}", content)
-            if new_content != content:
-                content = new_content
-                modified = True
+    if app_title and "<key>CFBundleDisplayName</key>" in content:
+        safe_title = escape(app_title)
+        content = re.sub(
+            r"(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)",
+            lambda m: f"{m.group(1)}{safe_title}{m.group(2)}",
+            content,
+        )
 
-    # 2. Gather iOS permissions
+    entries: list[tuple[str, str]] = []
     for p in permissions:
-        key = p.lower().strip()
-        if key in PERMISSION_MAP_IOS:
-            plist_key, default_desc = PERMISSION_MAP_IOS[key]
-            if f"<key>{plist_key}</key>" not in content:
-                snippet = f"\t<key>{plist_key}</key>\n\t<string>{default_desc}</string>\n"
-                # Insert inside the root <dict>
-                dict_match = re.search(r"<dict>", content)
-                if dict_match:
-                    insert_pos = dict_match.end()
-                    content = content[:insert_pos] + "\n" + snippet + content[insert_pos:]
-                    modified = True
+        item = PERMISSION_MAP_IOS.get(p.lower().strip())
+        if item and item not in entries and f"<key>{item[0]}</key>" not in content:
+            entries.append(item)
+    if entries:
+        root = re.search(r"<dict>", content)
+        if root:
+            lines = [f"\t{PLIST_BEGIN}"]
+            for key, description in entries:
+                lines += [f"\t<key>{key}</key>", f"\t<string>{escape(description)}</string>"]
+            lines.append(f"\t{PLIST_END}")
+            content = content[: root.end()] + "\n" + "\n".join(lines) + content[root.end():]
 
-    if modified:
-        plist_path.write_text(content, encoding="utf-8")
-        logger.debug(f"[sync] Updated {plist_path.name}")
-
-    return modified
+    if content == original:
+        return False
+    plist_path.write_text(content, encoding="utf-8")
+    logger.debug("[sync] Updated {}", plist_path.name)
+    return True
 
 
 def sync_platform_metadata(
-    workspace_root: Path,
+    runtime_dir: Path,
     config: PyFlutterConfig,
     extra_permissions: Sequence[str] = (),
+    extra_queries: Sequence[str] = (),
 ) -> None:
-    """
-    Main entry point: syncs pyflutter.yaml permissions and branding to Android and iOS.
-    """
-    dart_runtime_dir = workspace_root / "dart_runtime"
-    if not dart_runtime_dir.exists():
+    """Syncs pyflutter.yaml permissions and branding into the Android / iOS files of a runtime copy."""
+    runtime_dir = Path(runtime_dir)
+    if not runtime_dir.is_dir():
         return
 
     app_title = config.name.replace("_", " ").title() if config.name else None
     perms = list(dict.fromkeys([*config.permissions, *extra_permissions]))
 
-    # Android
-    android_manifest = dart_runtime_dir / "android" / "app" / "src" / "main" / "AndroidManifest.xml"
-    if android_manifest.exists():
-        if sync_android_manifest(android_manifest, perms, app_title):
-            logger.info(f"Auto-synced native permissions to Android manifest ({len(perms)} permission(s))")
+    android_manifest = runtime_dir / "android" / "app" / "src" / "main" / "AndroidManifest.xml"
+    if sync_android_manifest(android_manifest, perms, app_title, extra_queries):
+        logger.info("Synced native permissions to the Android manifest ({} permission key(s))", len(perms))
 
-    # iOS
-    ios_plist = dart_runtime_dir / "ios" / "Runner" / "Info.plist"
-    if ios_plist.exists():
-        if sync_ios_plist(ios_plist, perms, app_title):
-            logger.info(f"Auto-synced native permissions to iOS Info.plist")
+    ios_plist = runtime_dir / "ios" / "Runner" / "Info.plist"
+    if sync_ios_plist(ios_plist, perms, app_title):
+        logger.info("Synced native permissions to iOS Info.plist")

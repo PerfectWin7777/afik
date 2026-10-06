@@ -15,7 +15,7 @@ from typing import Optional
 
 from pyflutter.core.logger import logger
 from pyflutter.core.config import PyFlutterConfig
-from pyflutter.cli.manifest_sync import sync_platform_metadata
+from pyflutter.core.runtime_project import ProjectRuntime
 
 
 def find_workspace_root() -> Path:
@@ -51,8 +51,10 @@ class PyFlutterBuilder:
         self.profile = profile and not release
         self.split_per_abi = split_per_abi
         self.workspace_root = find_workspace_root()
-        self.dart_runtime = self.workspace_root / "dart_runtime"
         self.rust_bridge = self.workspace_root / "rust_bridge"
+        # Set in build(): the project's own copy of the Flutter runtime (never the framework template).
+        self.runtime: Optional[ProjectRuntime] = None
+        self.dart_runtime = self.workspace_root / "dart_runtime"
 
     def build(self) -> bool:
         """Executes the complete end-to-end autonomous standalone build pipeline."""
@@ -71,11 +73,15 @@ class PyFlutterBuilder:
             return False
 
         # 2. Sync metadata from pyflutter.yaml
-        config = PyFlutterConfig.find_and_load(Path.cwd())
+        config = PyFlutterConfig.find_and_load(self.entrypoint.parent)
+        if config.config_path is None:
+            config = PyFlutterConfig.find_and_load(Path.cwd())
+        self.runtime = ProjectRuntime.for_config(config, self.workspace_root / "dart_runtime", self.entrypoint.parent)
+        self.dart_runtime = self.runtime.runtime_dir
         logger.info("📦 Synchronizing platform manifests & permissions...")
         from pyflutter.plugins.catalog import CatalogError, prepare_runtime
         try:
-            prepare_runtime(self.workspace_root, config)
+            prepare_runtime(self.runtime, config)
         except CatalogError as e:
             logger.error("{}", e)
             return False
