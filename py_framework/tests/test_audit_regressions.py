@@ -252,3 +252,44 @@ class TestSecurityPluginsRefuseByDefault(unittest.TestCase):
                 self.assertFalse(vault.write("k", "v"), answer)
                 self.assertFalse(vault.delete("k"), answer)
                 self.assertFalse(vault.delete_all(), answer)
+
+
+class TestHiveBoxesPersist(unittest.TestCase):
+    def setUp(self):
+        import shutil
+        import tempfile
+        from pyflutter.plugins import hive
+        self.hive = hive
+        self.dir = tempfile.mkdtemp()
+        hive.init(self.dir)
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+        self.addCleanup(hive._opened_boxes.clear)
+
+    def test_values_survive_closing_and_reopening(self):
+        box = self.hive.open_box("prefs")
+        box.put("user", {"name": "ada", "tags": [1, 2]})
+        box.close()
+        again = self.hive.open_box("prefs")
+        self.assertEqual(again.get("user"), {"name": "ada", "tags": [1, 2]})
+
+    def test_non_serialisable_value_is_rejected_and_box_untouched(self):
+        box = self.hive.open_box("prefs")
+        box.put("a", 1)
+        with self.assertRaises(TypeError):
+            box.put("b", object())
+        self.assertEqual(box.get_all(), {"a": 1})
+
+    def test_missing_keys_and_closed_box(self):
+        box = self.hive.open_box("prefs")
+        self.assertIsNone(box.get("nope"))
+        self.assertFalse(box.delete("nope"))
+        with self.assertRaises(KeyError):
+            box["nope"]
+        box.close()
+        with self.assertRaises(ValueError):
+            box.get("x")
+
+    def test_contains_key_is_true_for_stored_none(self):
+        box = self.hive.open_box("prefs")
+        box.put("k", None)
+        self.assertIn("k", box)

@@ -1,12 +1,20 @@
 """
 PyFlutter Share plugin (matches pub.dev package: share_plus).
 Provides native sharing dialogs for text, links, and files.
+
+Every function returns True only when the platform reports that the user picked a target.
 """
 
 from __future__ import annotations
 
+import json
 from typing import Optional
-from pyflutter.plugins.manager import call_plugin
+
+from pyflutter.plugins.manager import INTERACTIVE_TIMEOUT, call_plugin
+
+
+def _shared(res: object) -> bool:
+    return isinstance(res, dict) and res.get("success") is True
 
 
 def share(
@@ -14,15 +22,13 @@ def share(
     subject: Optional[str] = None,
     title: Optional[str] = None,
 ) -> bool:
-    """Shares text content via system share sheet."""
+    """Shares text content via the system share sheet."""
     args = {"text": str(text)}
     if subject:
         args["subject"] = str(subject)
     if title:
         args["title"] = str(title)
-
-    res = call_plugin("share_plus", "share", args)
-    return bool(isinstance(res, dict) and res.get("success", True))
+    return _shared(call_plugin("share_plus", "share", args, timeout=INTERACTIVE_TIMEOUT))
 
 
 def share_files(
@@ -30,21 +36,18 @@ def share_files(
     text: Optional[str] = None,
     subject: Optional[str] = None,
 ) -> bool:
-    """Shares local files via system share sheet."""
-    args = {"paths": ",".join(str(p) for p in paths)}
+    """Shares local files via the system share sheet."""
+    args = {"paths": json.dumps([str(p) for p in paths])}
     if text:
         args["text"] = str(text)
     if subject:
         args["subject"] = str(subject)
-
-    res = call_plugin("share_plus", "shareFiles", args)
-    return bool(isinstance(res, dict) and res.get("success", True))
+    return _shared(call_plugin("share_plus", "shareFiles", args, timeout=INTERACTIVE_TIMEOUT))
 
 
 def share_uri(uri: str) -> bool:
-    """Shares a URI via system share sheet."""
-    res = call_plugin("share_plus", "shareUri", {"uri": str(uri)})
-    return bool(isinstance(res, dict) and res.get("success", True))
+    """Shares a URI via the system share sheet."""
+    return _shared(call_plugin("share_plus", "shareUri", {"uri": str(uri)}, timeout=INTERACTIVE_TIMEOUT))
 
 
 __all__ = [

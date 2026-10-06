@@ -6,7 +6,7 @@ Displays scheduled, ongoing, or immediate system notifications.
 from __future__ import annotations
 
 from typing import Any, Optional
-from pyflutter.plugins.manager import call_plugin
+from pyflutter.plugins.manager import INTERACTIVE_TIMEOUT, call_plugin
 
 
 class FlutterLocalNotificationsPlugin:
@@ -14,8 +14,8 @@ class FlutterLocalNotificationsPlugin:
 
     def initialize(self) -> bool:
         """Initializes notification channels and settings."""
-        res = call_plugin("flutter_local_notifications", "initialize", {})
-        return bool(isinstance(res, dict) and res.get("initialized", True))
+        res = call_plugin("flutter_local_notifications", "initialize", {}, timeout=INTERACTIVE_TIMEOUT)
+        return isinstance(res, dict) and res.get("initialized") is True
 
     def show(
         self,
@@ -39,17 +39,17 @@ class FlutterLocalNotificationsPlugin:
             args["payload"] = str(payload)
 
         res = call_plugin("flutter_local_notifications", "show", args)
-        return bool(isinstance(res, dict) and res.get("shown", True))
+        return isinstance(res, dict) and res.get("shown") is True
 
     def cancel(self, notification_id: int) -> bool:
         """Cancels a notification by ID."""
         res = call_plugin("flutter_local_notifications", "cancel", {"id": str(notification_id)})
-        return bool(isinstance(res, dict) and res.get("cancelled", True))
+        return isinstance(res, dict) and res.get("cancelled") is True
 
     def cancel_all(self) -> bool:
         """Cancels all active notifications."""
         res = call_plugin("flutter_local_notifications", "cancelAll", {})
-        return True
+        return isinstance(res, dict) and res.get("cancelled") is True
 
     def get_active_notifications(self) -> list[dict[str, Any]]:
         """Returns the list of currently active notifications."""

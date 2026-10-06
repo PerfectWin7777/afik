@@ -39,6 +39,16 @@ class PluginTimeoutError(PluginError, TimeoutError):
 
 _rpc_lock = threading.Lock()
 
+def require(res: Any, key: str, what: str) -> dict:
+    """Returns ``res`` if it is a dict whose ``key`` is exactly True, else raises ``PluginError``.
+
+    A plugin answer that is missing or malformed must never read as a success.
+    """
+    if isinstance(res, dict) and res.get(key) is True:
+        return res
+    raise PluginError(f"{what} failed: unexpected answer {res!r}")
+
+
 # Calls that wait for a human (biometric prompt, permission dialog, pickers).
 INTERACTIVE_TIMEOUT = 120.0
 
@@ -263,7 +273,7 @@ def _dispatch_local_fallback(plugin_name: str, method: str, args: dict[str, Any]
     # Connectivity
     elif plugin_name in ("connectivity", "connectivity_plus"):
         if method == "checkConnectivity":
-            return {"status": "wifi"}
+            return {"status": "wifi", "results": ["wifi"]}
 
     # AudioPlayers
     elif plugin_name in ("audioplayers", "audioplayer"):
@@ -357,57 +367,6 @@ def _dispatch_local_fallback(plugin_name: str, method: str, args: dict[str, Any]
         elif method == "getConfig":
             return {"controllerId": cid, "configured": True}
 
-    # Hive
-    elif plugin_name == "hive":
-        bname = args.get("boxName", "default")
-        if method == "openBox":
-            return {"boxName": bname, "opened": True}
-        elif method == "put":
-            k = str(args.get("key", ""))
-            _local_storage_cache[f"_hive_{bname}_{k}"] = args.get("value")
-            return {"boxName": bname, "key": k, "success": True}
-        elif method == "get":
-            k = str(args.get("key", ""))
-            val = _local_storage_cache.get(f"_hive_{bname}_{k}")
-            return {"boxName": bname, "key": k, "value": val if val is not None else args.get("defaultValue")}
-        elif method == "delete":
-            k = str(args.get("key", ""))
-            _local_storage_cache.pop(f"_hive_{bname}_{k}", None)
-            return {"boxName": bname, "key": k, "success": True}
-        elif method == "clear":
-            prefix = f"_hive_{bname}_"
-            for k in list(_local_storage_cache.keys()):
-                if k.startswith(prefix):
-                    del _local_storage_cache[k]
-            return {"boxName": bname, "cleared": True}
-        elif method == "getAll":
-            prefix = f"_hive_{bname}_"
-            res = {}
-            for k, v in _local_storage_cache.items():
-                if k.startswith(prefix):
-                    res[k[len(prefix):]] = v
-            return res
-        elif method == "close":
-            return {"boxName": bname, "closed": True}
-
-    # Sqflite
-    elif plugin_name == "sqflite":
-        dbname = args.get("db", "main.db")
-        if method == "openDatabase":
-            return {"db": dbname, "opened": True}
-        elif method == "execute":
-            return {"db": dbname, "executed": True}
-        elif method == "insert":
-            return {"db": dbname, "inserted": True, "id": 1}
-        elif method == "query":
-            return []
-        elif method == "update":
-            return {"db": dbname, "updated": 1}
-        elif method == "delete":
-            return {"db": dbname, "deleted": 1}
-        elif method == "close":
-            return {"db": dbname, "closed": True}
-
     # Local Notifications
     elif plugin_name in ("flutter_local_notifications", "local_notifications"):
         if method == "initialize":
@@ -417,7 +376,7 @@ def _dispatch_local_fallback(plugin_name: str, method: str, args: dict[str, Any]
         elif method == "cancel":
             return {"cancelled": True, "id": args.get("id", "0")}
         elif method == "cancelAll":
-            return {"cancelledCount": 1}
+            return {"cancelled": True}
         elif method == "getActiveNotifications":
             return [{"id": 0, "title": "Notification", "body": "Body"}]
 

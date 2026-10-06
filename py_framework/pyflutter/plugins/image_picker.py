@@ -9,7 +9,7 @@ import os
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
-from pyflutter.plugins.manager import call_plugin
+from pyflutter.plugins.manager import INTERACTIVE_TIMEOUT, call_plugin
 
 
 class ImageSource(str, Enum):
@@ -61,11 +61,9 @@ class ImagePicker:
         if image_quality is not None:
             args["imageQuality"] = str(image_quality)
 
-        res = call_plugin("image_picker", "pickImage", args)
+        res = call_plugin("image_picker", "pickImage", args, timeout=INTERACTIVE_TIMEOUT)
         if isinstance(res, dict) and "path" in res:
             return XFile(res["path"], res.get("name"), int(res.get("size", 0)))
-        elif isinstance(res, str) and res:
-            return XFile(res)
         return None
 
     def pick_video(
@@ -74,23 +72,19 @@ class ImagePicker:
     ) -> Optional[XFile]:
         """Prompts the user to pick a video from gallery or record with camera."""
         source_val = source.value if isinstance(source, ImageSource) else str(source)
-        res = call_plugin("image_picker", "pickVideo", {"source": source_val})
+        res = call_plugin("image_picker", "pickVideo", {"source": source_val}, timeout=INTERACTIVE_TIMEOUT)
         if isinstance(res, dict) and "path" in res:
             return XFile(res["path"], res.get("name"), int(res.get("size", 0)))
-        elif isinstance(res, str) and res:
-            return XFile(res)
         return None
 
     def pick_multi_image(self) -> list[XFile]:
         """Prompts the user to pick multiple images."""
-        res = call_plugin("image_picker", "pickMultiImage", {})
+        res = call_plugin("image_picker", "pickMultiImage", {}, timeout=INTERACTIVE_TIMEOUT)
         if isinstance(res, list):
             items = []
             for item in res:
                 if isinstance(item, dict) and "path" in item:
                     items.append(XFile(item["path"], item.get("name"), int(item.get("size", 0))))
-                elif isinstance(item, str) and item:
-                    items.append(XFile(item))
             return items
         return []
 

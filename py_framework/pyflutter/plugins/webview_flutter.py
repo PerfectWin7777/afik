@@ -14,7 +14,11 @@ _webview_counter = itertools.count()
 
 
 class WebViewController:
-    """Controls an embedded web view instance (webview_flutter)."""
+    """Controls an embedded web view (webview_flutter).
+
+    The controller works as soon as it is created, with or without a ``WebView`` widget on
+    screen. Methods return what the platform answered.
+    """
 
     def __init__(self, initial_url: str = "about:blank", view_id: Optional[str] = None):
         self.view_id = view_id or f"web_{next(_webview_counter)}"
@@ -22,55 +26,63 @@ class WebViewController:
         if initial_url != "about:blank":
             self.load_url(initial_url)
 
+    def _call(self, method: str, extra: Optional[dict] = None, timeout: float = 10.0) -> Any:
+        args = {"viewId": self.view_id}
+        if extra:
+            args.update(extra)
+        return call_plugin("webview_flutter", method, args, timeout=timeout)
+
     def load_url(self, url: str) -> bool:
         """Loads a web page from a URL."""
-        self._current_url = str(url)
-        call_plugin("webview_flutter", "loadUrl", {"viewId": self.view_id, "url": str(url)})
-        return True
+        res = self._call("loadUrl", {"url": str(url)})
+        if isinstance(res, dict) and isinstance(res.get("url"), str):
+            self._current_url = res["url"]
+            return True
+        return False
 
     def load_html(self, html: str) -> bool:
-        """Loads raw HTML string."""
-        self._current_url = "data:text/html;charset=utf-8,..."
-        call_plugin("webview_flutter", "loadHtml", {"viewId": self.view_id, "html": str(html)})
-        return True
+        """Loads a raw HTML string."""
+        res = self._call("loadHtml", {"html": str(html)})
+        ok = isinstance(res, dict) and res.get("success") is True
+        if ok:
+            self._current_url = "about:blank"
+        return ok
 
     def reload(self) -> bool:
         """Reloads the current page."""
-        call_plugin("webview_flutter", "reload", {"viewId": self.view_id})
-        return True
+        res = self._call("reload")
+        return isinstance(res, dict) and res.get("reloaded") is True
 
     def go_back(self) -> bool:
-        """Navigates back in browsing history."""
-        res = call_plugin("webview_flutter", "goBack", {"viewId": self.view_id})
-        return bool(isinstance(res, dict) and res.get("success", False))
+        """Navigates back in the history; False when there is nothing to go back to."""
+        res = self._call("goBack")
+        return isinstance(res, dict) and res.get("success") is True
 
     def go_forward(self) -> bool:
-        """Navigates forward in browsing history."""
-        res = call_plugin("webview_flutter", "goForward", {"viewId": self.view_id})
-        return bool(isinstance(res, dict) and res.get("success", False))
+        """Navigates forward in the history; False when there is nothing to go forward to."""
+        res = self._call("goForward")
+        return isinstance(res, dict) and res.get("success") is True
 
     def can_go_back(self) -> bool:
-        """Checks if there is history to navigate back."""
-        res = call_plugin("webview_flutter", "canGoBack", {"viewId": self.view_id})
-        return bool(isinstance(res, dict) and res.get("canGoBack", False))
+        res = self._call("canGoBack")
+        return isinstance(res, dict) and res.get("canGoBack") is True
 
     def can_go_forward(self) -> bool:
-        """Checks if there is history to navigate forward."""
-        res = call_plugin("webview_flutter", "canGoForward", {"viewId": self.view_id})
-        return bool(isinstance(res, dict) and res.get("canGoForward", False))
+        res = self._call("canGoForward")
+        return isinstance(res, dict) and res.get("canGoForward") is True
 
     def evaluate_javascript(self, script: str) -> Any:
-        """Evaluates JavaScript code and returns the result."""
-        res = call_plugin("webview_flutter", "evaluateJavascript", {"viewId": self.view_id, "script": str(script)})
+        """Runs JavaScript in the page and returns its result as text (None on no answer)."""
+        res = self._call("evaluateJavascript", {"script": str(script)})
         if isinstance(res, dict) and "result" in res:
             return res["result"]
         return res
 
     def current_url(self) -> str:
-        """Returns the current loaded URL."""
-        res = call_plugin("webview_flutter", "currentUrl", {"viewId": self.view_id})
-        if isinstance(res, dict) and "url" in res:
-            self._current_url = str(res["url"])
+        """The URL currently loaded, as reported by the platform."""
+        res = self._call("currentUrl")
+        if isinstance(res, dict) and isinstance(res.get("url"), str):
+            self._current_url = res["url"]
         return self._current_url
 
 

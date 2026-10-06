@@ -58,6 +58,16 @@ class TestChewiePluginAndWidget(unittest.TestCase):
 
 
 class TestHivePlugin(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self._dir = tempfile.mkdtemp()
+        hive.init(self._dir)
+
+    def tearDown(self):
+        import shutil
+        hive._opened_boxes.clear()
+        shutil.rmtree(self._dir, ignore_errors=True)
+
     def test_hive_box_operations(self):
         box = hive.open_box("settings")
         self.assertTrue(box.is_open)

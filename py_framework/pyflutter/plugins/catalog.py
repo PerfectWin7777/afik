@@ -189,6 +189,13 @@ def _dependencies_block_span(lines: list[str]) -> tuple[int, int]:
     return start, end
 
 
+def _yaml_scalar(value: str) -> str:
+    """A pubspec version constraint, quoted when YAML would misread it (ranges start with > or <)."""
+    if re.fullmatch(r"\^?[0-9A-Za-z.+\-]+|any", value):
+        return value
+    return "'" + value.replace("'", "''") + "'"
+
+
 def render_pubspec(text: str, dependencies: dict[str, str]) -> str:
     """Returns ``text`` with the managed plugin block replaced by ``dependencies``."""
     lines = text.splitlines()
@@ -201,7 +208,7 @@ def render_pubspec(text: str, dependencies: dict[str, str]) -> str:
     if dependencies:
         start, end = _dependencies_block_span(lines)
         block = [PUBSPEC_BEGIN]
-        block += [f"  {pkg}: {constraint}" for pkg, constraint in sorted(dependencies.items())]
+        block += [f"  {pkg}: {_yaml_scalar(constraint)}" for pkg, constraint in sorted(dependencies.items())]
         block.append(PUBSPEC_END)
         lines[end:end] = block
     return "\n".join(lines) + "\n"

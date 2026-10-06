@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 from pyflutter.plugins.image_picker import XFile
-from pyflutter.plugins.manager import call_plugin
+from pyflutter.plugins.manager import INTERACTIVE_TIMEOUT, call_plugin
 
 
 class CameraDescription:
@@ -37,10 +37,7 @@ def available_cameras() -> list[CameraDescription]:
     res = call_plugin("camera", "availableCameras", {})
     if isinstance(res, list):
         return [CameraDescription.from_dict(item) for item in res if isinstance(item, dict)]
-    return [
-        CameraDescription("0", "Back Camera", "back", 90),
-        CameraDescription("1", "Front Camera", "front", 270),
-    ]
+    return []
 
 
 class CameraController:
@@ -58,57 +55,55 @@ class CameraController:
 
     def initialize(self) -> bool:
         """Initializes the camera hardware for preview and capture."""
-        res = call_plugin("camera", "initialize", {"cameraId": self.camera_id, "resolution": self.resolution})
-        if isinstance(res, dict) and res.get("initialized"):
-            self.is_initialized = True
-            return True
-        self.is_initialized = True
-        return True
+        res = call_plugin(
+            "camera", "initialize", {"cameraId": self.camera_id, "resolution": self.resolution},
+            timeout=INTERACTIVE_TIMEOUT,  # may wait for the camera permission prompt
+        )
+        self.is_initialized = isinstance(res, dict) and res.get("initialized") is True
+        return self.is_initialized
 
     def take_picture(self) -> Optional[XFile]:
         """Captures a still image from the camera."""
-        res = call_plugin("camera", "takePicture", {"cameraId": self.camera_id})
+        res = call_plugin("camera", "takePicture", {"cameraId": self.camera_id}, timeout=30.0)
         if isinstance(res, dict) and "path" in res:
             return XFile(res["path"], res.get("name"), int(res.get("size", 0)))
-        elif isinstance(res, str) and res:
-            return XFile(res)
         return None
 
     def start_video_recording(self) -> bool:
         """Starts recording video."""
         res = call_plugin("camera", "startVideoRecording", {"cameraId": self.camera_id})
-        self._is_recording = True
-        return bool(isinstance(res, dict) and res.get("recording", True))
+        self._is_recording = isinstance(res, dict) and res.get("recording") is True
+        return self._is_recording
 
     def stop_video_recording(self) -> Optional[XFile]:
         """Stops recording video and returns the captured video file."""
-        res = call_plugin("camera", "stopVideoRecording", {"cameraId": self.camera_id})
+        res = call_plugin("camera", "stopVideoRecording", {"cameraId": self.camera_id}, timeout=30.0)
         self._is_recording = False
         if isinstance(res, dict) and "path" in res:
             return XFile(res["path"], res.get("name"), int(res.get("size", 0)))
-        elif isinstance(res, str) and res:
-            return XFile(res)
         return None
 
     def is_recording(self) -> bool:
         """Checks if video is actively recording."""
         res = call_plugin("camera", "isRecording", {"cameraId": self.camera_id})
-        if isinstance(res, dict) and "isRecording" in res:
-            return bool(res["isRecording"])
-        return self._is_recording
+        return isinstance(res, dict) and res.get("isRecording") is True
 
-    def set_flash_mode(self, mode: str) -> None:
-        """Sets flash mode ('off', 'auto', 'always', 'torch')."""
-        call_plugin("camera", "setFlashMode", {"cameraId": self.camera_id, "mode": mode})
+    def set_flash_mode(self, mode: str) -> bool:
+        """Sets flash mode ('off', 'auto', 'always', 'torch'). True if the platform applied it."""
+        res = call_plugin("camera", "setFlashMode", {"cameraId": self.camera_id, "mode": mode})
+        return isinstance(res, dict) and res.get("flashMode") == mode
 
-    def set_zoom_level(self, zoom: float) -> None:
-        """Sets preview and capture zoom level."""
-        call_plugin("camera", "setZoomLevel", {"cameraId": self.camera_id, "zoom": str(zoom)})
+    def set_zoom_level(self, zoom: float) -> Optional[float]:
+        """Sets the zoom; returns the zoom actually applied (clamped to the camera's range)."""
+        res = call_plugin("camera", "setZoomLevel", {"cameraId": self.camera_id, "zoom": str(zoom)})
+        value = res.get("zoom") if isinstance(res, dict) else None
+        return float(value) if isinstance(value, (int, float)) else None
 
-    def dispose(self) -> None:
+    def dispose(self) -> bool:
         """Releases the camera device."""
-        call_plugin("camera", "dispose", {"cameraId": self.camera_id})
+        res = call_plugin("camera", "dispose", {"cameraId": self.camera_id})
         self.is_initialized = False
+        return isinstance(res, dict) and res.get("disposed") is True
 
 
 from pyflutter.widgets.widgets import CameraPreview

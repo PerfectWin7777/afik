@@ -6,7 +6,7 @@ Provides enhanced video playback controllers and full-screen Material UI wrapper
 from __future__ import annotations
 
 from typing import Any, Optional
-from pyflutter.plugins.manager import call_plugin
+from pyflutter.plugins.manager import call_plugin, require
 from pyflutter.plugins.video_player import VideoPlayerController
 
 
@@ -30,32 +30,35 @@ class ChewieController:
         self.aspect_ratio = aspect_ratio
         self.is_full_screen = full_screen_by_default
 
-        call_plugin("chewie", "createChewieController", {
+        require(call_plugin("chewie", "createChewieController", {
             "controllerId": video_player_controller.controller_id,
             "autoPlay": "true" if auto_play else "false",
             "looping": "true" if looping else "false",
             "showControls": "true" if show_controls else "false",
             "aspectRatio": str(aspect_ratio),
-        })
+        }), "configured", "ChewieController")
 
     def enter_full_screen(self) -> bool:
         """Transitions video display into full-screen mode."""
-        self.is_full_screen = True
-        call_plugin("chewie", "enterFullScreen", {
+        res = call_plugin("chewie", "enterFullScreen", {
             "controllerId": self.video_player_controller.controller_id,
         })
-        return True
+        self.is_full_screen = isinstance(res, dict) and res.get("isFullScreen") is True
+        return self.is_full_screen
 
     def exit_full_screen(self) -> bool:
         """Exits full-screen mode."""
-        self.is_full_screen = False
-        call_plugin("chewie", "exitFullScreen", {
+        res = call_plugin("chewie", "exitFullScreen", {
             "controllerId": self.video_player_controller.controller_id,
         })
-        return True
+        done = isinstance(res, dict) and res.get("isFullScreen") is False
+        if done:
+            self.is_full_screen = False
+        return done
 
     def dispose(self) -> None:
-        """Disposes the controller resources."""
+        """Disposes the Chewie controller and the video controller under it."""
+        call_plugin("chewie", "dispose", {"controllerId": self.video_player_controller.controller_id})
         self.video_player_controller.dispose()
 
 

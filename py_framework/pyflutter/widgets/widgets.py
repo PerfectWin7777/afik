@@ -2900,6 +2900,8 @@ class SfPdfViewer(Widget):
         super().__init__(
             src=str(src),
             can_show_pagination=can_show_pagination,
+            page=getattr(controller, "current_page", None),
+            zoom=getattr(controller, "zoom_level", None),
             width=width,
             height=height,
             key=key,
@@ -2945,9 +2947,11 @@ class PdfView(Widget):
         raw_props: Optional[dict[str, Any]] = None,
         **kwargs: Any,
     ):
-        path = getattr(path_or_controller, "path", str(path_or_controller))
+        document = getattr(path_or_controller, "document", None)
+        path = getattr(document, "path", None) or getattr(path_or_controller, "path", str(path_or_controller))
         super().__init__(
             path=str(path),
+            page=getattr(path_or_controller, "current_page", None),
             width=width,
             height=height,
             key=key,
@@ -2979,6 +2983,7 @@ class PDFView(Widget):
         self,
         file_path: str,
         *,
+        controller: Optional[Any] = None,
         enable_swipe: bool = True,
         swipe_horizontal: bool = False,
         width: Optional[float] = None,
@@ -2990,6 +2995,7 @@ class PDFView(Widget):
     ):
         super().__init__(
             file_path=str(file_path),
+            page=getattr(controller, "current_page", None),
             enable_swipe=enable_swipe,
             swipe_horizontal=swipe_horizontal,
             width=width,

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import itertools
 from typing import Any, Optional
-from pyflutter.plugins.manager import call_plugin
+from pyflutter.plugins.manager import PluginError, call_plugin
 from pyflutter.widgets.widgets import PdfView, PdfViewPinch
 
 
@@ -15,7 +15,7 @@ _pdf_counter = itertools.count()
 
 
 class PdfDocument:
-    """Represents an opened PDF document file for rendering and introspection (pdfx)."""
+    """An opened PDF document (pdfx)."""
 
     def __init__(self, document_id: str, page_count: int, path: str):
         self.document_id = document_id
@@ -23,28 +23,41 @@ class PdfDocument:
         self.path = path
 
     @classmethod
-    def open_file(cls, path: str) -> PdfDocument:
-        """Opens a PDF file from a local filesystem path."""
-        res = call_plugin("pdfx", "openPdf", {"path": str(path)})
-        doc_id = res.get("documentId", f"doc_{next(_pdf_counter)}") if isinstance(res, dict) else "doc_1"
-        page_count = int(res.get("pageCount", 10)) if isinstance(res, dict) else 10
-        return cls(doc_id, page_count, str(path))
+    def _from_answer(cls, res: Any, path: str) -> "PdfDocument":
+        if not (isinstance(res, dict) and isinstance(res.get("documentId"), str)
+                and isinstance(res.get("pageCount"), int)):
+            raise PluginError(f"pdfx could not open {path!r}: unexpected answer {res!r}")
+        return cls(res["documentId"], res["pageCount"], path)
 
     @classmethod
-    def open_asset(cls, asset_name: str) -> PdfDocument:
-        """Opens a PDF file from application assets."""
-        res = call_plugin("pdfx", "openPdf", {"url": str(asset_name), "isAsset": "true"})
-        doc_id = res.get("documentId", f"doc_{next(_pdf_counter)}") if isinstance(res, dict) else "doc_1"
-        page_count = int(res.get("pageCount", 10)) if isinstance(res, dict) else 10
-        return cls(doc_id, page_count, str(asset_name))
+    def open_file(cls, path: str) -> "PdfDocument":
+        """Opens a PDF from the local filesystem."""
+        return cls._from_answer(call_plugin("pdfx", "openPdf", {"path": str(path)}, timeout=30.0), str(path))
 
-    def render_page(self, page_number: int) -> dict[str, Any]:
-        """Renders a single PDF page into raster dimensions."""
+    @classmethod
+    def open_asset(cls, asset_name: str) -> "PdfDocument":
+        """Opens a PDF bundled as an application asset."""
+        res = call_plugin("pdfx", "openPdf", {"url": str(asset_name), "isAsset": "true"}, timeout=30.0)
+        return cls._from_answer(res, str(asset_name))
+
+    def render_page(self, page_number: int, scale: float = 2.0) -> dict[str, Any]:
+        """Renders one page (1-based) to a PNG file.
+
+        Returns ``{"pageNumber", "width", "height", "path"}``; ``path`` is the PNG location.
+        """
         res = call_plugin("pdfx", "renderPage", {
             "documentId": self.document_id,
             "pageNumber": str(page_number),
-        })
-        return dict(res) if isinstance(res, dict) else {"pageNumber": page_number, "width": 595, "height": 842}
+            "scale": str(scale),
+        }, timeout=30.0)
+        if not (isinstance(res, dict) and res.get("rendered") is True):
+            raise PluginError(f"pdfx could not render page {page_number}: unexpected answer {res!r}")
+        return dict(res)
+
+    def close(self) -> bool:
+        """Releases the document."""
+        res = call_plugin("pdfx", "closePdf", {"documentId": self.document_id})
+        return isinstance(res, dict) and res.get("closed") is True
 
 
 class PdfController:

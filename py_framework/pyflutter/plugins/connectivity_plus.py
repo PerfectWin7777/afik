@@ -1,11 +1,12 @@
 """
 PyFlutter Connectivity plugin (matches pub.dev package: connectivity_plus).
-Checks device network connectivity states (WiFi, Mobile, Ethernet, None).
+Checks the device network state (WiFi, mobile, ethernet, ...).
 """
 
 from __future__ import annotations
 
 from enum import Enum
+
 from pyflutter.plugins.manager import call_plugin
 
 
@@ -15,32 +16,46 @@ class ConnectivityResult(str, Enum):
     ETHERNET = "ethernet"
     BLUETOOTH = "bluetooth"
     VPN = "vpn"
+    OTHER = "other"
     NONE = "none"
 
 
-def check_connectivity() -> ConnectivityResult:
-    """Checks the current network connectivity status of the device."""
-    res = call_plugin("connectivity", "checkConnectivity", {})
-    if isinstance(res, dict):
-        status = res.get("status", "none")
-    elif isinstance(res, str):
-        status = res
-    else:
-        status = "wifi"
-
+def _parse(name: object) -> ConnectivityResult:
     try:
-        return ConnectivityResult(status.lower())
+        return ConnectivityResult(str(name).lower())
     except ValueError:
-        return ConnectivityResult.NONE
+        return ConnectivityResult.OTHER
+
+
+def check_connectivity_all() -> list[ConnectivityResult]:
+    """Every active connection type reported by the platform (empty list means offline).
+
+    A missing or malformed answer reads as offline, never as connected.
+    """
+    res = call_plugin("connectivity", "checkConnectivity", {})
+    if isinstance(res, dict) and isinstance(res.get("results"), list):
+        found = [_parse(r) for r in res["results"]]
+    elif isinstance(res, dict) and "status" in res:
+        found = [_parse(res["status"])]
+    else:
+        found = []
+    return [r for r in found if r != ConnectivityResult.NONE]
+
+
+def check_connectivity() -> ConnectivityResult:
+    """The first active connection type, or ``ConnectivityResult.NONE`` when offline."""
+    active = check_connectivity_all()
+    return active[0] if active else ConnectivityResult.NONE
 
 
 def is_connected() -> bool:
-    """Convenience method returning True if device has any active internet connection."""
-    return check_connectivity() != ConnectivityResult.NONE
+    """True if the device reports at least one active network connection."""
+    return bool(check_connectivity_all())
 
 
 __all__ = [
     "ConnectivityResult",
     "check_connectivity",
+    "check_connectivity_all",
     "is_connected",
 ]
