@@ -10,6 +10,7 @@ import importlib
 import importlib.util
 import os
 import queue
+import secrets
 import shutil
 import socket
 import subprocess
@@ -21,7 +22,7 @@ from typing import Any, Optional
 
 from pyflutter.core.logger import logger
 from pyflutter.cli.devices import select_device, setup_adb_port_forward
-from pyflutter.core.bridge import BridgeSession
+from pyflutter.core.bridge import BridgeSession, RESYNC_CALLBACK_ID
 from pyflutter.core.widget_base import invoke_callback, clear_callbacks
 
 
@@ -58,47 +59,86 @@ def is_port_in_use(port: int) -> bool:
         return s.connect_ex(("127.0.0.1", port)) == 0
 
 
+def _pids_listening_on(port: int) -> list[int]:
+    """Returns the PIDs listening on a local TCP port (best effort)."""
+    pids: list[int] = []
+    if sys.platform == "win32":
+        output = subprocess.check_output(
+            ["netstat", "-ano", "-p", "TCP"], text=True, errors="ignore"
+        )
+        for line in output.splitlines():
+            parts = line.split()
+            if len(parts) >= 5 and parts[1].endswith(f":{port}") and parts[3] == "LISTENING":
+                pids.append(int(parts[4]))
+    else:
+        for cmd in (["lsof", "-t", f"-iTCP:{port}", "-sTCP:LISTEN"], ["fuser", f"{port}/tcp"]):
+            if shutil.which(cmd[0]) is None:
+                continue
+            out = subprocess.run(cmd, capture_output=True, text=True).stdout
+            pids = [int(tok) for tok in out.split() if tok.isdigit()]
+            if pids:
+                break
+    return [pid for pid in pids if pid != os.getpid() and pid > 0]
+
+
+def _process_name(pid: int) -> str:
+    try:
+        if sys.platform == "win32":
+            out = subprocess.check_output(
+                ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"], text=True, errors="ignore"
+            )
+            return out.split(",")[0].strip('"').lower()
+        return subprocess.check_output(["ps", "-p", str(pid), "-o", "comm="], text=True).strip().lower()
+    except Exception:
+        return ""
+
+
 def ensure_port_free(port: int) -> None:
-    """Terminates any stale process listening on the bridge port."""
+    """Frees the bridge port from a stale *pyflutter-bridge* process.
+
+    Only processes whose name is `pyflutter-bridge` are terminated; any other
+    program using the port is left alone and reported with an actionable error.
+    """
     if not is_port_in_use(port):
         return
-    logger.info(f"Port {port} is occupied. Cleaning up stale bridge process...")
-    if sys.platform == "win32":
-        try:
-            output = subprocess.check_output(
-                f"netstat -ano | findstr :{port}", shell=True, text=True, errors="ignore"
-            )
-            for line in output.strip().splitlines():
-                parts = line.split()
-                if len(parts) >= 5 and f":{port}" in parts[1] and parts[3] == "LISTENING":
-                    pid = int(parts[4])
-                    if pid != os.getpid() and pid > 0:
-                        logger.info(f"Terminating stale process (PID {pid}) on port {port}...")
-                        subprocess.run(
-                            f"taskkill /F /PID {pid}",
-                            shell=True,
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL,
-                        )
-        except Exception as e:
-            logger.debug(f"Could not kill process on port {port}: {e}")
-    else:
-        try:
-            subprocess.run(
-                f"fuser -k {port}/tcp",
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-        except Exception:
-            pass
+    logger.info("Port {} is occupied. Looking for a stale bridge process...", port)
+    try:
+        pids = _pids_listening_on(port)
+    except Exception as e:
+        logger.debug("Could not inspect port {}: {}", port, e)
+        pids = []
+
+    foreign: list[tuple[int, str]] = []
+    for pid in pids:
+        name = _process_name(pid)
+        if "pyflutter-bridge" in name:
+            logger.info("Terminating stale bridge (PID {}) on port {}...", pid, port)
+            try:
+                if sys.platform == "win32":
+                    subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+                else:
+                    os.kill(pid, 15)
+            except Exception as e:
+                logger.debug("Could not terminate PID {}: {}", pid, e)
+        else:
+            foreign.append((pid, name or "unknown"))
+
     time.sleep(0.5)
+    if is_port_in_use(port):
+        detail = ", ".join(f"{name} (PID {pid})" for pid, name in foreign) or "an unknown process"
+        logger.error(
+            "Port {} is used by {}. Free it or choose another port with `pyflutter run -p <port>`.",
+            port, detail,
+        )
+        sys.exit(1)
 
 
-def load_app_from_file(file_path: str | Path):
+def load_app_from_file(file_path: str | Path, prefer_class: Optional[str] = None):
     """Dynamically loads the Python app module and instantiates the App class."""
     file_path = Path(file_path).resolve()
-    module_name = file_path.stem
+    # Namespaced so an entrypoint named random.py / json.py / logging.py can never
+    # replace a standard-library module in sys.modules.
+    module_name = f"pyflutter_app_{file_path.stem}"
     spec = importlib.util.spec_from_file_location(module_name, str(file_path))
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load module from {file_path}")
@@ -122,8 +162,17 @@ def load_app_from_file(file_path: str | Path):
     from pyflutter.core.widget_base import Component, MainWindow
     app_instance = None
 
+    # 0. On reload, keep the class of the running app (the one given to pf.run)
+    if prefer_class:
+        attr = getattr(module, prefer_class, None)
+        if isinstance(attr, type) and getattr(attr, "__module__", "") == module_name:
+            try:
+                app_instance = attr()
+            except Exception as e:
+                logger.debug(f"Failed to instantiate {prefer_class}: {e}")
+
     # 1. Explicit 'App' in module
-    if hasattr(module, "App"):
+    if app_instance is None and hasattr(module, "App"):
         app_cls = getattr(module, "App")
         try:
             app_instance = app_cls() if isinstance(app_cls, type) else app_cls
@@ -349,10 +398,14 @@ class PyFlutterRunner:
         # 4. Start Rust Bridge relay
         ensure_port_free(self.port)
         logger.info(f"Starting Rust Bridge relay on port {self.port}...")
-        self.session = BridgeSession(
-            str(self.bridge_bin),
-            extra_args=["--dart-port", str(self.port)],
-        )
+        # Shared secret between the bridge and the Flutter app we launch ourselves, so
+        # no other local process can read the UI tree or inject events. With --attach
+        # the Flutter app is started by hand and cannot receive the token.
+        self.token = None if self.attach_only else secrets.token_hex(16)
+        bridge_args = ["--dart-port", str(self.port)]
+        if self.token:
+            bridge_args += ["--token", self.token]
+        self.session = BridgeSession(str(self.bridge_bin), extra_args=bridge_args)
 
         # 5. Start Flutter runtime if not attach_only
         if not self.attach_only:
@@ -387,7 +440,9 @@ class PyFlutterRunner:
                 except Exception:
                     pass
 
-        cmd = ["flutter", "run", "-d", device_id]
+        cmd = ["flutter", "run", "-d", device_id, f"--dart-define=PYFLUTTER_PORT={self.port}"]
+        if getattr(self, "token", None):
+            cmd.append(f"--dart-define=PYFLUTTER_TOKEN={self.token}")
         self.flutter_process = subprocess.Popen(
             cmd,
             cwd=str(self.dart_runtime_dir),
@@ -491,6 +546,13 @@ class PyFlutterRunner:
             if event is None or not self.is_running:
                 break
             try:
+                if event.callback_id == RESYNC_CALLBACK_ID:
+                    # A Dart client (re)connected and its tree is outdated.
+                    logger.debug("Dart client requested a full tree resync")
+                    if self.session:
+                        self.session.reset_snapshot()
+                    self._render_and_send(force_full=True)
+                    continue
                 logger.debug("Event received: {}", event.callback_id)
                 invoke_callback(event.callback_id, dict(event.event_data))
                 self.push_update()
@@ -531,7 +593,9 @@ class PyFlutterRunner:
         start_time = time.perf_counter()
         try:
             # Reload module from disk to capture new build logic without resetting state
-            self.app_module, new_app = load_app_from_file(self.entrypoint)
+            self.app_module, new_app = load_app_from_file(
+                self.entrypoint, prefer_class=type(self.app).__name__ if self.app is not None else None
+            )
             if new_app is not None and self.app is not None:
                 if hasattr(self.app, "__dict__") and hasattr(new_app, "__dict__"):
                     for k, v in self.app.__dict__.items():
@@ -569,7 +633,8 @@ class PyFlutterRunner:
             if self.session:
                 self.session.reset_snapshot()
 
-            self.app_module, self.app = load_app_from_file(self.entrypoint)
+            prefer = type(self.app).__name__ if self.app is not None else None
+            self.app_module, self.app = load_app_from_file(self.entrypoint, prefer_class=prefer)
 
             if self.session and self.app:
                 with self.tree_lock:

@@ -25,15 +25,24 @@ from pyflutter.core.render import (
 from pyflutter.core.widget_base import Widget, invoke_callback
 
 
+# Sent by the Rust relay when a Dart client connected and its tree is outdated.
+RESYNC_CALLBACK_ID = "__pyflutter_resync__"
+MAX_FRAME_BYTES = 64 * 1024 * 1024
+
+
 def read_frame(stream) -> tuple[int, bytes] | None:
     """Reads one [type byte][4-byte length][payload] frame from a
-    subprocess stdout stream. Returns None on EOF.
+    subprocess stdout stream. Returns None on EOF (including a truncated frame).
     """
     header = stream.read(5)
     if len(header) < 5:
         return None
     msg_type, length = struct.unpack(">BI", header)
-    payload = stream.read(length)
+    if length > MAX_FRAME_BYTES:
+        raise ValueError(f"Bridge frame of {length} bytes exceeds the {MAX_FRAME_BYTES} byte limit")
+    payload = stream.read(length) if length else b""
+    if len(payload) < length:
+        return None
     return msg_type, payload
 
 
@@ -102,16 +111,16 @@ class BridgeSession:
         """Blocks until the next frame arrives from the bridge.
         Returns (msg_type, decoded_payload) or None on EOF.
         """
-        frame = read_frame(self.process.stdout)
-        if frame is None:
-            return None
-        msg_type, payload = frame
-        if msg_type == MSG_CALLBACK_EVENT:
-            return (MSG_CALLBACK_EVENT, decode_callback_event(payload))
-        elif msg_type == MSG_PLUGIN_RESPONSE:
-            return (MSG_PLUGIN_RESPONSE, payload)
-        # Recurse on unhandled frame types
-        return self.next_event()
+        while True:
+            frame = read_frame(self.process.stdout)
+            if frame is None:
+                return None
+            msg_type, payload = frame
+            if msg_type == MSG_CALLBACK_EVENT:
+                return (MSG_CALLBACK_EVENT, decode_callback_event(payload))
+            if msg_type == MSG_PLUGIN_RESPONSE:
+                return (MSG_PLUGIN_RESPONSE, payload)
+            # unknown frame type: ignore and keep reading
 
     def close(self) -> None:
         if self.process.poll() is None:

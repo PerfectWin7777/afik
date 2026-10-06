@@ -40,11 +40,12 @@ if __name__ == "__main__":
     pf.run(HomePage())
 '''
 f = pathlib.Path(tempfile.mkdtemp())/"app_x.py"; f.write_text(src)
-m,a = load_app_from_file(f); print("hot-reload/discovery root ->", type(a).__name__, "(user passed HomePage to pf.run)")
+m,a = load_app_from_file(f); print("bare discovery ->", type(a).__name__)
+m,a = load_app_from_file(f, prefer_class="HomePage"); print("hot-reload with prefer_class=HomePage ->", type(a).__name__)
 
 print("== module-name shadowing: entrypoint called json.py / random.py")
 f2 = pathlib.Path(tempfile.mkdtemp())/"random.py"; f2.write_text("import pyflutter as pf\nclass App:\n    def build(self): return pf.Text('x')\n")
 import random as stdrandom
 load_app_from_file(f2)
 import sys as _s
-print("sys.modules['random'] is user file now:", getattr(_s.modules['random'],'__file__','').endswith(str(f2.name)))
+print("sys.modules['random'] replaced by user file:", getattr(_s.modules['random'],'__file__','') == str(f2))

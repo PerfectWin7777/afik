@@ -1,25 +1,20 @@
 import 'dart:async';
 import 'plugin_registry.dart';
 
-/// Pure Dart native shim for permission_handler.
+/// permission_handler is not linked into this runtime yet.
+///
+/// Permission state can not be queried or requested, so the shim throws instead
+/// of reporting permissions as granted.
 class PermissionHandlerShim implements PyFlutterPlugin {
-  final Map<String, String> _statuses = {};
-
   @override
   Future<dynamic> handleMethodCall(String method, Map<String, String> args) async {
-    final perm = args['permission'] ?? 'camera';
-
     switch (method) {
       case 'checkPermission':
-        final status = _statuses[perm] ?? 'granted';
-        return {'permission': perm, 'status': status};
-
       case 'requestPermission':
-        _statuses[perm] = 'granted';
-        return {'permission': perm, 'status': 'granted'};
-
       case 'openAppSettings':
-        return {'opened': true};
+        throw UnsupportedError(
+            'permission_handler is not linked into the PyFlutter runtime: '
+            '"$method" cannot be answered.');
 
       default:
         throw UnsupportedError('PermissionHandler method "$method" is not supported.');

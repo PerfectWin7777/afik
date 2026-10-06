@@ -4,7 +4,7 @@
 
 use std::collections::VecDeque;
 use std::os::raw::{c_char, c_int};
-use std::sync::{Arc, Mutex, Once};
+use std::sync::{Mutex, MutexGuard, OnceLock};
 
 pub mod ir {
     include!(concat!(env!("OUT_DIR"), "/pyflutter.ir.rs"));
@@ -23,15 +23,76 @@ pub struct FrameMessage {
 }
 
 // Thread-safe queues for in-memory Dart <-> Python messaging
-static INIT: Once = Once::new();
-static mut TO_DART_QUEUE: Option<Arc<Mutex<VecDeque<FrameMessage>>>> = None;
-static mut TO_PYTHON_QUEUE: Option<Arc<Mutex<VecDeque<FrameMessage>>>> = None;
+type Queue = Mutex<VecDeque<FrameMessage>>;
+
+static TO_DART_QUEUE: OnceLock<Queue> = OnceLock::new();
+static TO_PYTHON_QUEUE: OnceLock<Queue> = OnceLock::new();
+
+/// Upper bound of queued frames per direction: the producer is refused instead of
+/// growing memory without limit when the consumer stalls.
+const MAX_QUEUED_FRAMES: usize = 4096;
+
+fn to_dart() -> &'static Queue {
+    TO_DART_QUEUE.get_or_init(|| Mutex::new(VecDeque::new()))
+}
+
+fn to_python() -> &'static Queue {
+    TO_PYTHON_QUEUE.get_or_init(|| Mutex::new(VecDeque::new()))
+}
+
+fn lock(queue: &'static Queue) -> MutexGuard<'static, VecDeque<FrameMessage>> {
+    queue.lock().unwrap_or_else(|e| e.into_inner())
+}
 
 fn ensure_initialized() {
-    INIT.call_once(|| unsafe {
-        TO_DART_QUEUE = Some(Arc::new(Mutex::new(VecDeque::new())));
-        TO_PYTHON_QUEUE = Some(Arc::new(Mutex::new(VecDeque::new())));
-    });
+    to_dart();
+    to_python();
+}
+
+fn push(queue: &'static Queue, msg_type: u8, data: *const u8, len: usize) -> c_int {
+    if data.is_null() && len > 0 {
+        return -1;
+    }
+    let payload = if len > 0 {
+        unsafe { std::slice::from_raw_parts(data, len).to_vec() }
+    } else {
+        Vec::new()
+    };
+    let mut q = lock(queue);
+    if q.len() >= MAX_QUEUED_FRAMES {
+        return -3; // queue full
+    }
+    q.push_back(FrameMessage { msg_type, payload });
+    0
+}
+
+fn poll(
+    queue: &'static Queue,
+    out_buf: *mut u8,
+    max_len: usize,
+    out_type: *mut u8,
+    out_len: *mut usize,
+) -> c_int {
+    if out_buf.is_null() || out_type.is_null() || out_len.is_null() {
+        return -2;
+    }
+    let mut q = lock(queue);
+    let Some(frame) = q.front() else {
+        return 0; // empty queue
+    };
+    unsafe {
+        if frame.payload.len() > max_len {
+            // Report the needed size; the frame stays queued so the caller can retry
+            // with a bigger buffer.
+            *out_len = frame.payload.len();
+            return -1;
+        }
+        let frame = q.pop_front().expect("front() was Some");
+        *out_type = frame.msg_type;
+        *out_len = frame.payload.len();
+        std::ptr::copy_nonoverlapping(frame.payload.as_ptr(), out_buf, frame.payload.len());
+    }
+    1
 }
 
 /// Returns the native bridge version string.
@@ -54,61 +115,15 @@ pub extern "C" fn pyflutter_bridge_init(
 /// Pushes a message frame into the queue destined for Dart.
 /// Called from embedded Python/Rust runtime.
 #[no_mangle]
-pub extern "C" fn pyflutter_push_to_dart(
-    msg_type: u8,
-    data: *const u8,
-    len: usize,
-) -> c_int {
-    ensure_initialized();
-    if data.is_null() && len > 0 {
-        return -1;
-    }
-
-    let payload = if len > 0 {
-        unsafe { std::slice::from_raw_parts(data, len).to_vec() }
-    } else {
-        Vec::new()
-    };
-
-    unsafe {
-        if let Some(ref queue_arc) = TO_DART_QUEUE {
-            if let Ok(mut queue) = queue_arc.lock() {
-                queue.push_back(FrameMessage { msg_type, payload });
-                return 0;
-            }
-        }
-    }
-    -2
+pub extern "C" fn pyflutter_push_to_dart(msg_type: u8, data: *const u8, len: usize) -> c_int {
+    push(to_dart(), msg_type, data, len)
 }
 
 /// Pushes a message frame from Dart into the queue destined for Python.
 /// Called from `dart:ffi`.
 #[no_mangle]
-pub extern "C" fn pyflutter_push_to_python(
-    msg_type: u8,
-    data: *const u8,
-    len: usize,
-) -> c_int {
-    ensure_initialized();
-    if data.is_null() && len > 0 {
-        return -1;
-    }
-
-    let payload = if len > 0 {
-        unsafe { std::slice::from_raw_parts(data, len).to_vec() }
-    } else {
-        Vec::new()
-    };
-
-    unsafe {
-        if let Some(ref queue_arc) = TO_PYTHON_QUEUE {
-            if let Ok(mut queue) = queue_arc.lock() {
-                queue.push_back(FrameMessage { msg_type, payload });
-                return 0;
-            }
-        }
-    }
-    -2
+pub extern "C" fn pyflutter_push_to_python(msg_type: u8, data: *const u8, len: usize) -> c_int {
+    push(to_python(), msg_type, data, len)
 }
 
 /// Polls the next pending frame destined for Dart.
@@ -125,35 +140,7 @@ pub extern "C" fn pyflutter_poll_dart_frame(
     out_type: *mut u8,
     out_len: *mut usize,
 ) -> c_int {
-    ensure_initialized();
-    if out_buf.is_null() || out_type.is_null() || out_len.is_null() {
-        return -2;
-    }
-
-    unsafe {
-        if let Some(ref queue_arc) = TO_DART_QUEUE {
-            if let Ok(mut queue) = queue_arc.lock() {
-                if let Some(frame) = queue.front() {
-                    if frame.payload.len() > max_len {
-                        *out_len = frame.payload.len();
-                        return -1; // Buffer too small
-                    }
-                    let frame = queue.pop_front().unwrap();
-                    *out_type = frame.msg_type;
-                    *out_len = frame.payload.len();
-                    std::ptr::copy_nonoverlapping(
-                        frame.payload.as_ptr(),
-                        out_buf,
-                        frame.payload.len(),
-                    );
-                    return 1; // Read successfully
-                } else {
-                    return 0; // Empty queue
-                }
-            }
-        }
-    }
-    -2
+    poll(to_dart(), out_buf, max_len, out_type, out_len)
 }
 
 /// Polls the next pending frame destined for Python.
@@ -164,51 +151,13 @@ pub extern "C" fn pyflutter_poll_python_frame(
     out_type: *mut u8,
     out_len: *mut usize,
 ) -> c_int {
-    ensure_initialized();
-    if out_buf.is_null() || out_type.is_null() || out_len.is_null() {
-        return -2;
-    }
-
-    unsafe {
-        if let Some(ref queue_arc) = TO_PYTHON_QUEUE {
-            if let Ok(mut queue) = queue_arc.lock() {
-                if let Some(frame) = queue.front() {
-                    if frame.payload.len() > max_len {
-                        *out_len = frame.payload.len();
-                        return -1;
-                    }
-                    let frame = queue.pop_front().unwrap();
-                    *out_type = frame.msg_type;
-                    *out_len = frame.payload.len();
-                    std::ptr::copy_nonoverlapping(
-                        frame.payload.as_ptr(),
-                        out_buf,
-                        frame.payload.len(),
-                    );
-                    return 1;
-                } else {
-                    return 0;
-                }
-            }
-        }
-    }
-    -2
+    poll(to_python(), out_buf, max_len, out_type, out_len)
 }
 
 /// Cleans up and clears all in-memory queues.
 #[no_mangle]
 pub extern "C" fn pyflutter_bridge_destroy() -> c_int {
-    unsafe {
-        if let Some(ref queue_arc) = TO_DART_QUEUE {
-            if let Ok(mut queue) = queue_arc.lock() {
-                queue.clear();
-            }
-        }
-        if let Some(ref queue_arc) = TO_PYTHON_QUEUE {
-            if let Ok(mut queue) = queue_arc.lock() {
-                queue.clear();
-            }
-        }
-    }
+    lock(to_dart()).clear();
+    lock(to_python()).clear();
     0
 }

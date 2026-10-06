@@ -210,7 +210,12 @@ class BridgeConnectionScreen extends StatefulWidget {
 }
 
 class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
-  static const int bridgePort = 7879;
+  // Set by `pyflutter run` through --dart-define=PYFLUTTER_PORT=<port>.
+  static const int bridgePort =
+      int.fromEnvironment('PYFLUTTER_PORT', defaultValue: 7879);
+  // Shared secret handed over by `pyflutter run`; empty when attaching manually.
+  static const String bridgeToken =
+      String.fromEnvironment('PYFLUTTER_TOKEN', defaultValue: '');
 
   Socket? _socket;
   late final FrameBuffer _frameBuffer;
@@ -242,7 +247,10 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
     const bool isExplicitStandalone =
         bool.fromEnvironment('PYFLUTTER_STANDALONE', defaultValue: false);
 
-    if (isExplicitStandalone || ffi.isAvailable) {
+    // The in-process FFI transport is only used by standalone builds. Probing
+    // for the native library in development would hijack the TCP relay as soon
+    // as `cargo build` has produced pyflutter_bridge.{so,dll}.
+    if (isExplicitStandalone) {
       final success = ffi.init();
       if (success) {
         setState(() {
@@ -271,6 +279,10 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
         if (!mounted) {
           socket.destroy();
           return;
+        }
+        if (bridgeToken.isNotEmpty) {
+          socket.add(encodeFrame(
+              msgHello, Uint8List.fromList(utf8.encode(bridgeToken))));
         }
         setState(() {
           _socket = socket;
@@ -392,11 +404,23 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
   }
 
   void _sendPluginResponse(String callId, dynamic result, [String? error]) {
-    final payload = utf8.encode(jsonEncode({
-      'call_id': callId,
-      'result': result,
-      'error': error,
-    }));
+    List<int> body;
+    try {
+      body = utf8.encode(jsonEncode({
+        'call_id': callId,
+        'result': result,
+        'error': error,
+      }));
+    } catch (e) {
+      // A non JSON-serializable result must still produce an answer, otherwise
+      // Python would wait until its timeout.
+      body = utf8.encode(jsonEncode({
+        'call_id': callId,
+        'result': null,
+        'error': 'Result is not serializable: $e',
+      }));
+    }
+    final payload = Uint8List.fromList(body);
     if (_isFFIMode) {
       PyFlutterFFIBridge().pushToPython(msgPluginResponse, payload);
     } else {

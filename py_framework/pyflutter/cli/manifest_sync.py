@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from xml.sax.saxutils import escape, quoteattr
 from typing import Sequence
 
 from pyflutter.core.config import PyFlutterConfig
@@ -178,9 +179,9 @@ def sync_android_manifest(manifest_path: Path, permissions: Sequence[str], app_t
     # 1. Update app label if title provided
     if app_title:
         label_pattern = r'android:label="[^"]*"'
-        new_label = f'android:label="{app_title}"'
+        new_label = f"android:label={quoteattr(app_title)}"
         if re.search(label_pattern, content):
-            new_content = re.sub(label_pattern, new_label, content, count=1)
+            new_content = re.sub(label_pattern, lambda _m: new_label, content, count=1)
             if new_content != content:
                 content = new_content
                 modified = True
@@ -192,12 +193,14 @@ def sync_android_manifest(manifest_path: Path, permissions: Sequence[str], app_t
         if key in PERMISSION_MAP_ANDROID:
             android_perms.extend(PERMISSION_MAP_ANDROID[key])
         elif key.startswith("android.permission."):
-            android_perms.append(key)
+            android_perms.append(p.strip())
+        elif key not in PERMISSION_MAP_IOS:
+            logger.warning("Unknown permission '{}' in pyflutter.yaml (ignored).", p)
 
     # 3. Inject missing permissions
     for perm in android_perms:
         perm_tag = f'<uses-permission android:name="{perm}"/>'
-        if perm not in content:
+        if f'android:name="{perm}"' not in content:
             # Insert right after <manifest ...>
             manifest_tag_match = re.search(r"<manifest[^>]*>", content)
             if manifest_tag_match:
@@ -238,7 +241,8 @@ def sync_ios_plist(plist_path: Path, permissions: Sequence[str], app_title: str 
     if app_title:
         if "<key>CFBundleDisplayName</key>" in content:
             pattern = r"(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)"
-            new_content = re.sub(pattern, rf"\g<1>{app_title}\g<2>", content)
+            safe_title = escape(app_title)
+            new_content = re.sub(pattern, lambda m: f"{m.group(1)}{safe_title}{m.group(2)}", content)
             if new_content != content:
                 content = new_content
                 modified = True

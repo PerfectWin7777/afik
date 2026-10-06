@@ -33,15 +33,30 @@ pub mod ir {
 
 const MSG_RENDER_TREE: u8 = 0x01;
 const MSG_CALLBACK_EVENT: u8 = 0x02;
+#[allow(dead_code)]
 const MSG_PLUGIN_CALL: u8 = 0x03;
 const MSG_TREE_PATCH: u8 = 0x04;
 const MSG_PLUGIN_RESPONSE: u8 = 0x05;
+const MSG_HELLO: u8 = 0x06;
+
+/// Callback id sent to Python when a Dart client (re)connects and the cached
+/// tree is no longer current, asking it to resend a full tree.
+const RESYNC_CALLBACK_ID: &str = "__pyflutter_resync__";
+
+/// Largest frame accepted from any peer (protects against forged lengths).
+const MAX_FRAME_BYTES: usize = 64 * 1024 * 1024;
 
 fn read_frame(stream: &mut impl Read) -> io::Result<(u8, Vec<u8>)> {
     let mut header = [0u8; 5]; // 1 byte type + 4 byte length
     stream.read_exact(&mut header)?;
     let msg_type = header[0];
     let len = u32::from_be_bytes([header[1], header[2], header[3], header[4]]) as usize;
+    if len > MAX_FRAME_BYTES {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("frame of {len} bytes exceeds the {MAX_FRAME_BYTES} byte limit"),
+        ));
+    }
     let mut payload = vec![0u8; len];
     stream.read_exact(&mut payload)?;
     Ok((msg_type, payload))
@@ -137,61 +152,69 @@ fn simulate_mode() {
     }
 }
 
-fn relay_mode(port: u16) {
+fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    // A panic in another thread must not take the whole relay down.
+    m.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+fn relay_mode(port: u16, token: Option<String>) {
     eprintln!("[bridge] relay mode: listening on 127.0.0.1:{port} ...");
-    let listener = TcpListener::bind(("127.0.0.1", port))
-        .unwrap_or_else(|e| panic!("failed to bind 127.0.0.1:{port}: {e}"));
-
-    let current_dart_write: Arc<Mutex<Option<TcpStream>>> = Arc::new(Mutex::new(None));
-    let last_tree: Arc<Mutex<Option<Vec<u8>>>> = Arc::new(Mutex::new(None));
-
-    let dart_writer_for_py = Arc::clone(&current_dart_write);
-    let last_tree_for_py = Arc::clone(&last_tree);
-
-    // Thread 1: Python (stdin) -> Rust -> Dart (socket) [RenderTree push]
-    std::thread::spawn(move || {
-        let mut stdin = io::stdin();
-        loop {
-            let (msg_type, payload) = match read_frame(&mut stdin) {
-                Ok(v) => v,
-                Err(e) => {
-                    eprintln!("[bridge] stdin closed ({e}). Parent Python process exited. Shutting down.");
-                    std::process::exit(0);
-                }
-            };
-            if msg_type == MSG_RENDER_TREE {
-                if let Ok(tree) = ir::RenderTree::decode(&*payload) {
-                    if let Some(root) = &tree.root {
-                        eprintln!("[bridge] received tree from Python (type: {})", root.r#type);
-                    }
-                }
-
-                // Save last tree so any future reconnecting Dart client gets it immediately
-                {
-                    let mut guard = last_tree_for_py.lock().unwrap();
-                    *guard = Some(payload.clone());
-                }
-            } else if msg_type == MSG_PLUGIN_CALL {
-                eprintln!("[bridge] forwarding plugin call to Dart");
-            } else if msg_type == MSG_TREE_PATCH {
-                eprintln!("[bridge] forwarding tree patch to Dart");
-            }
-
-            // Forward to active Dart client if connected
-            let mut guard = dart_writer_for_py.lock().unwrap();
-            if let Some(ref mut stream) = *guard {
-                if let Err(e) = write_frame(stream, msg_type, &payload) {
-                    eprintln!("[bridge] failed to forward frame to Dart (client dropped): {e}");
-                    *guard = None; // Reset so next accept reconnects cleanly
-                }
-            } else if msg_type == MSG_RENDER_TREE {
-                eprintln!("[bridge] tree cached; waiting for Dart client to connect...");
-            }
+    let listener = match TcpListener::bind(("127.0.0.1", port)) {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("[bridge] failed to bind 127.0.0.1:{port}: {e}");
+            std::process::exit(2);
         }
-    });
+    };
 
-    // Main thread / Thread 2: Accept Dart clients in a loop and forward CallbackEvents to Python stdout
-    let mut stdout = io::stdout();
+    let current_dart_write: Arc<Mutex<Option<(u64, TcpStream)>>> = Arc::new(Mutex::new(None));
+    // Last full tree received from Python. `tree_is_current` becomes false as soon
+    // as a patch is relayed: the cache then no longer matches what Dart displays.
+    let last_tree: Arc<Mutex<Option<Vec<u8>>>> = Arc::new(Mutex::new(None));
+    let tree_is_current = Arc::new(Mutex::new(true));
+    let stdout = Arc::new(Mutex::new(io::stdout()));
+
+    // Thread 1: Python (stdin) -> Rust -> Dart (socket)
+    {
+        let dart_writer = Arc::clone(&current_dart_write);
+        let last_tree = Arc::clone(&last_tree);
+        let tree_is_current = Arc::clone(&tree_is_current);
+        std::thread::spawn(move || {
+            let mut stdin = io::stdin();
+            loop {
+                let (msg_type, payload) = match read_frame(&mut stdin) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        eprintln!("[bridge] stdin closed ({e}). Parent Python process exited. Shutting down.");
+                        std::process::exit(0);
+                    }
+                };
+                if msg_type == MSG_RENDER_TREE {
+                    if let Ok(tree) = ir::RenderTree::decode(&*payload) {
+                        if let Some(root) = &tree.root {
+                            eprintln!("[bridge] received tree from Python (type: {})", root.r#type);
+                        }
+                    }
+                    *lock(&last_tree) = Some(payload.clone());
+                    *lock(&tree_is_current) = true;
+                } else if msg_type == MSG_TREE_PATCH {
+                    *lock(&tree_is_current) = false;
+                }
+
+                let mut guard = lock(&dart_writer);
+                if let Some((id, ref mut stream)) = *guard {
+                    if let Err(e) = write_frame(stream, msg_type, &payload) {
+                        eprintln!("[bridge] failed to forward frame to Dart (client {id} dropped): {e}");
+                        *guard = None;
+                    }
+                } else if msg_type == MSG_RENDER_TREE {
+                    eprintln!("[bridge] tree cached; waiting for Dart client to connect...");
+                }
+            }
+        });
+    }
+
+    let mut next_conn_id: u64 = 0;
     for stream_res in listener.incoming() {
         let dart_stream = match stream_res {
             Ok(s) => s,
@@ -200,72 +223,119 @@ fn relay_mode(port: u16) {
                 continue;
             }
         };
-
+        next_conn_id += 1;
+        let conn_id = next_conn_id;
         let addr = dart_stream.peer_addr().map(|a| a.to_string()).unwrap_or_default();
-        eprintln!("[bridge] Dart client connected from {addr}");
+        eprintln!("[bridge] Dart client {conn_id} connected from {addr}");
 
-        let dart_write_clone = match dart_stream.try_clone() {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("[bridge] failed to clone Dart stream: {e}");
-                continue;
-            }
-        };
+        let current_dart_write = Arc::clone(&current_dart_write);
+        let last_tree = Arc::clone(&last_tree);
+        let tree_is_current = Arc::clone(&tree_is_current);
+        let stdout = Arc::clone(&stdout);
+        let token = token.clone();
 
-        // If we already have a cached tree, immediately send it to the new Dart client!
-        {
-            let mut guard = current_dart_write.lock().unwrap();
-            let mut write_socket = dart_write_clone;
-            if let Some(ref cached) = *last_tree.lock().unwrap() {
-                if let Err(e) = write_frame(&mut write_socket, MSG_RENDER_TREE, cached) {
-                    eprintln!("[bridge] failed to send initial cached tree to Dart: {e}");
-                } else {
-                    eprintln!("[bridge] sent initial cached tree to newly connected Dart client");
+        // One thread per client so a stale socket can never block the next one.
+        std::thread::spawn(move || {
+            let mut read_socket = dart_stream;
+
+            // Optional shared-secret handshake: the first frame must be HELLO(token).
+            if let Some(expected) = token.as_ref() {
+                let _ = read_socket.set_read_timeout(Some(std::time::Duration::from_secs(5)));
+                match read_frame(&mut read_socket) {
+                    Ok((MSG_HELLO, payload)) if payload == expected.as_bytes() => {}
+                    _ => {
+                        eprintln!("[bridge] client {conn_id} rejected: missing or invalid session token");
+                        let _ = read_socket.shutdown(std::net::Shutdown::Both);
+                        return;
+                    }
                 }
+                let _ = read_socket.set_read_timeout(None);
             }
-            *guard = Some(write_socket);
-        }
 
-        // Read callbacks from this Dart client until it disconnects
-        let mut read_socket = dart_stream;
-        loop {
-            let (event_type, event_payload) = match read_frame(&mut read_socket) {
-                Ok(v) => v,
+            let write_socket = match read_socket.try_clone() {
+                Ok(s) => s,
                 Err(e) => {
-                    eprintln!("[bridge] Dart client {addr} disconnected: {e}");
-                    break;
+                    eprintln!("[bridge] failed to clone Dart stream: {e}");
+                    return;
                 }
             };
-            if event_type != MSG_CALLBACK_EVENT && event_type != MSG_PLUGIN_RESPONSE {
-                eprintln!("[bridge] unexpected msg type {event_type} from Dart, ignoring");
-                continue;
+
+            // The newest client replaces (and closes) any previous one.
+            {
+                let mut guard = lock(&current_dart_write);
+                if let Some((old_id, old)) = guard.take() {
+                    eprintln!("[bridge] closing previous Dart client {old_id}");
+                    let _ = old.shutdown(std::net::Shutdown::Both);
+                }
+                let mut write_socket = write_socket;
+                let cached = lock(&last_tree).clone();
+                let current = *lock(&tree_is_current);
+                match (cached, current) {
+                    (Some(tree), true) => {
+                        if write_frame(&mut write_socket, MSG_RENDER_TREE, &tree).is_ok() {
+                            eprintln!("[bridge] sent cached tree to Dart client {conn_id}");
+                        }
+                    }
+                    _ => {
+                        // Cache missing or outdated by patches: ask Python for a full tree.
+                        let event = ir::CallbackEvent {
+                            callback_id: RESYNC_CALLBACK_ID.to_string(),
+                            event_data: Default::default(),
+                        };
+                        let mut out = lock(&stdout);
+                        if let Err(e) = write_frame(&mut *out, MSG_CALLBACK_EVENT, &event.encode_to_vec()) {
+                            eprintln!("[bridge] failed to request resync: {e}");
+                        }
+                    }
+                }
+                *guard = Some((conn_id, write_socket));
             }
 
-            eprintln!("[bridge] relaying event (0x{event_type:02x}) to Python");
-            if let Err(e) = write_frame(&mut stdout, event_type, &event_payload) {
-                eprintln!("[bridge] failed to forward event to Python (stdout closed): {e}");
-                return;
+            loop {
+                let (event_type, event_payload) = match read_frame(&mut read_socket) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        eprintln!("[bridge] Dart client {conn_id} disconnected: {e}");
+                        break;
+                    }
+                };
+                if event_type != MSG_CALLBACK_EVENT && event_type != MSG_PLUGIN_RESPONSE {
+                    eprintln!("[bridge] unexpected msg type {event_type} from Dart, ignoring");
+                    continue;
+                }
+                let mut out = lock(&stdout);
+                if let Err(e) = write_frame(&mut *out, event_type, &event_payload) {
+                    eprintln!("[bridge] failed to forward event to Python (stdout closed): {e}");
+                    std::process::exit(0);
+                }
             }
-        }
 
-        // Dart disconnected, clear active writer
-        {
-            let mut guard = current_dart_write.lock().unwrap();
-            *guard = None;
-        }
-        eprintln!("[bridge] waiting for next Dart connection...");
+            // Only clear the writer if it still belongs to this connection.
+            let mut guard = lock(&current_dart_write);
+            if matches!(*guard, Some((id, _)) if id == conn_id) {
+                *guard = None;
+            }
+            eprintln!("[bridge] waiting for next Dart connection...");
+        });
     }
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     if let Some(pos) = args.iter().position(|a| a == "--dart-port") {
-        let port: u16 = args
-            .get(pos + 1)
-            .expect("--dart-port requires a value")
-            .parse()
-            .expect("--dart-port value must be a valid port number");
-        relay_mode(port);
+        let port: u16 = match args.get(pos + 1).and_then(|v| v.parse().ok()) {
+            Some(p) => p,
+            None => {
+                eprintln!("[bridge] --dart-port requires a valid port number");
+                std::process::exit(2);
+            }
+        };
+        let token = args
+            .iter()
+            .position(|a| a == "--token")
+            .and_then(|pos| args.get(pos + 1))
+            .cloned();
+        relay_mode(port, token);
     } else {
         simulate_mode();
     }

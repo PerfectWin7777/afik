@@ -67,7 +67,9 @@ class PyFlutterFFIBridge {
   Pointer<Uint8>? _pollBuffer;
   Pointer<Uint8>? _outTypePtr;
   Pointer<IntPtr>? _outLenPtr;
-  static const int _bufferCapacity = 2 * 1024 * 1024; // 2MB frame buffer
+  static const int _initialBufferCapacity = 2 * 1024 * 1024; // 2MB frame buffer
+  static const int _maxFrameBytes = 256 * 1024 * 1024; // refuse absurd frames
+  int _bufferCapacity = _initialBufferCapacity; // grows when a frame does not fit
 
   Stream<FFIFrame> get frameStream => _frameController.stream;
 
@@ -183,8 +185,19 @@ class PyFlutterFFIBridge {
           _pollBuffer!.asTypedList(length),
         );
         _frameController.add(FFIFrame(msgType, payloadCopy));
+      } else if (res == -1) {
+        // The head frame is larger than our buffer: grow it and retry, otherwise
+        // that frame would block the queue forever.
+        final needed = _outLenPtr!.value;
+        if (needed <= _bufferCapacity || needed > _maxFrameBytes) {
+          debugPrint('[FFIBridge] cannot read a frame of $needed bytes');
+          break;
+        }
+        malloc.free(_pollBuffer!);
+        _bufferCapacity = needed;
+        _pollBuffer = malloc.allocate<Uint8>(_bufferCapacity);
       } else {
-        // 0 = queue empty, < 0 = error or full
+        // 0 = queue empty, < -1 = native error
         break;
       }
     }

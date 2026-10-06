@@ -36,6 +36,7 @@ const int msgCallbackEvent = 0x02;
 const int msgPluginCall = 0x03;
 const int msgTreePatch = 0x04;
 const int msgPluginResponse = 0x05;
+const int msgHello = 0x06;
 
 /// Plain data class mirroring the `Widget` protobuf message. Not named
 /// `Widget` to avoid clashing with Flutter's own `Widget` class.

@@ -92,20 +92,24 @@ def select_device(preferred_id: Optional[str] = None) -> Optional[dict[str, Any]
     - If multiple devices are found, prioritizes the last-used device as [1] default.
     """
     if preferred_id:
-        is_android = (
-            preferred_id.isdigit()
-            or len(preferred_id) > 10
-            or "android" in preferred_id.lower()
-            or preferred_id.startswith("1")
+        # Prefer what Flutter reports; only guess when it cannot be queried.
+        known = next(
+            (d for d in list_devices() if preferred_id in (d.get("id"), d.get("name"))),
+            None,
         )
-        selected = {
-            "name": preferred_id,
-            "id": preferred_id,
-            "targetPlatform": "android-arm64" if is_android else preferred_id.lower(),
-        }
-        if is_android:
-            setup_adb_port_forward(preferred_id)
-        save_last_device_id(preferred_id)
+        if known is not None:
+            selected = known
+        else:
+            lowered = preferred_id.lower()
+            guessed = (
+                "android-arm64"
+                if lowered.startswith("emulator-") or "android" in lowered
+                else lowered
+            )
+            selected = {"name": preferred_id, "id": preferred_id, "targetPlatform": guessed}
+        if "android" in selected.get("targetPlatform", "").lower():
+            setup_adb_port_forward(selected.get("id", preferred_id))
+        save_last_device_id(selected.get("id", preferred_id))
         return selected
 
     devices = list_devices()
@@ -146,9 +150,11 @@ def select_device(preferred_id: Optional[str] = None) -> Optional[dict[str, Any]
                 if 1 <= choice_num <= len(devices):
                     selected = devices[choice_num - 1]
                     break
-            except (ValueError, EOFError, KeyboardInterrupt):
-                print("\nAborted.")
-                sys.exit(0)
+            except ValueError:
+                pass
+            except (EOFError, KeyboardInterrupt):
+                print("\nAborted: no device chosen. Pass one with `-d <device>`.")
+                sys.exit(1)
             print(f"Invalid choice. Please enter a number between 1 and {len(devices)}.")
 
     if selected:
