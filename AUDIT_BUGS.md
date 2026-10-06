@@ -84,15 +84,15 @@ python ../audit/repro_core.py                         # relance les repros
 | 2 | T-02 ✅ | Ordonnanceur de frames + thread d'UI unique (B-19, B-20) — **fait** | M |
 | 3 | T-03 | Cycle de vie des `State` : `dispose` (B-21) | M |
 | 4 | T-04 | `FormKey` comme magasin de valeurs (B-27) | S |
-| 5 | T-05 | Convention d'appel des callbacks (B-23) | S |
-| 6 | T-06 | Signaux : égalité, mutation en place, batch (B-17, B-18) | S |
+| 5 | T-05 ✅ | Convention d'appel des callbacks (B-23) — **fait** (reste : convertisseurs de type par widget) | S |
+| 6 | T-06 ✅ | Signaux : égalité, mutation en place, batch (B-17, B-18) — **fait** | S |
 | 7 | T-07 | Arguments structurés côté Dart (B-39) | S |
 | 8 | T-08 | Timeouts par plugin + mocks explicites (B-41, B-37) | S |
 | 9 | T-09 | Canaux d'événements Dart→Python (B-40) | L |
 | 10 | T-10 | Suppression de prop vs valeur vide (B-25) | S |
 | 11 | T-11 | Contrat de props partagé + validation (B-24, B-57, B-58) | L |
 | 12 | T-12 | `Component` sans devinettes (B-22) | M |
-| 13 | T-13 | Petits correctifs : B-26, B-28, B-34, B-35, B-36, B-59 | S |
+| 13 | T-13 | Petits correctifs : B-26, B-28, B-34, B-35, B-36 ✅ ; B-59 (hot reload des autres modules, watcher) reste ouvert | S |
 | 14 | T-14 ✅ | Config par projet, dépendances Flutter, permissions (B-31, B-32) — **fait** | L |
 | 15 | T-15 | Dart : transport abstrait/Web, rendu incrémental, FrameBuffer (B-47, B-48, B-50) | L |
 | 16 | T-16 | Singletons → contexte d'application, navigation (B-29) | L |
@@ -377,7 +377,9 @@ class FormKey:
 
 ---
 
-## T-05 — Convention d'appel des callbacks (B-23)
+## T-05 — ✅ FAIT — Convention d'appel des callbacks (B-23)
+
+> Implémenté dans `core/widget_base.py::_call_callable` (sémantique des slots Qt : les valeurs en trop sont ignorées, un paramètre requis sans donnée reçoit `None`, `**kw` reçoit les données nommées). Tests : `tests/test_callback_convention.py`.
 
 **Problème** : `core/widget_base.py::_call_callable` devine comment appeler le handler d'après sa signature, avec des cas surprenants : `lambda e: …` sur un bouton est appelé **sans argument** (`TypeError`) ; un handler à un paramètre reçoit « la première valeur du dict », quel que soit son nom.
 
@@ -417,7 +419,7 @@ Résultats vérifiés : `lambda: …`→appel nu ; `lambda value:` + `{"value":"
 
 ---
 
-## T-06 — Signaux : égalité, mutation en place, batch (B-17, B-18)
+## T-06 — ✅ FAIT — Signaux : égalité, mutation en place, batch (B-17, B-18)
 
 **Fichier** : `core/state.py` uniquement.
 

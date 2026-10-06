@@ -67,55 +67,71 @@ def _register_pinned_callback(
 
 
 def _call_callable(target: Callable, *args: Any, **kwargs: Any) -> Any:
-    """Invokes target function with best matching arguments without repeated retries."""
+    """Calls a slot / callback with the arguments it can take, like a Qt slot.
+
+    ``args`` are positional values (a Qt signal's arguments, ``QtSignal.emit(1, 2)``), ``kwargs`` are
+    named values (the event data sent by Flutter, ``{"value": "abc"}``). The slot may take fewer
+    arguments than are available - extra positional values are dropped, as with PyQt - and the
+    rules are:
+
+    1. positional values fill the slot's positional parameters first;
+    2. remaining parameters are filled by name from ``kwargs``;
+    3. a required parameter nobody names gets the event's main value (``kwargs["value"]``, else the
+       first value) once, and ``None`` after that, so ``on_click=lambda e: ...`` works when a button
+       sends no data instead of failing with a TypeError;
+    4. ``**kwargs`` collects the named values left; ``*args`` collects all positional values.
+    """
     import inspect
-    sig = None
+
     try:
         sig = inspect.signature(target)
     except (ValueError, TypeError):
-        pass
-
-    if sig is not None:
-        params = list(sig.parameters.values())
-        has_varargs = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params)
-        has_varkw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params)
-
-        if has_varargs and has_varkw:
-            return target(*args, **kwargs)
-        elif has_varargs:
-            return target(*args)
-
-        pos_params = [
-            p for p in params
-            if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
-        ]
-        kw_params = {
-            p.name for p in params
-            if p.kind in (inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
-        }
-
-        matched_kwargs = {k: v for k, v in kwargs.items() if k in kw_params}
-        if matched_kwargs and len(matched_kwargs) == len(kwargs):
-            return target(**matched_kwargs)
-
-        if args and len(pos_params) > 0:
-            return target(*args[:len(pos_params)])
-        elif kwargs and len(pos_params) > 0:
-            return target(*list(kwargs.values())[:len(pos_params)])
-        else:
-            return target()
-    else:
-        if kwargs:
+        # builtins without a signature: try the richest call first
+        for attempt in ((args, kwargs), (args, {}), ((), kwargs)):
+            if attempt == ((), {}):
+                continue
             try:
-                return target(**kwargs)
+                return target(*attempt[0], **attempt[1])
             except TypeError:
-                pass
-        if args:
-            try:
-                return target(*args)
-            except TypeError:
-                pass
+                continue
         return target()
+
+    params = list(sig.parameters.values())
+    var_pos = any(p.kind is p.VAR_POSITIONAL for p in params)
+    var_kw = any(p.kind is p.VAR_KEYWORD for p in params)
+    positional = [p for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
+    keyword_only = [p for p in params if p.kind is p.KEYWORD_ONLY]
+
+    if var_pos:
+        call_args = list(args)
+    else:
+        call_args = list(args[: len(positional)])
+    bound = {p.name for p in positional[: len(call_args)]}
+    unused = {k: v for k, v in kwargs.items() if k not in bound}
+
+    call_kwargs: dict[str, Any] = {}
+    waiting = [p for p in positional[len(call_args):] + keyword_only]
+    for p in waiting:                                     # by name
+        if p.name in unused:
+            call_kwargs[p.name] = unused.pop(p.name)
+    main_given = False
+    for p in waiting:                                     # required and still unnamed
+        if p.name in call_kwargs or p.default is not p.empty:
+            continue
+        if unused and not main_given:
+            key = "value" if "value" in unused else next(iter(unused))
+            call_kwargs[p.name] = unused.pop(key)
+            main_given = True
+        else:
+            call_kwargs[p.name] = None
+    if var_kw:
+        call_kwargs.update(unused)
+
+    # a POSITIONAL_ONLY parameter cannot be passed by name: move those into the positional list
+    for p in positional[len(call_args):]:
+        if p.kind is p.POSITIONAL_ONLY and p.name in call_kwargs:
+            call_args.append(call_kwargs.pop(p.name))
+    return target(*call_args, **call_kwargs)
 
 
 def invoke_callback(callback_id: str, event_data: dict[str, str]) -> None:
