@@ -90,7 +90,7 @@ python ../audit/repro_core.py                         # relance les repros
 | 8 | T-08 ✅ | Timeouts par plugin + mocks explicites (B-41, B-37) — **fait** | S |
 | 9 | T-09 | Canaux d'événements Dart→Python (B-40) | L |
 | 10 | T-10 ✅ | Suppression de prop vs valeur vide (B-25) — **fait** | S |
-| 11 | T-11 | Contrat de props partagé + validation (B-24, B-57, B-58) | L |
+| 11 | T-11 ✅ | Contrat de props partagé + validation (B-24, B-57, B-58) — **fait** | L |
 | 12 | T-12 ✅ | `Component` sans devinettes (B-22) — **fait** | M |
 | 13 | T-13 | Petits correctifs : B-26, B-28, B-34, B-35, B-36 ✅ ; B-59 (hot reload des autres modules, watcher) reste ouvert | S |
 | 14 | T-14 ✅ | Config par projet, dépendances Flutter, permissions (B-31, B-32) — **fait** | L |
@@ -624,7 +624,11 @@ if changed or removed or cb_changed:
 
 ---
 
-## T-11 — Contrat de props partagé + validation (B-24, B-57, B-58)
+## T-11 — ✅ FAIT — Contrat de props partagé + validation (B-24, B-57, B-58)
+
+> **Fait.** *B-58* : Tooltip, CircularProgressIndicator, Positioned corrigés côté Dart, plus les écarts révélés par le contrôle : `BottomNavigationBar.background_color`, `DefaultTabController.initial_index`, `RichText.max_lines/overflow`, `DropdownButton.border_radius`, `CrossAxisAlignment.baseline` (que Python proposait mais que Dart ignorait), `setToolTip()` générique sur tout widget, `setBackgroundColor()` sur `Text`.
+> *B-57* : le contrat est `py_framework/pyflutter/contract/widgets.json` (dans le paquet, donc livré avec pip ; le `ir_spec/` racine ne contient que le `.proto`). `tools/gen_contract.py` en produit une première version à partir de l'AST (jamais écrasé sans `--force`) ; **le fichier est ensuite maintenu à la main** (enums, notes). `tools/check_contract.py` compare Python ↔ contrat ↔ Dart (regex sur les `case` de `buildFromNode`, les `Py*Widget`, les shims du catalogue) ; les écarts connus sont marqués `"dart": false` avec une note (alias `text`/`name`/`color`, props du Chewie configurées par RPC). Le test `tests/test_props_contract.py` lance ce contrôle. Limite : le générateur AST rate des props posées via des chemins indirects (`Text.text`, `ListTile.dense`…) ; la validation à l'exécution, activée dans toute la suite de tests, comble ces trous.
+> *B-24* : `core/contract.py` + `Props` (le dict `props` de chaque widget vérifie chaque affectation) ; callables / listes / dicts / tuples / sets → `TypeError` ; `Enum` → sa valeur ; prop inconnue ou valeur d'enum invalide → `ValueError` si `PYFLUTTER_STRICT_PROPS=1` (positionné par `tests/conftest.py`), sinon un avertissement unique par (widget, prop) ; `raw_props=` et les types hors contrat ne sont jamais vérifiés. **À faire plus tard** : étendre les enums aux autres props (une trentaine de widgets), puis ajouter `check_contract.py` à la CI (T-18).
 
 **Problème** : le protocole est « tout en chaînes » ; rien ne vérifie que Python et Dart parlent des mêmes noms de props. Résultat : des paramètres Python **acceptés mais ignorés** par Dart (confirmés dans `widget_builder.dart`) :
 

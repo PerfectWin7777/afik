@@ -1,0 +1,840 @@
+{
+ "AlertDialog": {
+  "props": {
+   "background_color": "color",
+   "elevation": "number",
+   "key": "string"
+  }
+ },
+ "AnimatedAlign": {
+  "props": {
+   "alignment": "string",
+   "curve": "string",
+   "duration_ms": "number"
+  }
+ },
+ "AnimatedContainer": {
+  "props": {
+   "border_radius": "number",
+   "color": "color",
+   "curve": "string",
+   "duration_ms": "number",
+   "height": "number",
+   "margin": "number",
+   "padding": "number",
+   "width": "number"
+  }
+ },
+ "AnimatedCrossFade": {
+  "props": {
+   "curve": "string",
+   "duration_ms": "number",
+   "show_first": "bool"
+  }
+ },
+ "AnimatedOpacity": {
+  "props": {
+   "curve": "string",
+   "duration_ms": "number",
+   "opacity": "number"
+  }
+ },
+ "AnimatedRotation": {
+  "props": {
+   "curve": "string",
+   "duration_ms": "number",
+   "turns": "number"
+  }
+ },
+ "AnimatedScale": {
+  "props": {
+   "curve": "string",
+   "duration_ms": "number",
+   "scale": "number"
+  }
+ },
+ "AppBar": {
+  "props": {
+   "background_color": "color",
+   "center_title": "bool",
+   "elevation": "number",
+   "scrolled_under_elevation": "number",
+   "shadow_color": "color",
+   "surface_tint_color": "color",
+   "title": "string",
+   "title_spacing": "number",
+   "toolbar_height": "number"
+  }
+ },
+ "Badge": {
+  "props": {
+   "background_color": "color",
+   "is_small": "bool",
+   "label": "string",
+   "text_color": "color"
+  }
+ },
+ "BottomNavigationBar": {
+  "props": {
+   "background_color": "color",
+   "current_index": "number",
+   "selected_color": "color",
+   "unselected_color": "color"
+  }
+ },
+ "BottomNavigationBarItem": {
+  "props": {
+   "icon": "icon",
+   "label": "string"
+  }
+ },
+ "BottomSheet": {
+  "props": {
+   "background_color": "color",
+   "border_radius": "number",
+   "elevation": "number"
+  }
+ },
+ "Button": {
+  "props": {
+   "background_color": "color",
+   "border_radius": "number",
+   "color": "color",
+   "elevation": "number",
+   "enabled": "bool",
+   "icon": "icon",
+   "key": "string",
+   "label": "string",
+   "text": {
+    "type": "string",
+    "dart": false,
+    "note": "alias of label, kept so Widget.text() works; Dart reads label"
+   }
+  }
+ },
+ "CameraPreview": {
+  "props": {
+   "camera_id": "string",
+   "height": "number",
+   "key": "string",
+   "width": "number"
+  }
+ },
+ "Card": {
+  "props": {
+   "border_color": "color",
+   "border_radius": "number",
+   "border_width": "number",
+   "color": "color",
+   "elevation": "number",
+   "margin": "number",
+   "padding": "number",
+   "shadow_color": "color",
+   "surface_tint_color": "color"
+  }
+ },
+ "Center": {
+  "props": {}
+ },
+ "Checkbox": {
+  "props": {
+   "active_color": "color",
+   "value": "bool"
+  }
+ },
+ "Chewie": {
+  "props": {
+   "aspect_ratio": {
+    "type": "string",
+    "dart": false,
+    "note": "configured through chewie.createChewieController (RPC); the widget only reads controller_id, width, height"
+   },
+   "auto_play": {
+    "type": "string",
+    "dart": false,
+    "note": "configured through chewie.createChewieController (RPC); the widget only reads controller_id, width, height"
+   },
+   "controller_id": "string",
+   "height": "number",
+   "key": "string",
+   "show_controls": {
+    "type": "bool",
+    "dart": false,
+    "note": "configured through chewie.createChewieController (RPC); the widget only reads controller_id, width, height"
+   },
+   "url": {
+    "type": "string",
+    "dart": false,
+    "note": "configured through chewie.createChewieController (RPC); the widget only reads controller_id, width, height"
+   },
+   "width": "number"
+  }
+ },
+ "Chip": {
+  "props": {
+   "avatar": "string",
+   "background_color": "color",
+   "label": "string"
+  }
+ },
+ "CircleAvatar": {
+  "props": {
+   "background_color": "color",
+   "foreground_color": "color",
+   "image_url": "string",
+   "key": "string",
+   "radius": "number"
+  }
+ },
+ "CircularProgressIndicator": {
+  "props": {
+   "color": "color",
+   "stroke_width": "number"
+  }
+ },
+ "Column": {
+  "props": {
+   "cross_axis_alignment": {
+    "type": "enum",
+    "values": [
+     "start",
+     "center",
+     "end",
+     "stretch",
+     "baseline"
+    ]
+   },
+   "main_axis_alignment": {
+    "type": "enum",
+    "values": [
+     "start",
+     "center",
+     "end",
+     "space_between",
+     "space_around",
+     "space_evenly"
+    ]
+   },
+   "main_axis_size": {
+    "type": "enum",
+    "values": [
+     "min",
+     "max"
+    ]
+   }
+  }
+ },
+ "Container": {
+  "props": {
+   "alignment": "string",
+   "border_color": "color",
+   "border_radius": "number",
+   "border_width": "number",
+   "color": "color",
+   "height": "number",
+   "margin": "number",
+   "padding": "number",
+   "shadow_blur": "number",
+   "shadow_color": "color",
+   "shape": "string",
+   "width": "number"
+  }
+ },
+ "DefaultTabController": {
+  "props": {
+   "initial_index": "number",
+   "length": "number"
+  }
+ },
+ "Dismissible": {
+  "props": {
+   "direction": "string",
+   "key": "string"
+  }
+ },
+ "Divider": {
+  "props": {
+   "color": "color",
+   "end_indent": "number",
+   "height": "number",
+   "indent": "number",
+   "thickness": "number"
+  }
+ },
+ "Drawer": {
+  "props": {
+   "background_color": "color",
+   "elevation": "number",
+   "width": "number"
+  }
+ },
+ "DrawerHeader": {
+  "props": {
+   "background_color": "color",
+   "margin": "number",
+   "padding": "number"
+  }
+ },
+ "DropdownButton": {
+  "props": {
+   "border_radius": "number",
+   "elevation": "number",
+   "hint": "string",
+   "icon": "icon",
+   "icon_size": "number",
+   "is_expanded": "bool",
+   "value": "string"
+  }
+ },
+ "DropdownMenu": {
+  "props": {
+   "hint_text": "string",
+   "initial_selection": "string",
+   "label": "string",
+   "leading_icon": "icon",
+   "trailing_icon": "icon",
+   "width": "number"
+  }
+ },
+ "DropdownMenuItem": {
+  "props": {
+   "disabled": "bool",
+   "label": "string",
+   "value": "string"
+  }
+ },
+ "Expanded": {
+  "props": {
+   "flex": "number"
+  }
+ },
+ "FittedBox": {
+  "props": {
+   "fit": "string"
+  }
+ },
+ "Flexible": {
+  "props": {
+   "fit": "string",
+   "flex": "number"
+  }
+ },
+ "FloatingActionButton": {
+  "props": {
+   "background_color": "color",
+   "color": {
+    "type": "color",
+    "dart": false,
+    "note": "alias of foreground_color; Dart reads foreground_color"
+   },
+   "elevation": "number",
+   "foreground_color": "color",
+   "icon": "icon",
+   "label": "string",
+   "mini": "bool",
+   "tooltip": "string"
+  }
+ },
+ "Form": {
+  "props": {}
+ },
+ "GestureDetector": {
+  "props": {
+   "behavior": "string",
+   "on_double_tap_callback_id": "callback",
+   "on_long_press_callback_id": "callback",
+   "on_swipe_down_callback_id": "callback",
+   "on_swipe_left_callback_id": "callback",
+   "on_swipe_right_callback_id": "callback",
+   "on_swipe_up_callback_id": "callback",
+   "on_tap_callback_id": "callback"
+  }
+ },
+ "GridView": {
+  "props": {
+   "child_aspect_ratio": "number",
+   "cross_axis_count": "number",
+   "cross_axis_spacing": "number",
+   "key": "string",
+   "main_axis_spacing": "number",
+   "padding": "number",
+   "physics": "string",
+   "shrink_wrap": "bool"
+  }
+ },
+ "Hero": {
+  "props": {
+   "tag": "string"
+  }
+ },
+ "Icon": {
+  "props": {
+   "color": "color",
+   "name": "string",
+   "size": "number"
+  }
+ },
+ "IconButton": {
+  "props": {
+   "color": "color",
+   "icon": "icon",
+   "name": {
+    "type": "string",
+    "dart": false,
+    "note": "alias of icon, kept for Widget.text()/Qt-style access; Dart reads icon"
+   },
+   "padding": "number",
+   "size": "number"
+  }
+ },
+ "Image": {
+  "props": {
+   "border_radius": "number",
+   "fit": "string",
+   "height": "number",
+   "url": "string",
+   "width": "number"
+  }
+ },
+ "InkWell": {
+  "props": {
+   "border_radius": "number",
+   "highlight_color": "color",
+   "on_double_tap_callback_id": "callback",
+   "on_long_press_callback_id": "callback",
+   "on_tap_callback_id": "callback",
+   "splash_color": "color"
+  }
+ },
+ "LinearProgressIndicator": {
+  "props": {
+   "background_color": "color",
+   "color": "color",
+   "key": "string",
+   "min_height": "number",
+   "value": "number"
+  }
+ },
+ "ListTile": {
+  "props": {
+   "selected_tile_color": "color",
+   "subtitle": "string",
+   "tile_color": "color",
+   "title": "string",
+   "dense": "bool",
+   "is_three_line": "bool",
+   "selected": "bool"
+  }
+ },
+ "ListView": {
+  "props": {
+   "padding": "number",
+   "physics": "string",
+   "reverse": "bool",
+   "scroll_direction": "string",
+   "shrink_wrap": "bool"
+  }
+ },
+ "MaterialApp": {
+  "props": {
+   "seed_color": "color",
+   "title": "string",
+   "debug_banner": "bool"
+  },
+  "prefixes": [
+   "dark_theme_",
+   "theme_"
+  ]
+ },
+ "OutlinedButton": {
+  "props": {
+   "border_color": "color",
+   "border_radius": "number",
+   "border_width": "number",
+   "color": "color",
+   "enabled": "bool",
+   "icon": "icon",
+   "label": "string",
+   "text": {
+    "type": "string",
+    "dart": false,
+    "note": "alias of label, kept so Widget.text() works; Dart reads label"
+   }
+  }
+ },
+ "PDFView": {
+  "props": {
+   "enable_swipe": "bool",
+   "file_path": "string",
+   "height": "number",
+   "key": "string",
+   "page": "string",
+   "swipe_horizontal": "bool",
+   "width": "number"
+  }
+ },
+ "Padding": {
+  "props": {
+   "all": "string",
+   "bottom": "number",
+   "horizontal": "number",
+   "left": "number",
+   "right": "number",
+   "top": "number",
+   "vertical": "number"
+  }
+ },
+ "PageView": {
+  "props": {
+   "scroll_direction": "string"
+  }
+ },
+ "PdfView": {
+  "props": {
+   "height": "number",
+   "key": "string",
+   "page": "string",
+   "path": "string",
+   "width": "number"
+  }
+ },
+ "PdfViewPinch": {
+  "props": {
+   "height": "number",
+   "key": "string",
+   "page": "string",
+   "path": "string",
+   "width": "number"
+  }
+ },
+ "PopupMenuButton": {
+  "props": {
+   "icon": "icon",
+   "key": "string",
+   "tooltip": "string"
+  }
+ },
+ "PopupMenuItem": {
+  "props": {
+   "enabled": "bool",
+   "key": "string",
+   "value": "string"
+  }
+ },
+ "Positioned": {
+  "props": {
+   "bottom": "number",
+   "height": "number",
+   "left": "number",
+   "right": "number",
+   "top": "number",
+   "width": "number"
+  }
+ },
+ "Radio": {
+  "props": {
+   "active_color": "color",
+   "group_value": "string",
+   "key": "string",
+   "value": "string"
+  }
+ },
+ "RadioListTile": {
+  "props": {
+   "active_color": "color",
+   "group_value": "string",
+   "key": "string",
+   "value": "string"
+  }
+ },
+ "RefreshIndicator": {
+  "props": {
+   "background_color": "color",
+   "color": "color",
+   "displacement": "number",
+   "key": "string"
+  }
+ },
+ "RichText": {
+  "props": {
+   "key": "string",
+   "max_lines": "number",
+   "overflow": "string",
+   "text_align": "string"
+  }
+ },
+ "Row": {
+  "props": {
+   "cross_axis_alignment": {
+    "type": "enum",
+    "values": [
+     "start",
+     "center",
+     "end",
+     "stretch",
+     "baseline"
+    ]
+   },
+   "main_axis_alignment": {
+    "type": "enum",
+    "values": [
+     "start",
+     "center",
+     "end",
+     "space_between",
+     "space_around",
+     "space_evenly"
+    ]
+   },
+   "main_axis_size": {
+    "type": "enum",
+    "values": [
+     "min",
+     "max"
+    ]
+   }
+  }
+ },
+ "SafeArea": {
+  "props": {
+   "bottom": "number",
+   "left": "number",
+   "maintain_bottom_view_padding": "number",
+   "minimum": "number",
+   "right": "number",
+   "top": "number"
+  }
+ },
+ "Scaffold": {
+  "props": {
+   "background_color": "color",
+   "extend_body": "bool",
+   "extend_body_behind_app_bar": "bool",
+   "floating_action_button_location": "string",
+   "resize_to_avoid_bottom_inset": "bool"
+  }
+ },
+ "SfPdfViewer": {
+  "props": {
+   "can_show_pagination": "bool",
+   "height": "number",
+   "key": "string",
+   "page": "string",
+   "src": "string",
+   "width": "number",
+   "zoom": "string"
+  }
+ },
+ "SimpleDialog": {
+  "props": {
+   "background_color": "color",
+   "elevation": "number",
+   "key": "string"
+  }
+ },
+ "SingleChildScrollView": {
+  "props": {
+   "padding": "number",
+   "physics": "string",
+   "reverse": "bool",
+   "scroll_direction": "string"
+  }
+ },
+ "SizedBox": {
+  "props": {
+   "height": "number",
+   "width": "number"
+  }
+ },
+ "Slider": {
+  "props": {
+   "active_color": "color",
+   "divisions": "number",
+   "inactive_color": "color",
+   "label": "string",
+   "max": "number",
+   "min": "number",
+   "value": "string"
+  }
+ },
+ "Spacer": {
+  "props": {
+   "flex": "number"
+  }
+ },
+ "Stack": {
+  "props": {}
+ },
+ "Switch": {
+  "props": {
+   "active_color": "color",
+   "value": "bool"
+  }
+ },
+ "Tab": {
+  "props": {
+   "icon": "icon",
+   "text": "string"
+  }
+ },
+ "TabBar": {
+  "props": {
+   "indicator_color": "color",
+   "label_color": "color"
+  }
+ },
+ "TabBarView": {
+  "props": {}
+ },
+ "Text": {
+  "props": {
+   "color": "color",
+   "decoration": "string",
+   "decoration_color": "color",
+   "font_family": "string",
+   "font_size": "number",
+   "font_style": "string",
+   "font_weight": "string",
+   "height": "number",
+   "key": "string",
+   "letter_spacing": "number",
+   "max_lines": "number",
+   "overflow": {
+    "type": "enum",
+    "values": [
+     "ellipsis",
+     "clip",
+     "fade"
+    ]
+   },
+   "soft_wrap": "bool",
+   "style": "string",
+   "text_align": {
+    "type": "enum",
+    "values": [
+     "left",
+     "center",
+     "right",
+     "justify",
+     "start",
+     "end"
+    ]
+   },
+   "theme_style": "string",
+   "word_spacing": "number",
+   "text": "string",
+   "value": "string",
+   "background_color": "color",
+   "label": {
+    "type": "string",
+    "dart": false,
+    "note": "written by Widget.set_text() for Button compatibility; Text reads text/value"
+   }
+  }
+ },
+ "TextButton": {
+  "props": {
+   "border_radius": "number",
+   "color": "color",
+   "enabled": "bool",
+   "icon": "icon",
+   "label": "string",
+   "text": {
+    "type": "string",
+    "dart": false,
+    "note": "alias of label, kept so Widget.text() works; Dart reads label"
+   }
+  }
+ },
+ "TextField": {
+  "props": {
+   "autocorrect": "bool",
+   "autofocus": "bool",
+   "border": "string",
+   "border_color": "color",
+   "border_radius": "number",
+   "content_padding": "number",
+   "cursor_color": "color",
+   "enabled": "bool",
+   "error_text": "string",
+   "fill_color": "color",
+   "filled": "bool",
+   "focused_border_color": "color",
+   "helper_text": "string",
+   "hint": "string",
+   "key": "string",
+   "keyboard_type": "string",
+   "label": "string",
+   "max_length": "number",
+   "max_lines": "number",
+   "min_lines": "number",
+   "obscure_text": "bool",
+   "placeholder": "string",
+   "prefix_icon": "icon",
+   "prefix_text": "string",
+   "read_only": "bool",
+   "submit_callback_id": "callback",
+   "suffix_callback_id": "callback",
+   "suffix_icon": "icon",
+   "suffix_text": "string",
+   "text_align": "string",
+   "text_capitalization": "string",
+   "value": "string"
+  }
+ },
+ "TextSpan": {
+  "props": {
+   "color": "color",
+   "font_size": "number",
+   "font_style": "string",
+   "font_weight": "string",
+   "key": "string",
+   "text": "string"
+  }
+ },
+ "Tooltip": {
+  "props": {
+   "key": "string",
+   "message": "string",
+   "show_duration_ms": "number",
+   "wait_duration_ms": "number"
+  }
+ },
+ "VerticalDivider": {
+  "props": {
+   "color": "color",
+   "end_indent": "number",
+   "indent": "number",
+   "thickness": "number",
+   "width": "number"
+  }
+ },
+ "VideoPlayer": {
+  "props": {
+   "auto_play": "bool",
+   "controller_id": "string",
+   "height": "number",
+   "key": "string",
+   "show_controls": "bool",
+   "url": "string",
+   "width": "number"
+  }
+ },
+ "WebView": {
+  "props": {
+   "height": "number",
+   "key": "string",
+   "show_address_bar": "bool",
+   "url": "string",
+   "view_id": "string",
+   "width": "number"
+  }
+ },
+ "Wrap": {
+  "props": {
+   "alignment": "string",
+   "run_spacing": "number",
+   "spacing": "number"
+  }
+ }
+}

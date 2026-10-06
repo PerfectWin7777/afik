@@ -214,22 +214,27 @@ class Widget:
     widget_type: str = "Widget"
 
     def __init__(self, **props: Any):
-        self.props: dict[str, str] = {}
+        from pyflutter.core.contract import Props
+        self.props: dict[str, str] = Props(self.widget_type)
         self.children: list[Widget] = []
         self.callback_id: str = ""
         self._populate_props(props)
 
     def _populate_props(self, props: dict[str, Any]) -> None:
+        from pyflutter.core.contract import normalize
         raw_props = props.pop("raw_props", None)
         for k, v in props.items():
             if v is not None:
+                v = normalize(self.widget_type, k, v)
                 if isinstance(v, bool):
                     self.props[k] = "true" if v else "false"
                 else:
                     self.props[k] = str(v)
         if raw_props:
+            # Explicit escape hatch: not checked against the contract.
+            plain = dict.__setitem__
             for k, v in raw_props.items():
-                self.props[str(k)] = str(v)
+                plain(self.props, str(k), str(v))
 
     def _notify_dirty(self) -> None:
         """Triggers an immediate reactive update if an app runner is active."""

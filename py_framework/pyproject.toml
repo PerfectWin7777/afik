@@ -26,3 +26,6 @@ pyflutter = "pyflutter.cli.main:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["pyflutter*"]
+
+[tool.setuptools.package-data]
+pyflutter = ["contract/*.json"]
