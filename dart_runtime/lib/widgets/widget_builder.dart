@@ -350,10 +350,12 @@ Widget buildFromNode(
       if (crossAlignStr == 'center') crossAxisAlignment = CrossAxisAlignment.center;
       else if (crossAlignStr == 'stretch') crossAxisAlignment = CrossAxisAlignment.stretch;
       else if (crossAlignStr == 'end') crossAxisAlignment = CrossAxisAlignment.end;
+      else if (crossAlignStr == 'baseline') crossAxisAlignment = CrossAxisAlignment.baseline;
 
       widget = Column(
         mainAxisAlignment: mainAxisAlignment,
         crossAxisAlignment: crossAxisAlignment,
+        textBaseline: TextBaseline.alphabetic,
         mainAxisSize: mainAxisSize,
         children: node.children.map((c) => buildFromNode(c, sendEvent)).toList(),
       );
@@ -375,10 +377,12 @@ Widget buildFromNode(
       if (crossAlignStr == 'start') crossAxisAlignment = CrossAxisAlignment.start;
       else if (crossAlignStr == 'stretch') crossAxisAlignment = CrossAxisAlignment.stretch;
       else if (crossAlignStr == 'end') crossAxisAlignment = CrossAxisAlignment.end;
+      else if (crossAlignStr == 'baseline') crossAxisAlignment = CrossAxisAlignment.baseline;
 
       widget = Row(
         mainAxisAlignment: mainAxisAlignment,
         crossAxisAlignment: crossAxisAlignment,
+        textBaseline: TextBaseline.alphabetic,
         mainAxisSize: mainAxisSize,
         children: node.children.map((c) => buildFromNode(c, sendEvent)).toList(),
       );
@@ -1412,6 +1416,9 @@ Widget buildFromNode(
         currentIndex: (currentIndex >= 0 && currentIndex < (items.isNotEmpty ? items.length : 2))
             ? currentIndex
             : 0,
+        backgroundColor: node.props.containsKey('background_color')
+            ? parseHexColor(node.props['background_color']!)
+            : null,
         selectedItemColor: selectedColor,
         unselectedItemColor: unselectedColor,
         type: items.length > 3
@@ -1445,8 +1452,10 @@ Widget buildFromNode(
     case 'DefaultTabController':
       final length = int.tryParse(node.props['length'] ?? '') ??
           (node.children.isNotEmpty ? node.children.first.children.length : 2);
+      final tabInitial = int.tryParse(node.props['initial_index'] ?? '') ?? 0;
       widget = DefaultTabController(
         length: length,
+        initialIndex: (tabInitial >= 0 && tabInitial < length) ? tabInitial : 0,
         child: node.children.isNotEmpty
             ? buildFromNode(node.children.first, sendEvent)
             : const SizedBox.shrink(),
@@ -1590,9 +1599,18 @@ Widget buildFromNode(
       else if (ta == 'right') richAlign = TextAlign.right;
       else if (ta == 'justify') richAlign = TextAlign.justify;
 
+      TextOverflow? richOverflow;
+      switch (node.props['overflow']) {
+        case 'ellipsis': richOverflow = TextOverflow.ellipsis; break;
+        case 'clip': richOverflow = TextOverflow.clip; break;
+        case 'fade': richOverflow = TextOverflow.fade; break;
+        case 'visible': richOverflow = TextOverflow.visible; break;
+      }
       widget = Text.rich(
         TextSpan(children: spans),
         textAlign: richAlign,
+        maxLines: int.tryParse(node.props['max_lines'] ?? ''),
+        overflow: richOverflow,
       );
       break;
 
@@ -1731,6 +1749,23 @@ Widget buildFromNode(
 
 
 
+  }
+
+  // Qt-style setToolTip() works on any widget (FloatingActionButton handles its own tooltip).
+  final tooltipText = node.props['tooltip'];
+  if (tooltipText != null &&
+      tooltipText.isNotEmpty &&
+      node.type != 'FloatingActionButton' &&
+      node.type != 'Tooltip') {
+    widget = Tooltip(message: tooltipText, child: widget);
+  }
+
+  // Qt-style setBackgroundColor() on a Text (other widgets read background_color themselves).
+  if (node.type == 'Text' && node.props.containsKey('background_color')) {
+    widget = ColoredBox(
+      color: parseHexColor(node.props['background_color']!) ?? Colors.transparent,
+      child: widget,
+    );
   }
 
   // Generic onTap wrapper: allows ANY widget carrying a callbackId to be interactive
@@ -2010,6 +2045,7 @@ class _PyDropdownButtonWidgetState extends State<PyDropdownButtonWidget> {
     final iconSize = double.tryParse(props['icon_size'] ?? '') ?? 24.0;
     final elevation = int.tryParse(props['elevation'] ?? '') ?? 8;
     final hintText = props['hint'];
+    final borderRadius = double.tryParse(props['border_radius'] ?? '');
 
     final List<DropdownMenuItem<String>> menuItems = [];
     final Set<String> validValues = {};
@@ -2056,6 +2092,7 @@ class _PyDropdownButtonWidgetState extends State<PyDropdownButtonWidget> {
       isExpanded: isExpanded,
       icon: Icon(resolveIcon(iconName), size: iconSize),
       elevation: elevation,
+      borderRadius: borderRadius != null ? BorderRadius.circular(borderRadius) : null,
       items: menuItems,
       onChanged: (newVal) {
         if (newVal != null) {
