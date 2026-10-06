@@ -52,12 +52,21 @@ class PyFlutterConfig:
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
-        except Exception:
+        except Exception as e:
+            from pyflutter.core.logger import logger
+            logger.warning("Could not parse {}: {}. Using default configuration.", path, e)
+            data = {}
+        if not isinstance(data, dict):
+            from pyflutter.core.logger import logger
+            logger.warning("{} must contain a mapping at its root; ignoring its content.", path)
             data = {}
 
-        pyflutter_section = data.get("pyflutter", {})
-        dependencies_section = data.get("dependencies", {})
-        flutter_deps = dependencies_section.get("flutter", {})
+        def _section(value: Any) -> dict:
+            return value if isinstance(value, dict) else {}
+
+        pyflutter_section = _section(data.get("pyflutter"))
+        dependencies_section = _section(data.get("dependencies"))
+        flutter_deps = dependencies_section.get("flutter") or {}
 
         # Flutter deps can be a dict (pkg: version) or a list of items
         deps_map: dict[str, str] = {}
@@ -70,16 +79,23 @@ class PyFlutterConfig:
                 elif isinstance(item, str):
                     deps_map[item] = "any"
 
-        permissions = data.get("permissions", [])
+        permissions = data.get("permissions") or []
         if not isinstance(permissions, list):
             permissions = []
 
+        try:
+            port = int(pyflutter_section.get("port", 7879))
+        except (TypeError, ValueError):
+            from pyflutter.core.logger import logger
+            logger.warning("Invalid pyflutter.port in {}; using 7879.", path)
+            port = 7879
+
         return cls(
-            name=data.get("name", "pyflutter_app"),
+            name=str(data.get("name") or "pyflutter_app"),
             description=data.get("description", "A PyFlutter application"),
             version=str(data.get("version", "0.1.0")),
             entrypoint=pyflutter_section.get("entrypoint", "main.py"),
-            port=int(pyflutter_section.get("port", 7879)),
+            port=port,
             flutter_dependencies=deps_map,
             permissions=[str(p) for p in permissions],
             raw_config=data,

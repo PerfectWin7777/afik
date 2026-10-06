@@ -36,6 +36,7 @@ class PyFlutterBuilder:
         entrypoint: str = "main.py",
         release: bool = False,
         split_per_abi: bool = False,
+        profile: bool = False,
     ):
         raw_target = target.lower()
         if raw_target == "bundle":
@@ -47,6 +48,7 @@ class PyFlutterBuilder:
 
         self.entrypoint = Path(entrypoint).resolve()
         self.release = release
+        self.profile = profile and not release
         self.split_per_abi = split_per_abi
         self.workspace_root = find_workspace_root()
         self.dart_runtime = self.workspace_root / "dart_runtime"
@@ -55,7 +57,7 @@ class PyFlutterBuilder:
     def build(self) -> bool:
         """Executes the complete end-to-end autonomous standalone build pipeline."""
         logger.info(f"🚀 Starting PyFlutter Standalone Build ({self.target.upper()})...")
-        mode_str = "Release" if self.release else "Debug"
+        mode_str = "Release" if self.release else "Profile" if self.profile else "Debug"
         logger.info(f"   Target: {self.target} | Mode: {mode_str} | Entrypoint: {self.entrypoint.name}")
 
         # 1. Validate environment
@@ -120,6 +122,8 @@ class PyFlutterBuilder:
         ]
         if self.release:
             flutter_cmd.append("--release")
+        elif self.profile:
+            flutter_cmd.append("--profile")
         else:
             flutter_cmd.append("--debug")
 

@@ -60,7 +60,8 @@ class TestCliBuilderAndRun(unittest.TestCase):
         """CLI `pyflutter build` defaults to target='apk' and debug mode."""
         args = parse_args(["build"])
         self.assertEqual(args.target, "apk")
-        self.assertTrue(args.debug)
+        self.assertFalse(args.release)
+        self.assertFalse(args.profile)
         self.assertFalse(args.release)
 
     def test_cli_parse_args_release(self):

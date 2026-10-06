@@ -128,16 +128,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Build mode: debug, release, or profile (default: debug)",
     )
-    build_parser.add_argument(
+    mode_group = build_parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
         "--release",
         action="store_true",
         help="Build in release mode",
     )
-    build_parser.add_argument(
+    mode_group.add_argument(
         "--debug",
         action="store_true",
-        default=True,
         help="Build in debug mode (default)",
+    )
+    mode_group.add_argument(
+        "--profile",
+        action="store_true",
+        help="Build in profile mode",
     )
     build_parser.add_argument(
         "--split-per-abi",
@@ -240,16 +245,17 @@ def main(argv: list[str] | None = None):
 
     if args.command == "build":
         from pyflutter.cli.builder import PyFlutterBuilder
-        is_release = False
-        if args.release or args.mode == "release":
-            is_release = True
-        if args.debug or args.mode == "debug":
-            is_release = False
+        flag_mode = "release" if args.release else "profile" if args.profile else "debug" if args.debug else None
+        if flag_mode and args.mode and flag_mode != args.mode:
+            print(f"Error: conflicting build modes: --{flag_mode} and --mode {args.mode}.")
+            sys.exit(2)
+        build_mode = flag_mode or args.mode or "debug"
         builder = PyFlutterBuilder(
             target=args.target,
             entrypoint=args.entrypoint,
-            release=is_release,
+            release=(build_mode == "release"),
             split_per_abi=args.split_per_abi,
+            profile=(build_mode == "profile"),
         )
         success = builder.build()
         sys.exit(0 if success else 1)
