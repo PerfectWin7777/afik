@@ -86,7 +86,7 @@ python ../audit/repro_core.py                         # relance les repros
 | 4 | T-04 ✅ | `FormKey` comme magasin de valeurs (B-27) — **fait** | S |
 | 5 | T-05 ✅ | Convention d'appel des callbacks (B-23) — **fait** (reste : convertisseurs de type par widget) | S |
 | 6 | T-06 ✅ | Signaux : égalité, mutation en place, batch (B-17, B-18) — **fait** | S |
-| 7 | T-07 | Arguments structurés côté Dart (B-39) | S |
+| 7 | T-07 ✅ | Arguments structurés côté Dart (B-39) — **fait** | S |
 | 8 | T-08 | Timeouts par plugin + mocks explicites (B-41, B-37) | S |
 | 9 | T-09 | Canaux d'événements Dart→Python (B-40) | L |
 | 10 | T-10 | Suppression de prop vs valeur vide (B-25) | S |
@@ -458,7 +458,9 @@ def _same(a, b) -> bool:
 
 ---
 
-## T-07 — Arguments structurés côté Dart (B-39)
+## T-07 — ✅ FAIT — Arguments structurés côté Dart (B-39)
+
+> Implémenté autrement que le plan ci-dessous : les shims font `implements PyFlutterPlugin`, or une méthode par défaut n'est **pas héritée** avec `implements`. `plugin_registry.dart` ajoute donc l'interface optionnelle `StructuredPyFlutterPlugin.handleRawCall` (le registre l'appelle si le plugin l'implémente) et `pluginArgumentText` (JSON pour tout ce qui n'est pas une chaîne). Test Dart : `dart_runtime/test/plugin_registry_test.dart` (`flutter test`, passé avec le SDK 3.47.6).
 
 **Problème** : `dart_runtime/lib/plugins/plugin_registry.dart::dispatch` convertit **tous** les arguments en `String` (`v?.toString()`). Une liste ou un dict devient `"{a: 1}"` (syntaxe Dart, pas du JSON) ; `hive.put` avec une valeur structurée est corrompue.
 

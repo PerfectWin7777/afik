@@ -1,9 +1,28 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/services.dart';
 
 /// Base interface that any native PyFlutter plugin shim must implement.
 abstract class PyFlutterPlugin {
   Future<dynamic> handleMethodCall(String method, Map<String, String> args);
+}
+
+/// Optional interface for plugins that need structured arguments.
+///
+/// [PyFlutterPlugin.handleMethodCall] receives every argument as a `String`: strings are passed
+/// as they are, `null` becomes `''`, and any other value (number, bool, list, map) becomes its
+/// **JSON** text (`true`, `1.5`, `[1,2]`, `{"a":1}`), never Dart's `toString()` syntax.
+/// A plugin that wants the decoded values (a list, a nested map, a number) implements this
+/// interface too and reads them from [handleRawCall]; the registry then calls it instead.
+abstract class StructuredPyFlutterPlugin implements PyFlutterPlugin {
+  Future<dynamic> handleRawCall(String method, Map<String, dynamic> args);
+}
+
+/// The text form of an argument given to [PyFlutterPlugin.handleMethodCall].
+String pluginArgumentText(dynamic value) {
+  if (value == null) return '';
+  if (value is String) return value;
+  return jsonEncode(value);
 }
 
 /// Central registry for native Flutter plugins and universal MethodChannel dispatcher.
@@ -24,8 +43,11 @@ class PluginRegistry {
   ) async {
     final plugin = _plugins[pluginName];
     if (plugin != null) {
+      if (plugin is StructuredPyFlutterPlugin) {
+        return await plugin.handleRawCall(method, rawArgs);
+      }
       final Map<String, String> strArgs =
-          rawArgs.map((k, v) => MapEntry(k, v?.toString() ?? ''));
+          rawArgs.map((k, v) => MapEntry(k, pluginArgumentText(v)));
       return await plugin.handleMethodCall(method, strArgs);
     }
 

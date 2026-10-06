@@ -21,7 +21,10 @@ Nothing here is part of the core runtime. A project lists the plugins it uses un
 3. Throw (`UnsupportedError`, `ArgumentError`, the package's own exceptions) for anything that
    cannot be done; the error reaches Python as `PluginError`.
 4. Keep results simple: `Map`, `List`, `String`, `num`, `bool`, `null`.
-5. Interactive calls (pickers, permission prompts, authentication) use the 120 s timeout.
+5. Arguments reach `handleMethodCall` as `String`s: a string stays as it is, `null` becomes `''`
+   and any other value (number, bool, list, map) becomes its **JSON** text. A shim that needs the
+   decoded values implements `StructuredPyFlutterPlugin` and reads them from `handleRawCall`.
+6. Interactive calls (pickers, permission prompts, authentication) use the 120 s timeout.
 
 ## Tools
 

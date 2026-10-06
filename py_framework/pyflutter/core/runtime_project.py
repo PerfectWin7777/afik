@@ -28,7 +28,7 @@ STATE_FILE = ".pyflutter-template.json"
 # Never copied from the template, never deleted from the copy.
 IGNORED_NAMES = {
     "build", ".dart_tool", ".gradle", ".idea", "Pods", ".symlinks", "ephemeral",
-    "plugin_catalog", "installed", ".pyflutter", "local.properties", ".flutter-plugins",
+    "plugin_catalog", "installed", "test", ".pyflutter", "local.properties", ".flutter-plugins",
     ".flutter-plugins-dependencies", ".packages", ".metadata", "generated_plugins.cmake",
     "generated_plugin_registrant.cc", "generated_plugin_registrant.h", "GeneratedPluginRegistrant.swift",
     "GeneratedPluginRegistrant.java", "GeneratedPluginRegistrant.m",
