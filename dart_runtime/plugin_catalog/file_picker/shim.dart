@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
 
@@ -26,24 +27,30 @@ class FilePickerShim implements PyFlutterPlugin {
           }
         }
 
-        final result = await FilePicker.pickFiles(
-          allowMultiple: allowMultiple,
-          initialDirectory: initialDir,
-          type: fileType,
-          allowedExtensions: allowedExtensions,
-        );
-
-        if (result == null || result.files.isEmpty) {
-          return <Map<String, dynamic>>[];
+        final List<PlatformFile> picked;
+        if (allowMultiple) {
+          picked = await FilePicker.pickFiles(
+            initialDirectory: initialDir,
+            type: fileType,
+            allowedExtensions: allowedExtensions,
+          );
+        } else {
+          final file = await FilePicker.pickFile(
+            initialDirectory: initialDir,
+            type: fileType,
+            allowedExtensions: allowedExtensions,
+          );
+          picked = file == null ? <PlatformFile>[] : [file];
         }
 
-        return result.files.map((file) {
-          return {
-            'name': file.name,
-            'path': file.path ?? '',
-            'size': file.size,
-          };
-        }).toList();
+        return [
+          for (final file in picked)
+            {
+              'name': file.name,
+              'path': file.path ?? '',
+              'size': await file.length() ?? 0,
+            },
+        ];
 
       case 'getDirectoryPath':
       case 'get_directory_path':
@@ -55,13 +62,13 @@ class FilePickerShim implements PyFlutterPlugin {
 
       case 'saveFile':
       case 'save_file':
-        final fileName = args['file_name'] ?? 'untitled';
-        final initialDir = args['initial_directory'];
-        final path = await FilePicker.saveFile(
-          fileName: fileName,
-          initialDirectory: initialDir,
+        // `data` is the file content, base64 encoded by the Python side.
+        final uri = await FilePicker.saveFile(
+          fileName: args['file_name'] ?? 'untitled',
+          bytes: base64Decode(args['data'] ?? ''),
+          initialDirectory: args['initial_directory'],
         );
-        return path;
+        return uri?.toString();
 
       default:
         throw UnsupportedError('Unsupported FilePicker method: $method');

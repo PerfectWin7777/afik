@@ -1,0 +1,8 @@
+name: connectivity_plus
+package: connectivity_plus
+constraint: ^7.0.0
+files: [shim.dart]
+registers: [connectivity, connectivity_plus]
+python_module: pyflutter.plugins.connectivity_plus
+android:
+  permissions: [network_state]

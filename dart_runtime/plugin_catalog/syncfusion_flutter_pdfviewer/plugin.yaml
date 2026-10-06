@@ -1,0 +1,10 @@
+name: syncfusion_flutter_pdfviewer
+package: syncfusion_flutter_pdfviewer
+constraint: ^35.1.0
+files: [shim.dart]
+registers: [syncfusion_flutter_pdfviewer, syncfusion_pdfviewer]
+widgets: [SfPdfViewer]
+python_module: pyflutter.plugins.syncfusion_flutter_pdfviewer
+android:
+  permissions: [internet]
+notes: Syncfusion packages need a Syncfusion community or commercial licence for your app.

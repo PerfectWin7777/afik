@@ -1,0 +1,12 @@
+name: camera
+package: camera
+constraint: ^0.12.0
+files: [shim.dart]
+registers: [camera]
+widgets: [CameraPreview]
+python_module: pyflutter.plugins.camera
+android:
+  permissions: [camera, record_audio]
+  min_sdk: 23
+ios:
+  permissions: [camera, microphone]

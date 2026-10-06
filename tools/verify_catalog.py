@@ -6,6 +6,7 @@ a temporary folder, installs the plugin there exactly like `pyflutter add` does,
 
     python tools/verify_catalog.py                 # all plugins, one at a time + all together
     python tools/verify_catalog.py local_auth camera
+    python tools/verify_catalog.py --together      # only the combined install of every plugin
 
 Needs the Flutter SDK in PATH. Exit code = number of failing plugins.
 """
@@ -51,9 +52,11 @@ def verify(names: list[str]) -> tuple[bool, str]:
 
 
 def main() -> int:
-    wanted = sys.argv[1:] or list(catalog.load_catalog(RUNTIME))
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    together_only = "--together" in sys.argv
+    wanted = args or list(catalog.load_catalog(RUNTIME))
     failures = 0
-    runs = [[n] for n in wanted]
+    runs = [] if together_only else [[n] for n in wanted]
     if len(wanted) > 1:
         runs.append(wanted)
     for names in runs:

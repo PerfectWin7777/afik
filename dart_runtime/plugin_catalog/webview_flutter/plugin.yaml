@@ -1,0 +1,10 @@
+name: webview_flutter
+package: webview_flutter
+constraint: ^4.10.0
+files: [shim.dart]
+registers: [webview_flutter, webview]
+widgets: [WebView]
+python_module: pyflutter.plugins.webview_flutter
+android:
+  permissions: [internet]
+  min_sdk: 24

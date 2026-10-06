@@ -1,0 +1,10 @@
+name: flutter_local_notifications
+package: flutter_local_notifications
+constraint: ^22.0.0
+files: [shim.dart]
+registers: [flutter_local_notifications, local_notifications]
+python_module: pyflutter.plugins.flutter_local_notifications
+android:
+  permissions: [notifications]
+  desugaring: true
+notes: Scheduled notifications need extra AndroidManifest receivers (see the package README); this plugin only shows and cancels notifications.

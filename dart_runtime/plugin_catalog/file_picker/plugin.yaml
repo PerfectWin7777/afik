@@ -1,6 +1,6 @@
 name: file_picker
 package: file_picker
-constraint: ^11.0.3
+constraint: ^13.0.0
 files: [shim.dart]
 registers: [file_picker]
 python_module: pyflutter.plugins.file_picker

@@ -1,0 +1,8 @@
+name: chewie
+package: chewie
+constraint: ^1.8.0
+files: [shim.dart]
+requires: [video_player]
+registers: [chewie]
+widgets: [Chewie]
+python_module: pyflutter.plugins.chewie

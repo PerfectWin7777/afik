@@ -1,0 +1,9 @@
+name: image_picker
+package: image_picker
+constraint: ^1.1.0
+files: [shim.dart]
+registers: [image_picker]
+python_module: pyflutter.plugins.image_picker
+ios:
+  permissions: [photo_library, camera]
+notes: On iOS, add NSPhotoLibraryUsageDescription and NSCameraUsageDescription (done by `pyflutter sync` from the permissions above).

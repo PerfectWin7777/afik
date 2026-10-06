@@ -1,6 +1,6 @@
 name: device_info_plus
 package: device_info_plus
-constraint: ^12.4.0
+constraint: '>=12.4.0 <14.0.0'
 files: [shim.dart]
 registers: [device_info, device_info_plus]
 python_module: pyflutter.plugins.device_info_plus
