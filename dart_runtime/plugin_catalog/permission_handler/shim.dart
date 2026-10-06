@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
-import 'plugin_registry.dart';
+import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real runtime permission checks and requests (permission_handler).
 ///

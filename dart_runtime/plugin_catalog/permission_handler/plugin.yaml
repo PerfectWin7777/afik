@@ -1,0 +1,10 @@
+name: permission_handler
+package: permission_handler
+constraint: ^13.0.2
+shim: shim.dart
+shim_class: PermissionHandlerShim
+registers: [permission_handler]
+python_module: pyflutter.plugins.permission_handler
+notes: >
+  Each permission the app asks for must be declared in pyflutter.yaml `permissions`
+  and, on iOS, enabled in the permission_handler build settings (package README).

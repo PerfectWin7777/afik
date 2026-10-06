@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:local_auth/local_auth.dart';
-import 'plugin_registry.dart';
+import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real biometric / device-credential authentication (local_auth ^2.3).
 ///

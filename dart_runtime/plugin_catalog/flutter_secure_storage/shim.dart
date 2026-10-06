@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'plugin_registry.dart';
+import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real encrypted storage: Keychain on iOS/macOS, Keystore-backed encryption on
 /// Android (flutter_secure_storage).

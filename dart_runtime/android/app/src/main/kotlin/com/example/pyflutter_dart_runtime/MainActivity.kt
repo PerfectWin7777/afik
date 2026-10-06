@@ -1,6 +1,5 @@
 package com.example.pyflutter_dart_runtime
 
-import io.flutter.embedding.android.FlutterFragmentActivity
+import io.flutter.embedding.android.FlutterActivity
 
-// local_auth shows its BiometricPrompt through a FragmentActivity.
-class MainActivity : FlutterFragmentActivity()
+class MainActivity : FlutterActivity()

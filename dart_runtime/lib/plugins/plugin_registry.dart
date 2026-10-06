@@ -29,7 +29,13 @@ class PluginRegistry {
       return await plugin.handleMethodCall(method, strArgs);
     }
 
-    // Universal MethodChannel fallback (supports 100% of pub.dev plugins)
+    // Only the explicit generic channel call may reach an arbitrary MethodChannel.
+    // Any other name is a PyFlutter plugin that is not installed in this runtime.
+    if (pluginName != '__method_channel__') {
+      throw UnsupportedError(
+          'Plugin "$pluginName" is not installed in this runtime. '
+          'Install it with: pyflutter add $pluginName');
+    }
     return await _dispatchToMethodChannel(pluginName, method, rawArgs);
   }
 
