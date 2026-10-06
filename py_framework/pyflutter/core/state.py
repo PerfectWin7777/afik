@@ -7,6 +7,7 @@ and Flutter-standard StatefulComponent / State architecture.
 from __future__ import annotations
 
 import contextvars
+import threading
 import weakref
 from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
@@ -18,6 +19,20 @@ T = TypeVar("T")
 _UNSET = object()
 _batch_depth: int = 0
 _batched_listeners: set[Callable[[], None]] = set()
+_batch_lock = threading.RLock()
+_flushing_batch: bool = False          # True while the listeners of a finished batch run
+_MUTABLE_CONTAINERS = (list, dict, set, bytearray)
+
+
+def _same(a: Any, b: Any) -> bool:
+    """Value equality that never raises and copes with array-likes (numpy, pandas)."""
+    if a is b:
+        return True
+    try:
+        result = a == b
+        return bool(result.all()) if hasattr(result, "all") else bool(result)
+    except Exception:
+        return False
 _active_signal_tracker: contextvars.ContextVar[Optional[Callable[[Signal[Any]], None]]] = (
     contextvars.ContextVar("_active_signal_tracker", default=None)
 )
@@ -81,10 +96,17 @@ class Signal(Generic[T]):
         count.add_listener(lambda: print("Value changed!"))
     """
 
-    def __init__(self, initial_value: T, *, auto_update: bool = True):
+    def __init__(
+        self,
+        initial_value: T,
+        *,
+        auto_update: bool = True,
+        equals: Optional[Callable[[Any, Any], bool]] = None,
+    ):
         self._value: T = initial_value
         self._listeners: list[Callable[[], None]] = []
         self._auto_update = auto_update
+        self._equals: Callable[[Any, Any], bool] = equals or _same
 
     @property
     def value(self) -> T:
@@ -95,7 +117,7 @@ class Signal(Generic[T]):
 
     @value.setter
     def value(self, new_value: T) -> None:
-        if self._value != new_value:
+        if not self._equals(self._value, new_value):
             self._value = new_value
             self._notify_listeners()
 
@@ -106,8 +128,27 @@ class Signal(Generic[T]):
         self.value = new_value
 
     def update(self, fn: Callable[[T], T]) -> None:
-        """Applies a transformation function to the current value."""
-        self.value = fn(self._value)
+        """Sets the value to ``fn(current)``; ``fn`` must RETURN the new value.
+
+        To change a list / dict / set in place use :meth:`mutate` instead: ``update(lambda l:
+        l.append(x))`` would store ``None``, so it raises a TypeError.
+        """
+        new_value = fn(self._value)
+        if new_value is None and isinstance(self._value, _MUTABLE_CONTAINERS):
+            raise TypeError(
+                "Signal.update() must return the new value (the function returned None). "
+                "Use Signal.mutate() to change a list, dict or set in place."
+            )
+        self.value = new_value
+
+    def mutate(self, fn: Callable[[T], Any]) -> None:
+        """Changes the current value IN PLACE with ``fn(value)`` and always notifies the listeners.
+
+            todos = pf.Signal([])
+            todos.mutate(lambda items: items.append("buy milk"))
+        """
+        fn(self._value)
+        self._notify_listeners()
 
     def add_listener(self, listener: Callable[[], None]) -> None:
         """Registers a listener callback invoked whenever the value changes."""
@@ -131,21 +172,23 @@ class Signal(Generic[T]):
         return lambda: self.remove_listener(_wrapper)
 
     def _notify_listeners(self) -> None:
-        global _batch_depth
-        if _batch_depth > 0:
-            for l in self._listeners:
-                _batched_listeners.add(l)
-            return
+        with _batch_lock:
+            if _batch_depth > 0:
+                _batched_listeners.update(self._listeners)
+                if self._auto_update:
+                    _batched_listeners.add(_request_update)
+                return
+            flushing = _flushing_batch
 
         for l in list(self._listeners):
             try:
                 l()
             except Exception as e:
-                logger.error(f"Error in Signal listener: {e}")
+                logger.error("Error in Signal listener: {}", e)
 
-        if self._auto_update:
-            from pyflutter.app import update
-            update()
+        # while a finished batch is flushed, the batch asks for the single frame itself
+        if self._auto_update and not flushing:
+            _request_update()
 
     def __call__(self, new_value: Any = _UNSET) -> T:
         """Calling signal() reads the value; calling signal(val) sets it."""
@@ -191,21 +234,8 @@ class Computed(Signal[T]):
 
     def _on_dependency_changed(self) -> None:
         new_val = self._recompute()
-        if new_val != self._value:
+        if not self._equals(self._value, new_val):
             self.value = new_val
-
-    @property
-    def value(self) -> T:
-        tracker = _active_signal_tracker.get()
-        if tracker is not None:
-            tracker(self)
-        return self._value
-
-    @value.setter
-    def value(self, new_val: T) -> None:
-        if self._value != new_val:
-            self._value = new_val
-            self._notify_listeners()
 
     def __repr__(self) -> str:
         return f"Computed({self._value!r})"
@@ -266,25 +296,45 @@ class Effect:
             self._cleanup_fn = None
 
 
+def _request_update() -> None:
+    from pyflutter.app import update
+    update()
+
+
 class _BatchContext:
     def __enter__(self):
         global _batch_depth
-        _batch_depth += 1
+        with _batch_lock:
+            _batch_depth += 1
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        global _batch_depth
-        _batch_depth -= 1
-        if _batch_depth == 0:
-            listeners_to_call = list(_batched_listeners)
+        global _batch_depth, _flushing_batch
+        with _batch_lock:
+            _batch_depth -= 1
+            if _batch_depth > 0:
+                return False
+            pending = list(_batched_listeners)
             _batched_listeners.clear()
-            for listener in listeners_to_call:
+            _flushing_batch = True
+        # The signals did change even if the block raised, so listeners always run; the exception
+        # (if any) then propagates unchanged.
+        try:
+            wants_frame = False
+            for listener in pending:
+                if listener is _request_update:
+                    wants_frame = True
+                    continue
                 try:
                     listener()
                 except Exception as e:
-                    logger.error(f"Error in batched listener: {e}")
-            from pyflutter.app import update
-            update()
+                    logger.error("Error in batched listener: {}", e)
+            if wants_frame:
+                _request_update()
+        finally:
+            with _batch_lock:
+                _flushing_batch = False
+        return False
 
 
 def batch(fn: Optional[Callable[[], Any]] = None):
