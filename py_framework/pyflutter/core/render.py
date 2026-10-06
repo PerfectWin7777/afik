@@ -32,11 +32,22 @@ MSG_PLUGIN_RESPONSE = 0x05
 def resolve_tree(widget: Any, is_root: bool = True) -> Widget:
     """Recursively resolves all Components in the tree into a concrete primitive Widget tree in a single pass.
     Preserves any 'slot' property assigned by a parent layout and ensures Component build() is only invoked once.
-    """
-    if is_root:
-        from pyflutter.core.state import reset_call_site_counters
-        reset_call_site_counters()
 
+    A root resolution is one frame: when it succeeds, the State objects that were not reached
+    are disposed (see ``pyflutter.core.state.sweep_states``).
+    """
+    if not is_root:
+        return _resolve_node(widget)
+
+    from pyflutter.core.state import begin_frame, reset_call_site_counters, sweep_states
+    reset_call_site_counters()
+    begin_frame()
+    resolved = _resolve_node(widget)      # a build that raises leaves every state alone
+    sweep_states()
+    return resolved
+
+
+def _resolve_node(widget: Any) -> Widget:
     slot = getattr(widget, "props", {}).get("slot")
     current = widget
     while hasattr(current, "build") and callable(current.build):
@@ -48,13 +59,26 @@ def resolve_tree(widget: Any, is_root: bool = True) -> Widget:
         # Work on a copy: the source widgets (often cached by the user, e.g. an
         # imperative self.layout) must keep their Component children, otherwise
         # those components would be frozen at their first render.
-        resolved_children = [resolve_tree(c, is_root=False) for c in children]
+        if current.widget_type == "MaterialApp":
+            resolved_children = [_resolve_page(c) for c in children]
+        else:
+            resolved_children = [_resolve_node(c) for c in children]
         current = copy.copy(current)
         current.props = dict(current.props)
         current.children = resolved_children
     if slot and isinstance(current, Widget) and "slot" not in current.props:
         current.props["slot"] = slot
     return current
+
+
+def _resolve_page(page: Any) -> Widget:
+    """Resolves one Navigator page; the states created under it belong to that page."""
+    from pyflutter.core.state import _current_owner, page_owner_token
+    token = _current_owner.set(page_owner_token(page))
+    try:
+        return _resolve_node(page)
+    finally:
+        _current_owner.reset(token)
 
 
 def resolve_widget(widget: Any) -> Widget:

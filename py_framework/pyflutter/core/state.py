@@ -65,15 +65,80 @@ def infer_call_site_key(cls: type) -> str:
     return f"{cls.__name__}#auto"
 
 
+# --- State lifecycle: mark and sweep ------------------------------------------------------
+#
+# Every full resolution of the tree is a "frame". A State that was reached during the frame is
+# marked with its number; at the end of the frame the states that were not reached are
+# disposed and forgotten, because their widget left the tree (a removed branch, a popped page).
+# A page that is only covered by another one in the Navigator is not rebuilt either, but its
+# states must survive until the page is popped, as in Flutter.
+
+_frame_id = 0
+ROOT_PAGE = "root"
+_current_owner: contextvars.ContextVar[Any] = contextvars.ContextVar("_current_owner", default=None)
+
+
+def begin_frame() -> None:
+    """Starts a new frame: states reached from now on belong to it."""
+    global _frame_id
+    _frame_id += 1
+
+
+def current_frame() -> int:
+    return _frame_id
+
+
+def page_owner_token(page: Any) -> Any:
+    """Identifies the Navigator page the widgets under ``page`` belong to."""
+    from pyflutter.core.navigation import Navigator
+    if not Navigator.can_pop():
+        return ROOT_PAGE
+    return id(page)
+
+
+def _covered_owners() -> set:
+    """Owners whose states must be kept although their page was not rebuilt (covered pages)."""
+    from pyflutter.core.navigation import Navigator
+    stack = Navigator._stack
+    if len(stack) <= 1:
+        return set()
+    return {ROOT_PAGE} | {id(page) for page in stack[1:]}
+
+
+def dispose_state(state: "State") -> None:
+    """Calls ``state.dispose()`` once, logging (not raising) what it raises."""
+    if getattr(state, "_disposed", False):
+        return
+    state._disposed = True
+    try:
+        state.dispose()
+    except Exception:
+        logger.opt(exception=True).error("Error during state disposal of {}", type(state).__name__)
+
+
+def sweep_states() -> list["State"]:
+    """Disposes the states that were not reached during the current frame. Returns them."""
+    covered = _covered_owners()
+    removed: list[State] = []
+    for key, state in list(_state_registry.items()):
+        if state._last_seen_frame == _frame_id:
+            continue
+        if state._owner_token is not None and state._owner_token in covered:
+            continue
+        _state_registry.pop(key, None)
+        removed.append(state)
+    for state in removed:
+        dispose_state(state)
+    return removed
+
+
 def clear_state_registry() -> None:
-    """Clears all cached State instances (used during hot reload/restart)."""
+    """Disposes and forgets every cached State (used during hot restart)."""
     reset_call_site_counters()
-    for state in _state_registry.values():
-        try:
-            state.dispose()
-        except Exception as e:
-            logger.error(f"Error during state disposal: {e}")
+    states = list(_state_registry.values())
     _state_registry.clear()
+    for state in states:
+        dispose_state(state)
 
 
 class Signal(Generic[T]):
@@ -440,6 +505,12 @@ class State:
     Equivalent to Flutter's State<T>.
     """
 
+    # Class-level defaults: a subclass that overrides __init__ without calling super() still works.
+    _widget: Optional["StatefulComponent"] = None
+    _last_seen_frame: int = -1
+    _owner_token: Any = None
+    _disposed: bool = False
+
     def __init__(self):
         self._widget: Optional[StatefulComponent] = None
 
@@ -459,7 +530,8 @@ class State:
         pass
 
     def dispose(self) -> None:
-        """Called when this state object is permanently removed."""
+        """Called once when the widget leaves the tree for good (removed branch, popped page,
+        hot restart). Stop timers, threads and subscriptions here."""
         pass
 
     def set_state(self, fn: Optional[Callable[[], None]] = None):
@@ -518,6 +590,8 @@ class StatefulComponent(Component):
             registry_key = (self.__class__, self.key)
             if registry_key in _state_registry:
                 existing_state = _state_registry[registry_key]
+                existing_state._last_seen_frame = _frame_id
+                existing_state._owner_token = _current_owner.get()
                 old_w = existing_state._widget
                 existing_state._widget = self
                 if old_w is not None and old_w is not self:
@@ -527,6 +601,8 @@ class StatefulComponent(Component):
             else:
                 new_state = self.create_state()
                 new_state._widget = self
+                new_state._last_seen_frame = _frame_id
+                new_state._owner_token = _current_owner.get()
                 _state_registry[registry_key] = new_state
                 new_state.init_state()
                 self._state = new_state

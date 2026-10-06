@@ -44,7 +44,8 @@ class DS(pf.State):
     def dispose(self): disposed.append(1)
 class D(pf.StatefulComponent):
     def create_state(self): return DS()
-resolve_tree(D()); 
+resolve_tree(pf.Column([D()]))
+resolve_tree(pf.Column([]))          # next frame: D is gone from the tree
 print("after widget removed from tree, dispose called?", bool(disposed), "registry:", len(st._state_registry))
 
 print("== C. build() that writes a Signal / set_state deadlocks tree_lock")
