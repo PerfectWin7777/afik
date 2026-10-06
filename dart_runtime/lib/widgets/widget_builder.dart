@@ -419,6 +419,8 @@ Widget buildFromNode(
         bottom: bottom,
         left: left,
         right: right,
+        width: double.tryParse(node.props['width'] ?? ''),
+        height: double.tryParse(node.props['height'] ?? ''),
         child: node.children.isNotEmpty
             ? buildFromNode(node.children.first, sendEvent)
             : const SizedBox.shrink(),
@@ -1004,10 +1006,16 @@ Widget buildFromNode(
       break;
 
     case 'CircularProgressIndicator':
-      widget = const Center(
+      widget = Center(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: CircularProgressIndicator(),
+          padding: const EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(
+            color: node.props.containsKey('color')
+                ? parseHexColor(node.props['color']!)
+                : null,
+            strokeWidth:
+                double.tryParse(node.props['stroke_width'] ?? '') ?? 4.0,
+          ),
         ),
       );
       break;
@@ -1558,8 +1566,12 @@ Widget buildFromNode(
       if (node.children.isNotEmpty) {
         child = buildFromNode(node.children.first, sendEvent);
       }
+      final waitMs = int.tryParse(node.props['wait_duration_ms'] ?? '');
+      final showMs = int.tryParse(node.props['show_duration_ms'] ?? '');
       widget = Tooltip(
         message: msg,
+        waitDuration: waitMs != null ? Duration(milliseconds: waitMs) : null,
+        showDuration: showMs != null ? Duration(milliseconds: showMs) : null,
         child: child,
       );
       break;
