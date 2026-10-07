@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from pyflutter.plugins import (
+from afik.plugins import (
     audioplayers,
     camera,
     chewie,
@@ -18,7 +18,7 @@ from pyflutter.plugins import (
     video_player,
     webview_flutter,
 )
-from pyflutter.plugins.manager import PluginError
+from afik.plugins.manager import PluginError
 
 BAD = [None, {}, "ok", [], {"success": "true"}]
 
@@ -184,7 +184,7 @@ class TestWrappersRefuseBadAnswers(unittest.TestCase):
 
 class TestPdfControllersTravelAsProps(unittest.TestCase):
     def test_syncfusion_controller_state_is_sent_to_the_widget(self):
-        from pyflutter.plugins.syncfusion_flutter_pdfviewer import PdfViewerController, SfPdfViewer
+        from afik.plugins.syncfusion_flutter_pdfviewer import PdfViewerController, SfPdfViewer
         controller = PdfViewerController()
         controller.jump_to_page(3)
         controller.set_zoom_level(2.0)
@@ -192,8 +192,8 @@ class TestPdfControllersTravelAsProps(unittest.TestCase):
         self.assertEqual((props["page"], props["zoom"]), ("3", "2.0"))
 
     def test_pdfx_and_pdfview_use_their_controller(self):
-        from pyflutter.plugins.flutter_pdfview import PDFView, PDFViewController
-        from pyflutter.plugins.pdfx import PdfController, PdfDocument, PdfView
+        from afik.plugins.flutter_pdfview import PDFView, PDFViewController
+        from afik.plugins.pdfx import PdfController, PdfDocument, PdfView
         document = PdfDocument("d", 5, "/x/a.pdf")
         props = PdfView(PdfController(2, document)).props
         self.assertEqual((props["path"], props["page"]), ("/x/a.pdf", "2"))

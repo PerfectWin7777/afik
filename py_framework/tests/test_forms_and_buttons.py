@@ -1,21 +1,21 @@
 """
-Unit test suite for PyFlutter Forms, Controllers, Validators, Dropdowns, and Buttons.
+Unit test suite for Afik Forms, Controllers, Validators, Dropdowns, and Buttons.
 """
 
 from __future__ import annotations
 
 import unittest
 
-from pyflutter.core.form import (
+from afik.core.form import (
     Form,
     FormKey,
     OutlineInputBorder,
     TextEditingController,
     Validators,
 )
-from pyflutter.core.render import render_tree_frame
-from pyflutter.core.widget_base import invoke_callback
-from pyflutter.widgets.widgets import (
+from afik.core.render import render_tree_frame
+from afik.core.widget_base import invoke_callback
+from afik.widgets.widgets import (
     Column,
     DropdownButton,
     DropdownMenu,
@@ -150,21 +150,21 @@ class TestFormAndFormKey(unittest.TestCase):
         self.assertEqual(field_email.props.get("error_text"), "Invalid email")
 
         # Fix email and fill name
-        email_controller.text = "developer@pyflutter.org"
-        field_name.set_value("PyFlutter Developer")
+        email_controller.text = "developer@afik.org"
+        field_name.set_value("Afik Developer")
         self.assertTrue(form_key.validate())
         self.assertNotIn("error_text", field_email.props)
         self.assertNotIn("error_text", field_name.props)
 
         # Test save
         form_key.save()
-        self.assertEqual(saved_data["email"], "developer@pyflutter.org")
-        self.assertEqual(saved_data["name"], "PyFlutter Developer")
+        self.assertEqual(saved_data["email"], "developer@afik.org")
+        self.assertEqual(saved_data["name"], "Afik Developer")
 
         # Test get_values
         values = form_key.get_values()
-        self.assertEqual(values["email"], "developer@pyflutter.org")
-        self.assertEqual(values["name"], "PyFlutter Developer")
+        self.assertEqual(values["email"], "developer@afik.org")
+        self.assertEqual(values["name"], "Afik Developer")
 
         # Test reset
         form_key.reset()

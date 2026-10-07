@@ -3,6 +3,6 @@ package: audioplayers
 constraint: ^6.0.0
 files: [shim.dart]
 registers: [audioplayers, audioplayer]
-python_module: pyflutter.plugins.audioplayers
+python_module: afik.plugins.audioplayers
 android:
   permissions: [internet]

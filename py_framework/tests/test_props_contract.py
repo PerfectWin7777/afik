@@ -10,8 +10,8 @@ from enum import Enum
 from pathlib import Path
 from unittest.mock import patch
 
-import pyflutter as pf
-from pyflutter.core import contract
+import afik as pf
+from afik.core import contract
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -105,8 +105,8 @@ class TestValueTypes(unittest.TestCase):
 class TestLenientMode(unittest.TestCase):
     def test_outside_strict_mode_an_unknown_prop_warns_once(self):
         contract._warned.clear()
-        with patch.dict(os.environ, {"PYFLUTTER_STRICT_PROPS": "0"}), \
-                patch("pyflutter.core.logger.logger.warning") as warning:
+        with patch.dict(os.environ, {"AFIK_STRICT_PROPS": "0"}), \
+                patch("afik.core.logger.logger.warning") as warning:
             text = pf.Text("x")
             text.props["bogus"] = "1"
             text.props["bogus"] = "2"

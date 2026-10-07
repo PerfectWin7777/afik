@@ -1,5 +1,5 @@
 """
-Unit tests for PyFlutter CLI Builder and pf.run() build parameters.
+Unit tests for Afik CLI Builder and pf.run() build parameters.
 Verifies target defaults (apk debug), mode flags, and canonical plugin naming.
 """
 
@@ -9,10 +9,10 @@ import sys
 import unittest
 from unittest.mock import patch
 
-import pyflutter as pf
-from pyflutter.cli.builder import PyFlutterBuilder
-from pyflutter.cli.main import parse_args
-from pyflutter.plugins import (
+import afik as pf
+from afik.cli.builder import AfikBuilder
+from afik.cli.main import parse_args
+from afik.plugins import (
     audioplayer,
     audioplayers,
     connectivity,
@@ -40,24 +40,24 @@ from pyflutter.plugins import (
 class TestCliBuilderAndRun(unittest.TestCase):
     def test_builder_defaults(self):
         """Default target must be 'apk' and default mode must be debug (release=False)."""
-        builder = PyFlutterBuilder()
+        builder = AfikBuilder()
         self.assertEqual(builder.target, "apk")
         self.assertFalse(builder.release)  # Debug by default
 
     def test_builder_target_normalization(self):
         """Target aliases like 'bundle' or 'ios' normalize correctly."""
-        b_bundle = PyFlutterBuilder(target="bundle")
+        b_bundle = AfikBuilder(target="bundle")
         self.assertEqual(b_bundle.target, "appbundle")
 
-        b_ios = PyFlutterBuilder(target="ios")
+        b_ios = AfikBuilder(target="ios")
         self.assertEqual(b_ios.target, "ipa")
 
-        b_win = PyFlutterBuilder(target="windows", release=True)
+        b_win = AfikBuilder(target="windows", release=True)
         self.assertEqual(b_win.target, "windows")
         self.assertTrue(b_win.release)
 
     def test_cli_parse_args_defaults(self):
-        """CLI `pyflutter build` defaults to target='apk' and debug mode."""
+        """CLI `afik build` defaults to target='apk' and debug mode."""
         args = parse_args(["build"])
         self.assertEqual(args.target, "apk")
         self.assertFalse(args.release)
@@ -65,12 +65,12 @@ class TestCliBuilderAndRun(unittest.TestCase):
         self.assertFalse(args.release)
 
     def test_cli_parse_args_release(self):
-        """CLI `pyflutter build appbundle --release` parses target and release."""
+        """CLI `afik build appbundle --release` parses target and release."""
         args = parse_args(["build", "appbundle", "--release"])
         self.assertEqual(args.target, "appbundle")
         self.assertTrue(args.release)
 
-    @patch.object(PyFlutterBuilder, "build", return_value=True)
+    @patch.object(AfikBuilder, "build", return_value=True)
     def test_run_with_build_param(self, mock_build):
         """Calling pf.run(App(), build='apk', mode='debug') invokes the builder."""
         class DummyApp:
@@ -81,7 +81,7 @@ class TestCliBuilderAndRun(unittest.TestCase):
         self.assertTrue(res)
         mock_build.assert_called_once()
 
-    @patch.object(PyFlutterBuilder, "build", return_value=True)
+    @patch.object(AfikBuilder, "build", return_value=True)
     def test_run_cli_forwarding_build(self, mock_build):
         """`python main.py build apk --debug` forwards automatically into builder."""
         class DummyApp:

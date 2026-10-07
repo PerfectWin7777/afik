@@ -44,5 +44,5 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Shims copied here by `pyflutter add` (generated, per project)
+# Shims copied here by `afik add` (generated, per project)
 lib/plugins/installed/

@@ -1,7 +1,7 @@
 """
 Runs the POC loop for the counter example.
 Usage:
-    python run_poc.py [/path/to/pyflutter-bridge]
+    python run_poc.py [/path/to/afik-bridge]
 """
 
 from __future__ import annotations
@@ -15,13 +15,13 @@ framework_path = repo_root / "py_framework"
 if str(framework_path) not in sys.path:
     sys.path.insert(0, str(framework_path))
 
-from pyflutter import run
+from afik import run
 from main import App
 
 
 def main():
     if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
-        from pyflutter.core.bridge import run_loop
+        from afik.core.bridge import run_loop
         bridge_binary = sys.argv[1]
         app = App()
         run_loop(bridge_binary, build_tree=app.build, max_iterations=5)

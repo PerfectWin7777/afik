@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
 /// Local notifications (flutter_local_notifications).
 ///
 /// Android needs core library desugaring and a launcher icon named `@mipmap/ic_launcher`
 /// (both handled by the catalog entry and the runtime template). Notification permission on
 /// Android 13+ is requested by `initialize`.
-class LocalNotificationsShim implements PyFlutterPlugin {
+class LocalNotificationsShim implements AfikPlugin {
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
 

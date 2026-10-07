@@ -9,16 +9,16 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from pyflutter.cli import plugins_cmd
-from pyflutter.core.config import PyFlutterConfig
-from pyflutter.plugins import catalog
+from afik.cli import plugins_cmd
+from afik.core.config import AfikConfig
+from afik.plugins import catalog
 
 REAL_RUNTIME = Path(__file__).resolve().parents[2] / "dart_runtime"
 TRACKED = [
     "pubspec.yaml",
     "lib/plugins/installed_plugins.dart",
     "android/app/build.gradle.kts",
-    "android/app/src/main/kotlin/com/example/pyflutter_dart_runtime/MainActivity.kt",
+    "android/app/src/main/kotlin/com/example/afik_dart_runtime/MainActivity.kt",
     "android/app/src/main/res/values/styles.xml",
     "android/app/src/main/res/values-night/styles.xml",
 ]
@@ -137,13 +137,13 @@ class TestSync(unittest.TestCase):
 
 
 class TestProjectCommands(unittest.TestCase):
-    """`pyflutter add / remove` work on the runtime copy of the project in the current directory."""
+    """`afik add / remove` work on the runtime copy of the project in the current directory."""
 
     def setUp(self):
         self.template = copy_runtime()          # stands for the framework's dart_runtime/
         shutil.copytree(REAL_RUNTIME / "plugin_catalog", self.template / "plugin_catalog", dirs_exist_ok=True)
         self.project = Path(tempfile.mkdtemp(prefix="pf_project_"))
-        (self.project / "pyflutter.yaml").write_text(
+        (self.project / "afik.yaml").write_text(
             "name: demo\n# keep me\ncustom_key: 42\npermissions:\n  - internet\n", encoding="utf-8")
         self.addCleanup(shutil.rmtree, self.template.parent, ignore_errors=True)
         self.addCleanup(shutil.rmtree, self.project, ignore_errors=True)
@@ -163,18 +163,18 @@ class TestProjectCommands(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def test_add_then_remove_updates_pyflutter_yaml_and_the_project_runtime(self):
+    def test_add_then_remove_updates_afik_yaml_and_the_project_runtime(self):
         self.assertTrue(plugins_cmd.add("local_auth"))
-        config = PyFlutterConfig.find_and_load(self.project)
+        config = AfikConfig.find_and_load(self.project)
         self.assertEqual(config.plugins, ["local_auth"])
         self.assertEqual(config.raw_config.get("custom_key"), 42)
-        text = (self.project / "pyflutter.yaml").read_text(encoding="utf-8")
+        text = (self.project / "afik.yaml").read_text(encoding="utf-8")
         self.assertIn("# keep me", text)                                  # comments survive
-        runtime = self.project / ".pyflutter" / "runtime"
+        runtime = self.project / ".afik" / "runtime"
         self.assertIn("USE_BIOMETRIC", (runtime / "android/app/src/main/AndroidManifest.xml").read_text(encoding="utf-8"))
         self.assertTrue((runtime / "lib/plugins/installed/local_auth/shim.dart").exists())
         self.assertTrue(plugins_cmd.remove("local_auth"))
-        self.assertEqual(PyFlutterConfig.find_and_load(self.project).plugins, [])
+        self.assertEqual(AfikConfig.find_and_load(self.project).plugins, [])
         self.assertFalse((runtime / "lib/plugins/installed/local_auth").exists())
         self.assertNotIn("USE_BIOMETRIC", (runtime / "android/app/src/main/AndroidManifest.xml").read_text(encoding="utf-8"))
 
@@ -195,17 +195,17 @@ class TestProjectCommands(unittest.TestCase):
         # exercise the real code path: pubspec change -> flutter pub get (faked) -> lock read back
         with patch.object(catalog, "sync_plugins", side_effect=lambda rt, names, **kw: _sync_with_fake_pub_get(rt, names, fake_pub_get, **kw)):
             self.assertTrue(plugins_cmd.add("some_unmapped_package"))
-        config = PyFlutterConfig.find_and_load(self.project)
+        config = AfikConfig.find_and_load(self.project)
         self.assertEqual(config.flutter_dependencies["some_unmapped_package"], "^2.4.1")
-        pubspec = (self.project / ".pyflutter/runtime/pubspec.yaml").read_text(encoding="utf-8")
+        pubspec = (self.project / ".afik/runtime/pubspec.yaml").read_text(encoding="utf-8")
         self.assertIn("some_unmapped_package: ^2.4.1", pubspec)
         self.assertTrue(plugins_cmd.remove("some_unmapped_package"))
-        self.assertNotIn("some_unmapped_package", (self.project / ".pyflutter/runtime/pubspec.yaml").read_text(encoding="utf-8"))
-        self.assertEqual(PyFlutterConfig.find_and_load(self.project).flutter_dependencies, {})
+        self.assertNotIn("some_unmapped_package", (self.project / ".afik/runtime/pubspec.yaml").read_text(encoding="utf-8"))
+        self.assertEqual(AfikConfig.find_and_load(self.project).flutter_dependencies, {})
 
     def test_scaffold_creates_the_mapping_skeleton(self):
         framework = Path(tempfile.mkdtemp(prefix="pf_fw_"))
-        (framework / "pyflutter" / "plugins").mkdir(parents=True)
+        (framework / "afik" / "plugins").mkdir(parents=True)
         (framework / "tests").mkdir()
         self.addCleanup(shutil.rmtree, framework, ignore_errors=True)
         created = catalog.scaffold_plugin("my_package", self.template, framework)

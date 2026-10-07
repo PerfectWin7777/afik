@@ -9,15 +9,15 @@ import time
 import unittest
 from unittest.mock import patch
 
-import pyflutter as pf
-from pyflutter.core import widget_base as wb
-from pyflutter.core.render import (
+import afik as pf
+from afik.core import widget_base as wb
+from afik.core.render import (
     assign_node_ids,
     diff_snapshots,
     resolve_tree,
     widget_to_snapshot,
 )
-from pyflutter.plugins import manager
+from afik.plugins import manager
 
 
 class _FakeStdin:
@@ -125,7 +125,7 @@ class TestTreeResolution(unittest.TestCase):
 
         tree = resolve_tree(pf.Column([W(), W()]))
         self.assertEqual(len(tree.children), 2)
-        from pyflutter.core import state as st
+        from afik.core import state as st
         self.assertEqual(len(st._state_registry), 2)     # two siblings, two distinct states
 
 
@@ -154,20 +154,20 @@ class TestConfigRobustness(unittest.TestCase):
         import pathlib
         import tempfile
 
-        from pyflutter.core.config import PyFlutterConfig
-        path = pathlib.Path(tempfile.mkdtemp()) / "pyflutter.yaml"
+        from afik.core.config import AfikConfig
+        path = pathlib.Path(tempfile.mkdtemp()) / "afik.yaml"
         path.write_text(text)
-        return PyFlutterConfig.from_file(path)
+        return AfikConfig.from_file(path)
 
     def test_null_sections_and_bad_values_do_not_crash(self):
         self.assertEqual(self._load("dependencies:\n").flutter_dependencies, {})
-        self.assertEqual(self._load("- a\n- b\n").name, "pyflutter_app")
-        self.assertEqual(self._load("pyflutter:\n  port: abc\n").port, 7879)
+        self.assertEqual(self._load("- a\n- b\n").name, "afik_app")
+        self.assertEqual(self._load("afik:\n  port: abc\n").port, 7879)
 
 
 class TestBuildFlags(unittest.TestCase):
     def test_release_flag_is_honoured(self):
-        from pyflutter.cli import main as cli
+        from afik.cli import main as cli
 
         captured = {}
 
@@ -178,13 +178,13 @@ class TestBuildFlags(unittest.TestCase):
             def build(self):
                 return True
 
-        with patch("pyflutter.cli.builder.PyFlutterBuilder", FakeBuilder):
+        with patch("afik.cli.builder.AfikBuilder", FakeBuilder):
             with self.assertRaises(SystemExit):
                 cli.main(["build", "apk", "--release"])
         self.assertTrue(captured["release"])
 
     def test_remove_command_target_exists(self):
-        from pyflutter.plugins.manager import remove_flutter_package
+        from afik.plugins.manager import remove_flutter_package
         self.assertTrue(callable(remove_flutter_package))
 
 
@@ -194,7 +194,7 @@ if __name__ == "__main__":
 
 class TestSqflite(unittest.TestCase):
     def test_real_rows_and_identifier_validation(self):
-        from pyflutter.plugins import sqflite
+        from afik.plugins import sqflite
         db = sqflite.open_database(":memory:")
         db.execute("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)")
         self.assertEqual(db.insert("items", {"name": "a"}), 1)
@@ -212,10 +212,10 @@ class TestSecurityPluginsRefuseByDefault(unittest.TestCase):
     BAD_ANSWERS = [None, {}, "ok", [], {"authenticated": "true"}, {"status": "weird"}]
 
     def _with_answer(self, answer):
-        return patch("pyflutter.plugins.manager.call_plugin", return_value=answer)
+        return patch("afik.plugins.manager.call_plugin", return_value=answer)
 
     def test_local_auth_refuses(self):
-        from pyflutter.plugins import local_auth
+        from afik.plugins import local_auth
         for answer in self.BAD_ANSWERS:
             with patch.object(local_auth, "call_plugin", return_value=answer):
                 auth = local_auth.LocalAuthentication()
@@ -226,14 +226,14 @@ class TestSecurityPluginsRefuseByDefault(unittest.TestCase):
                 self.assertEqual(auth.get_available_biometrics(), [], answer)
 
     def test_local_auth_accepts_only_explicit_true(self):
-        from pyflutter.plugins import local_auth
+        from afik.plugins import local_auth
         with patch.object(local_auth, "call_plugin", return_value={"authenticated": True}):
             self.assertTrue(local_auth.LocalAuthentication().authenticate("why"))
         # the wait for the person is decided by the central table
         self.assertEqual(manager.timeout_for("local_auth", "authenticate"), manager.INTERACTIVE_TIMEOUT)
 
     def test_permission_handler_refuses(self):
-        from pyflutter.plugins import permission_handler as ph
+        from afik.plugins import permission_handler as ph
         for answer in self.BAD_ANSWERS:
             with patch.object(ph, "call_plugin", return_value=answer):
                 self.assertEqual(ph.check_permission("camera"), ph.PermissionStatus.DENIED, answer)
@@ -241,7 +241,7 @@ class TestSecurityPluginsRefuseByDefault(unittest.TestCase):
                 self.assertFalse(ph.open_app_settings(), answer)
 
     def test_permission_handler_reads_real_statuses(self):
-        from pyflutter.plugins import permission_handler as ph
+        from afik.plugins import permission_handler as ph
         for raw, expected in (("granted", ph.PermissionStatus.GRANTED),
                               ("permanentlyDenied", ph.PermissionStatus.PERMANENTLY_DENIED),
                               ("limited", ph.PermissionStatus.LIMITED)):
@@ -249,7 +249,7 @@ class TestSecurityPluginsRefuseByDefault(unittest.TestCase):
                 self.assertEqual(ph.check_permission("camera"), expected)
 
     def test_secure_storage_refuses(self):
-        from pyflutter.plugins import flutter_secure_storage as fss
+        from afik.plugins import flutter_secure_storage as fss
         for answer in self.BAD_ANSWERS:
             with patch.object(fss, "call_plugin", return_value=answer):
                 vault = fss.FlutterSecureStorage()
@@ -263,7 +263,7 @@ class TestHiveBoxesPersist(unittest.TestCase):
         import shutil
         import tempfile
 
-        from pyflutter.plugins import hive
+        from afik.plugins import hive
         self.hive = hive
         self.dir = tempfile.mkdtemp()
         hive.init(self.dir)

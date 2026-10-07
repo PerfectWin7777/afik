@@ -6,8 +6,8 @@ import threading
 import unittest
 from unittest.mock import patch
 
-import pyflutter as pf
-from pyflutter.core import state
+import afik as pf
+from afik.core import state
 
 
 class Exploding:
@@ -107,7 +107,7 @@ class TestMutation(unittest.TestCase):
 
 class TestBatch(unittest.TestCase):
     def setUp(self):
-        patcher = patch("pyflutter.app.update")
+        patcher = patch("afik.app.update")
         self.update = patcher.start()
         self.addCleanup(patcher.stop)
 

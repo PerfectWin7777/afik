@@ -3,4 +3,4 @@ package: share_plus
 constraint: '>=12.0.0 <14.0.0'
 files: [shim.dart]
 registers: [share_plus, share]
-python_module: pyflutter.plugins.share_plus
+python_module: afik.plugins.share_plus

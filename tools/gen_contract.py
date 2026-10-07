@@ -1,13 +1,13 @@
-"""Generates a starting point for py_framework/pyflutter/contract/widgets.json from the Python widget classes.
+"""Generates a starting point for py_framework/afik/contract/widgets.json from the Python widget classes.
 
 The contract lists, for every ``widget_type``, the props Python may send and their type
 (``string | number | bool | color | icon | callback | enum``). This script reads the Python
 sources with ``ast`` (keyword arguments of ``super().__init__(...)``, ``props["x"] = ...``,
 ``self.props["x"] = ...``) and writes a first version; a person reviews it and then maintains
-``py_framework/pyflutter/contract/widgets.json`` by hand. The file is never overwritten unless ``--force`` is given.
+``py_framework/afik/contract/widgets.json`` by hand. The file is never overwritten unless ``--force`` is given.
 
     python tools/gen_contract.py                 # prints the generated contract
-    python tools/gen_contract.py --write --force # (re)writes py_framework/pyflutter/contract/widgets.json
+    python tools/gen_contract.py --write --force # (re)writes py_framework/afik/contract/widgets.json
 """
 
 from __future__ import annotations
@@ -20,12 +20,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = [
-    ROOT / "py_framework/pyflutter/widgets/widgets.py",
-    ROOT / "py_framework/pyflutter/widgets/animations.py",
-    ROOT / "py_framework/pyflutter/widgets/gestures.py",
-    ROOT / "py_framework/pyflutter/core/form.py",
+    ROOT / "py_framework/afik/widgets/widgets.py",
+    ROOT / "py_framework/afik/widgets/animations.py",
+    ROOT / "py_framework/afik/widgets/gestures.py",
+    ROOT / "py_framework/afik/core/form.py",
 ]
-OUTPUT = ROOT / "py_framework/pyflutter/contract/widgets.json"
+OUTPUT = ROOT / "py_framework/afik/contract/widgets.json"
 IGNORED_KEYS = {"raw_props"}
 
 
@@ -176,7 +176,7 @@ def scan_function(fn: ast.FunctionDef, info: ClassInfo) -> None:
 
 def text_style_keys() -> list[str]:
     """Keys TextStyle.to_props() can produce (read from core/style.py)."""
-    tree = ast.parse((ROOT / "py_framework/pyflutter/core/style.py").read_text(encoding="utf-8"))
+    tree = ast.parse((ROOT / "py_framework/afik/core/style.py").read_text(encoding="utf-8"))
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name == "TextStyle":
             for fn in node.body:
@@ -233,7 +233,7 @@ def build() -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--write", action="store_true", help="write py_framework/pyflutter/contract/widgets.json")
+    parser.add_argument("--write", action="store_true", help="write py_framework/afik/contract/widgets.json")
     parser.add_argument("--force", action="store_true", help="overwrite an existing contract")
     args = parser.parse_args()
     contract = build()

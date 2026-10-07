@@ -1,0 +1,1 @@
+"""Afik CLI package."""

@@ -1,5 +1,5 @@
 """
-PyFlutter / Flarix Example: Modern Material 3 Counter Application.
+Afik Example: Modern Material 3 Counter Application.
 Demonstrates:
 - Clean Component-based UI Architecture
 - Reactive state management with self.update()
@@ -17,7 +17,7 @@ _framework_dir = Path(__file__).resolve().parents[2] / "py_framework"
 if _framework_dir.exists() and str(_framework_dir) not in sys.path:
     sys.path.insert(0, str(_framework_dir))
 
-from pyflutter import (
+from afik import (
     AppBar,
     Card,
     Center,
@@ -112,7 +112,7 @@ class CounterApp(Component):
         )
 
         app_bar = AppBar(
-            title=Text("Flarix Counter", font_size=20, font_weight=FontWeight.BOLD, color=Colors.WHITE),
+            title=Text("Afik Counter", font_size=20, font_weight=FontWeight.BOLD, color=Colors.WHITE),
             background_color=Colors.BLUE,
             elevation=1,
         )

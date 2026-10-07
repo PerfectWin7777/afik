@@ -1,8 +1,8 @@
 """
-Unit tests for PyFlutter modular imports architecture and generic MethodChannel.
+Unit tests for Afik modular imports architecture and generic MethodChannel.
 Verifies that:
-1. Root `pyflutter` namespace is pure and unpolluted (no monolithic plugin dumping in __all__).
-2. Plugins are imported modularly from `pyflutter.plugins.*`, including their dedicated widgets.
+1. Root `afik` namespace is pure and unpolluted (no monolithic plugin dumping in __all__).
+2. Plugins are imported modularly from `afik.plugins.*`, including their dedicated widgets.
 3. MethodChannel invokes platform methods, handles arguments, catches PlatformException,
    and enables mock handlers for offline unit testing.
 """
@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import unittest
 
-import pyflutter as pf
-from pyflutter.core.channel import (
+import afik as pf
+from afik.core.channel import (
     MethodCall,
     PlatformException,
     set_mock_method_call_handler,
@@ -39,8 +39,8 @@ class TestModularImports(unittest.TestCase):
         self.assertIn("PlatformException", pf.__all__)
 
     def test_plugins_module_access(self):
-        """Plugins are accessed under pyflutter.plugins."""
-        from pyflutter.plugins import (
+        """Plugins are accessed under afik.plugins."""
+        from afik.plugins import (
             audioplayer,
             camera,
             chewie,
@@ -75,10 +75,10 @@ class TestModularImports(unittest.TestCase):
 
     def test_plugin_dedicated_widgets_import(self):
         """Widgets tied to plugins are importable directly from their plugin module."""
-        from pyflutter.plugins.camera import CameraController, CameraPreview
-        from pyflutter.plugins.pdf import PDFView, PdfView, PdfViewPinch, SfPdfViewer
-        from pyflutter.plugins.video_player import VideoPlayer
-        from pyflutter.plugins.webview import WebView
+        from afik.plugins.camera import CameraController, CameraPreview
+        from afik.plugins.pdf import PDFView, PdfView, PdfViewPinch, SfPdfViewer
+        from afik.plugins.video_player import VideoPlayer
+        from afik.plugins.webview import WebView
 
         self.assertEqual(CameraPreview(CameraController("0")).widget_type, "CameraPreview")
         self.assertEqual(WebView("https://flutter.dev").widget_type, "WebView")

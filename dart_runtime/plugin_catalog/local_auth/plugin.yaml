@@ -3,7 +3,7 @@ package: local_auth
 constraint: ^2.3.0
 files: [shim.dart]
 registers: [local_auth]
-python_module: pyflutter.plugins.local_auth
+python_module: afik.plugins.local_auth
 android:
   permissions: [biometrics]
   main_activity_base: FlutterFragmentActivity

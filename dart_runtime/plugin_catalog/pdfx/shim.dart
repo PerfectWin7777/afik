@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:pdfx/pdfx.dart';
-import 'package:pyflutter_dart_runtime/ir_codec.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
-import 'package:pyflutter_dart_runtime/widgets/widget_registry.dart';
+import 'package:afik_dart_runtime/ir_codec.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/widgets/widget_registry.dart';
 
 /// PDF documents opened from Python, keyed by document id.
 class PdfxRegistry {
@@ -19,7 +19,7 @@ class PdfxRegistry {
 ///
 /// `openPdf` returns a document id and page count; `renderPage` renders one page to a PNG
 /// file in the temporary directory and returns its path and size.
-class PdfxShim implements PyFlutterPlugin {
+class PdfxShim implements AfikPlugin {
   PdfDocument _doc(Map<String, String> args) {
     final doc = PdfxRegistry.documents[args['documentId'] ?? ''];
     if (doc == null) throw StateError('Unknown PDF document "${args['documentId']}".');
@@ -54,7 +54,7 @@ class PdfxShim implements PyFlutterPlugin {
             format: PdfPageImageFormat.png,
           );
           if (image == null) throw StateError('pdfx could not render page $number.');
-          final file = File('${Directory.systemTemp.path}/pyflutter_${args['documentId']}_p$number.png');
+          final file = File('${Directory.systemTemp.path}/afik_${args['documentId']}_p$number.png');
           await file.writeAsBytes(image.bytes);
           return {
             'pageNumber': number,

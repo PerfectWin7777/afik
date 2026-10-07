@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real native device & OS metadata using Flutter's device_info_plus package.
-class DeviceInfoShim implements PyFlutterPlugin {
+class DeviceInfoShim implements AfikPlugin {
   final DeviceInfoPlugin _plugin = DeviceInfoPlugin();
 
   @override

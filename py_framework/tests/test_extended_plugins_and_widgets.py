@@ -1,5 +1,5 @@
 """
-Unit tests for the 7 top Flutter packages and corresponding widgets in PyFlutter:
+Unit tests for the 7 top Flutter packages and corresponding widgets in Afik:
 - image_picker (pick_image, pick_video, pick_multi_image, XFile)
 - camera (available_cameras, CameraController, CameraPreview widget)
 - connectivity_plus (check_connectivity, is_connected, ConnectivityResult)
@@ -11,8 +11,8 @@ Unit tests for the 7 top Flutter packages and corresponding widgets in PyFlutter
 
 import unittest
 
-import pyflutter as pf
-from pyflutter.plugins import (
+import afik as pf
+from afik.plugins import (
     audioplayer,
     audioplayers,
     camera,
@@ -144,7 +144,7 @@ class TestVideoPlayerPlugin(unittest.TestCase):
 
 class TestSharePlugin(unittest.TestCase):
     def test_share(self):
-        self.assertTrue(share.share("Check out PyFlutter!"))
+        self.assertTrue(share.share("Check out Afik!"))
         self.assertTrue(share.share_files(["sample.txt"], text="file description"))
         self.assertTrue(share.share_uri("https://flutter.dev"))
 

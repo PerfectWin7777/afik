@@ -1,7 +1,7 @@
 """Measures which standard-library modules the framework really loads, and their size.
 
 Usage (from the repository root):
-    python audit/embedding/stdlib_closure.py            # imports pyflutter as it is today
+    python audit/embedding/stdlib_closure.py            # imports afik as it is today
     python audit/embedding/stdlib_closure.py --no-loguru  # simulates a logger-free runtime
 
 Output: the list of stdlib modules loaded (beyond interpreter start-up), the size of their
@@ -26,8 +26,8 @@ if %(no_loguru)r:
     fake = types.ModuleType("loguru"); fake.logger = type("L", (), {"__getattr__": lambda s, n: (lambda *a, **k: None)})()
     sys.modules["loguru"] = fake
 before = set(sys.modules)
-import pyflutter
-import pyflutter.core.render, pyflutter.core.state, pyflutter.core.widget_base, pyflutter.plugins.manager
+import afik
+import afik.core.render, afik.core.state, afik.core.widget_base, afik.plugins.manager
 after = set(sys.modules)
 print(json.dumps(sorted(after - before)))
 """
@@ -65,7 +65,7 @@ def main() -> None:
     print(f"stdlib modules loaded : {len(rows)}")
     print(f"pure-python sources   : {py_total / 1024:.0f} KiB")
     print(f"-OO bytecode, zipped  : {len(buf.getvalue()) / 1024:.0f} KiB   <-- stdlib payload to ship")
-    third = sorted({n.split('.')[0] for n in loaded if n.split('.')[0] not in stdlib and n.split('.')[0] != 'pyflutter'})
+    third = sorted({n.split('.')[0] for n in loaded if n.split('.')[0] not in stdlib and n.split('.')[0] != 'afik'})
     print(f"third-party modules   : {third}")
 
 

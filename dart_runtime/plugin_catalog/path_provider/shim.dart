@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:path_provider/path_provider.dart' as pp;
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real native directory paths using Flutter's path_provider package.
-class PathProviderShim implements PyFlutterPlugin {
+class PathProviderShim implements AfikPlugin {
   @override
   Future<dynamic> handleMethodCall(String method, Map<String, String> args) async {
     switch (method) {

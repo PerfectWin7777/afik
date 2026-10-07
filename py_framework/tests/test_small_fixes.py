@@ -9,12 +9,12 @@ from unittest.mock import MagicMock, patch
 
 import yaml
 
-import pyflutter as pf
-from pyflutter.cli import creator
-from pyflutter.cli import main as cli
-from pyflutter.cli.runner import PyFlutterRunner
-from pyflutter.core.bridge import BridgeSession
-from pyflutter.plugins import overlay
+import afik as pf
+from afik.cli import creator
+from afik.cli import main as cli
+from afik.cli.runner import AfikRunner
+from afik.core.bridge import BridgeSession
+from afik.plugins import overlay
 
 
 class TestRunDoesNotFallThroughIntoBuild(unittest.TestCase):
@@ -22,8 +22,8 @@ class TestRunDoesNotFallThroughIntoBuild(unittest.TestCase):
         entry = Path(tempfile.mkdtemp()) / "main.py"
         entry.write_text("x = 1\n")
         runner = MagicMock()
-        with patch.object(cli, "PyFlutterRunner", return_value=runner), \
-             patch("pyflutter.cli.builder.PyFlutterBuilder") as builder:
+        with patch.object(cli, "AfikRunner", return_value=runner), \
+             patch("afik.cli.builder.AfikBuilder") as builder:
             cli.main(["run", str(entry)])
         runner.start.assert_called_once()
         builder.assert_not_called()
@@ -33,7 +33,7 @@ class TestProjectTemplate(unittest.TestCase):
     def test_description_with_quotes_and_colons_stays_valid_yaml(self):
         project = Path(tempfile.mkdtemp()) / "demo"
         creator.create_project(project, "demo", description='He said "hi": it\'s #1')
-        data = yaml.safe_load((project / "pyflutter.yaml").read_text(encoding="utf-8"))
+        data = yaml.safe_load((project / "afik.yaml").read_text(encoding="utf-8"))
         self.assertEqual(data["description"], 'He said "hi": it\'s #1')
         self.assertEqual(data["plugins"], ["url_launcher"])
 
@@ -44,7 +44,7 @@ class TestProjectTemplate(unittest.TestCase):
         for key in ("`r`", "`R`", "`q`"):
             self.assertIn(key, text)
         self.assertNotIn("`d` :", text)
-        handled = PyFlutterRunner._handle_key.__code__.co_consts
+        handled = AfikRunner._handle_key.__code__.co_consts
         self.assertNotIn("d", handled)
 
 
@@ -83,15 +83,15 @@ class TestSnackBarDuration(unittest.TestCase):
 
 class TestRunnerStartup(unittest.TestCase):
     def test_constructing_a_runner_does_not_need_the_bridge(self):
-        with patch("pyflutter.cli.runner.find_bridge_binary", side_effect=FileNotFoundError("missing")), \
-             patch("pyflutter.cli.runner.atexit.register"):
-            PyFlutterRunner(entrypoint=Path(__file__))     # must not raise
+        with patch("afik.cli.runner.find_bridge_binary", side_effect=FileNotFoundError("missing")), \
+             patch("afik.cli.runner.atexit.register"):
+            AfikRunner(entrypoint=Path(__file__))     # must not raise
 
     def test_missing_bridge_is_a_clear_message_and_exit_code_1(self):
-        with patch("pyflutter.cli.runner.find_bridge_binary", side_effect=FileNotFoundError("bridge not built")), \
-             patch("pyflutter.cli.runner.atexit.register"), \
-             patch("pyflutter.cli.runner.logger") as log:
-            runner = PyFlutterRunner(entrypoint=Path(__file__))
+        with patch("afik.cli.runner.find_bridge_binary", side_effect=FileNotFoundError("bridge not built")), \
+             patch("afik.cli.runner.atexit.register"), \
+             patch("afik.cli.runner.logger") as log:
+            runner = AfikRunner(entrypoint=Path(__file__))
             with self.assertRaises(SystemExit) as raised:
                 runner.start()
         self.assertEqual(raised.exception.code, 1)
@@ -109,9 +109,9 @@ class TestRunnerStartup(unittest.TestCase):
             def build(self):
                 return Inner()
 
-        with patch("pyflutter.cli.runner.find_bridge_binary", return_value=Path("b")), \
-             patch("pyflutter.cli.runner.atexit.register"):
-            runner = PyFlutterRunner(entrypoint=Path(__file__))
+        with patch("afik.cli.runner.find_bridge_binary", return_value=Path("b")), \
+             patch("afik.cli.runner.atexit.register"):
+            runner = AfikRunner(entrypoint=Path(__file__))
         runner.app = App()
         tree = runner._build_and_tag_tree()
         self.assertEqual(tree.widget_type, "Column")
@@ -134,7 +134,7 @@ class TestSendTreeAcceptsAResolvedTree(unittest.TestCase):
                 builds.append(1)
                 return pf.Text("x")
 
-        from pyflutter.core.render import resolve_tree
+        from afik.core.render import resolve_tree
         session = self._session()
         tree = resolve_tree(pf.Column([Counter()]))
         self.assertEqual(len(builds), 1)

@@ -4,5 +4,5 @@ constraint: ^1.4.0
 files: [shim.dart]
 registers: [flutter_pdfview]
 widgets: [PDFView]
-python_module: pyflutter.plugins.flutter_pdfview
+python_module: afik.plugins.flutter_pdfview
 notes: Renders on Android and iOS only (it wraps the platform PDF views).

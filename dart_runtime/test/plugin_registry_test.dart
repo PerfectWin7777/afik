@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
-class Plain implements PyFlutterPlugin {
+class Plain implements AfikPlugin {
   Map<String, String>? seen;
   @override
   Future<dynamic> handleMethodCall(String m, Map<String, String> a) async { seen = a; return 'ok'; }
 }
-class Structured implements StructuredPyFlutterPlugin {
+class Structured implements StructuredAfikPlugin {
   Map<String, dynamic>? seen;
   @override
   Future<dynamic> handleMethodCall(String m, Map<String, String> a) async => 'plain';

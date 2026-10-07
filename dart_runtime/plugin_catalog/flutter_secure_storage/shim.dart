@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real encrypted storage: Keychain on iOS/macOS, Keystore-backed encryption on
 /// Android (flutter_secure_storage).
-class SecureStorageShim implements PyFlutterPlugin {
+class SecureStorageShim implements AfikPlugin {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   @override

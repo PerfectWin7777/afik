@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real runtime permission checks and requests (permission_handler).
 ///
 /// Every permission used by the app must also be declared natively: Android
-/// permissions through `pyflutter.yaml` (synced into AndroidManifest.xml), iOS
+/// permissions through `afik.yaml` (synced into AndroidManifest.xml), iOS
 /// usage descriptions in Info.plist plus the matching permission_handler build
 /// settings (see the package README).
-class PermissionHandlerShim implements PyFlutterPlugin {
+class PermissionHandlerShim implements AfikPlugin {
   static final Map<String, Permission> _permissions = {
     'camera': Permission.camera,
     'microphone': Permission.microphone,

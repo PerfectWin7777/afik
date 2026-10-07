@@ -1,4 +1,4 @@
-// PyFlutter In-Memory FFI Bridge Connector
+// Afik In-Memory FFI Bridge Connector
 // Enables zero-network, direct RAM buffer communication between Dart and Python
 // for autonomous standalone APK/IPA execution without a host PC or TCP socket.
 
@@ -42,10 +42,10 @@ class FFIFrame {
 }
 
 /// Manages direct in-process FFI bridge communication with embedded Rust/Python runtime.
-class PyFlutterFFIBridge {
-  static final PyFlutterFFIBridge _instance = PyFlutterFFIBridge._internal();
-  factory PyFlutterFFIBridge() => _instance;
-  PyFlutterFFIBridge._internal();
+class AfikFFIBridge {
+  static final AfikFFIBridge _instance = AfikFFIBridge._internal();
+  factory AfikFFIBridge() => _instance;
+  AfikFFIBridge._internal();
 
   DynamicLibrary? _dylib;
   bool _initialized = false;
@@ -83,16 +83,16 @@ class PyFlutterFFIBridge {
 
     try {
       if (Platform.isAndroid) {
-        _dylib = DynamicLibrary.open('libpyflutter_bridge.so');
+        _dylib = DynamicLibrary.open('libafik_bridge.so');
       } else if (Platform.isWindows) {
         // Look in executable directory or debug/release build folders
         final currentDir = Directory.current.path;
         final candidates = [
-          'pyflutter_bridge.dll',
-          '$currentDir/rust_bridge/target/release/pyflutter_bridge.dll',
-          '$currentDir/rust_bridge/target/debug/pyflutter_bridge.dll',
-          '$currentDir/../rust_bridge/target/release/pyflutter_bridge.dll',
-          '$currentDir/../rust_bridge/target/debug/pyflutter_bridge.dll',
+          'afik_bridge.dll',
+          '$currentDir/rust_bridge/target/release/afik_bridge.dll',
+          '$currentDir/rust_bridge/target/debug/afik_bridge.dll',
+          '$currentDir/../rust_bridge/target/release/afik_bridge.dll',
+          '$currentDir/../rust_bridge/target/debug/afik_bridge.dll',
         ];
         for (final path in candidates) {
           if (File(path).existsSync()) {
@@ -100,9 +100,9 @@ class PyFlutterFFIBridge {
             break;
           }
         }
-        _dylib ??= DynamicLibrary.open('pyflutter_bridge.dll');
+        _dylib ??= DynamicLibrary.open('afik_bridge.dll');
       } else if (Platform.isLinux) {
-        _dylib = DynamicLibrary.open('libpyflutter_bridge.so');
+        _dylib = DynamicLibrary.open('libafik_bridge.so');
       } else if (Platform.isMacOS || Platform.isIOS) {
         _dylib = DynamicLibrary.process();
       }
@@ -114,15 +114,15 @@ class PyFlutterFFIBridge {
     if (_dylib != null) {
       try {
         _versionFn = _dylib!
-            .lookupFunction<_VersionNative, _VersionDart>('pyflutter_bridge_version');
+            .lookupFunction<_VersionNative, _VersionDart>('afik_bridge_version');
         _initFn = _dylib!
-            .lookupFunction<_InitNative, _InitDart>('pyflutter_bridge_init');
+            .lookupFunction<_InitNative, _InitDart>('afik_bridge_init');
         _pushFn = _dylib!
-            .lookupFunction<_PushNative, _PushDart>('pyflutter_push_to_python');
+            .lookupFunction<_PushNative, _PushDart>('afik_push_to_python');
         _pollFn = _dylib!
-            .lookupFunction<_PollNative, _PollDart>('pyflutter_poll_dart_frame');
+            .lookupFunction<_PollNative, _PollDart>('afik_poll_dart_frame');
         _destroyFn = _dylib!
-            .lookupFunction<_DestroyNative, _DestroyDart>('pyflutter_bridge_destroy');
+            .lookupFunction<_DestroyNative, _DestroyDart>('afik_bridge_destroy');
       } catch (e) {
         debugPrint('[FFIBridge] Symbol lookup failed: $e');
         _dylib = null;

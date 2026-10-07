@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real native Key-Value storage using Flutter's shared_preferences package.
-class StorageShim implements PyFlutterPlugin {
+class StorageShim implements AfikPlugin {
   Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
 
   @override

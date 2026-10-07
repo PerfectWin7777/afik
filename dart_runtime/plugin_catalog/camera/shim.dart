@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:pyflutter_dart_runtime/ir_codec.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
-import 'package:pyflutter_dart_runtime/widgets/widget_registry.dart';
+import 'package:afik_dart_runtime/ir_codec.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/widgets/widget_registry.dart';
 
 /// Camera controllers keyed by the camera id used from Python (the index in
 /// `availableCameras()`), shared with the `CameraPreview` widget.
@@ -18,7 +18,7 @@ class CameraRegistry {
 }
 
 /// Camera capture (camera).
-class CameraShim implements PyFlutterPlugin {
+class CameraShim implements AfikPlugin {
   CameraController _get(Map<String, String> args) {
     final id = args['cameraId'] ?? '';
     final controller = CameraRegistry.controllers[id];

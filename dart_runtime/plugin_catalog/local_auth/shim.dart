@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:local_auth/local_auth.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real biometric / device-credential authentication (local_auth ^2.3).
 ///
 /// Only the platform's own answer is ever reported: when the user cancels or the
 /// check fails, `authenticated` is false and platform errors are thrown, so Python
 /// can never mistake a failure for a success.
-class LocalAuthShim implements PyFlutterPlugin {
+class LocalAuthShim implements AfikPlugin {
   final LocalAuthentication _auth = LocalAuthentication();
 
   @override

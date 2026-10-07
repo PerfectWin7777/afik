@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import unittest
 
-import pyflutter as pf
-from pyflutter.core import state as st
-from pyflutter.core.navigation import Navigator
-from pyflutter.core.render import resolve_tree
+import afik as pf
+from afik.core import state as st
+from afik.core.navigation import Navigator
+from afik.core.render import resolve_tree
 
 
 class Probe(pf.State):

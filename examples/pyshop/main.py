@@ -1,5 +1,5 @@
 """
-PyShop — Modern E-Commerce Application built with PyFlutter.
+PyShop — Modern E-Commerce Application built with Afik.
 
 Demonstrates:
 - Clean PyQt/PySide-style Object-Oriented Component Architecture
@@ -20,7 +20,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Optional
 
-from pyflutter import (
+from afik import (
     Alignment,
     AppBar,
     Axis,
@@ -82,8 +82,8 @@ from pyflutter import (
     show_dialog,
     show_snack_bar,
 )
-from pyflutter.core.logger import logger
-from pyflutter.plugins import url_launcher
+from afik.core.logger import logger
+from afik.plugins import url_launcher
 
 
 # ==============================================================================
@@ -488,7 +488,7 @@ class PyShopWindow(MainWindow):
             url = "https://fakestoreapi.com/products"
             logger.info(f"🌐 Synchronizing catalog with remote API {url}...")
             try:
-                req = urllib.request.Request(url, headers={"User-Agent": "PyFlutter/0.1.0"})
+                req = urllib.request.Request(url, headers={"User-Agent": "Afik/0.1.0"})
                 with urllib.request.urlopen(req, timeout=8) as response:
                     data = json.loads(response.read().decode("utf-8"))
                     new_items = []
@@ -1055,7 +1055,7 @@ class PyShopWindow(MainWindow):
         )
         specs_col = Column(cross_axis_alignment=CrossAxisAlignment.START)
         specs_col.add_widget(
-            Text("PyFlutter High-Performance Stack", font_size=14, font_weight=FontWeight.BOLD, color=Colors.SLATE_900)
+            Text("Afik High-Performance Stack", font_size=14, font_weight=FontWeight.BOLD, color=Colors.SLATE_900)
         )
         specs_col.add_spacing(6)
         specs_col.add_widget(Text("• Rendering Engine: Flutter 3.24 Impeller GPU Pipeline (120 FPS)", font_size=12, color=Colors.SLATE_600))

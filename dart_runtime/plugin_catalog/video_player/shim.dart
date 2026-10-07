@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:pyflutter_dart_runtime/ir_codec.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
-import 'package:pyflutter_dart_runtime/widgets/widget_registry.dart';
+import 'package:afik_dart_runtime/ir_codec.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/widgets/widget_registry.dart';
 import 'package:video_player/video_player.dart';
 
 /// Controllers created from Python (`VideoPlayerController(...)`), shared with the widgets
@@ -19,7 +19,7 @@ class VideoRegistry {
 }
 
 /// Real video playback (video_player).
-class VideoPlayerShim implements PyFlutterPlugin {
+class VideoPlayerShim implements AfikPlugin {
   VideoPlayerController _get(Map<String, String> args) {
     final id = args['controllerId'] ?? '';
     final controller = VideoRegistry.controllers[id];

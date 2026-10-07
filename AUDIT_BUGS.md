@@ -1,4 +1,4 @@
-# AUDIT PyFlutter — guide de correction (playbook de l'orchestrateur)
+# AUDIT Afik — guide de correction (playbook de l'orchestrateur)
 
 Ce document est écrit pour être **suivi à la lettre**, par vous ou par des modèles moins chers qui obéissent à des consignes précises.
 Chaque ticket donne : les fichiers, le problème, la logique de la solution, l'algorithme, le début du code, le test à écrire et le critère de fin.
@@ -39,8 +39,8 @@ python ../audit/repro_core.py                         # relance les repros
 |----|--------------------|------------------|------|
 | B-01 | Appel plugin depuis un callback = blocage jusqu'au timeout | `cli/runner.py` (`_callback_worker`), `plugins/manager.py` (`call_plugin`) | `TestPluginRpc`, `audit/repro_rpc.py` |
 | B-02 | Erreur Dart remplacée par une fausse donnée | `plugins/manager.py` (`PluginError`, `PluginTimeoutError`) | `TestPluginRpc` |
-| B-04 | `--release` ignoré ; `pyflutter remove` plantait | `cli/main.py`, `cli/builder.py`, `plugins/manager.py` (`remove_flutter_package`) | `TestBuildFlags` |
-| B-05 | Port Dart codé en dur | `dart_runtime/lib/main.dart` (`PYFLUTTER_PORT`), `cli/runner.py` | non compilé (Dart) |
+| B-04 | `--release` ignoré ; `afik remove` plantait | `cli/main.py`, `cli/builder.py`, `plugins/manager.py` (`remove_flutter_package`) | `TestBuildFlags` |
+| B-05 | Port Dart codé en dur | `dart_runtime/lib/main.dart` (`AFIK_PORT`), `cli/runner.py` | non compilé (Dart) |
 | B-07 | Patch ciblant un id de nœud inexistant (listes à `key`) | `core/render.py` (`diff_snapshots`) | `test_keyed_reorder_forces_full_tree` |
 | B-08 | Dart reconnecté recevait un arbre périmé | `rust_bridge/src/main.rs`, `core/bridge.py`, `cli/runner.py` | `tests/test_bridge_relay.py` (vrai binaire Rust) |
 | B-09 | Callbacks de SnackBar/Dialog supprimés trop tôt | `core/widget_base.py` (`_register_pinned_callback`), `plugins/overlay.py` | `TestPinnedCallbacks` |
@@ -50,14 +50,14 @@ python ../audit/repro_core.py                         # relance les repros
 | B-13 | `loguru` + accolades dans un message = crash du gestionnaire d'erreur | `core/logger.py`, `core/widget_base.py`, `core/form.py` | `TestErrorLogging` |
 | B-14 | Module utilisateur écrasait la stdlib (`random.py`) ; mauvaise classe racine au hot reload | `cli/runner.py` (`load_app_from_file`) | `audit/repro_cli.py` |
 | B-15 | `ensure_port_free` tuait n'importe quel processus | `cli/runner.py` | revue manuelle |
-| B-16 | Relais TCP sans authentification, taille de trame illimitée | `rust_bridge/src/main.rs`, `cli/runner.py`, `main.dart` (`PYFLUTTER_TOKEN`) | `tests/test_bridge_relay.py` |
+| B-16 | Relais TCP sans authentification, taille de trame illimitée | `rust_bridge/src/main.rs`, `cli/runner.py`, `main.dart` (`AFIK_TOKEN`) | `tests/test_bridge_relay.py` |
 | B-06a | Les wrappers Python de `local_auth`, `permission_handler`, `flutter_secure_storage` répondaient « succès » par défaut | `plugins/local_auth.py`, `permission_handler.py`, `flutter_secure_storage.py` (refus par défaut, attente de 120 s pour les appels interactifs) | `TestSecurityPluginsRefuseByDefault` |
 | B-06 | Plugins sécurité et plugins « simulés » | Voir T-01 et T-20 : refus par défaut côté Python, shims réels pour les 22 entrées du catalogue (`dart_runtime/plugin_catalog/`), installés à la demande ; plus aucun shim factice dans le runtime de base | `tests/test_plugin_answers.py`, `TestSecurityPluginsRefuseByDefault`, `tools/verify_catalog.py` (22 entrées + installation groupée) |
-| B-19, B-20 | `update()` construisait l'arbre sur n'importe quel thread, sans regroupement ; callbacks et builds concurrents | `core/scheduler.py` (`FrameScheduler`, thread « pyflutter-ui »), `cli/runner.py`, `app.py` (`pf.run_on_ui`) | `tests/test_scheduler.py` (16 tests, dont un test de contention à 3 threads) |
+| B-19, B-20 | `update()` construisait l'arbre sur n'importe quel thread, sans regroupement ; callbacks et builds concurrents | `core/scheduler.py` (`FrameScheduler`, thread « afik-ui »), `cli/runner.py`, `app.py` (`pf.run_on_ui`) | `tests/test_scheduler.py` (16 tests, dont un test de contention à 3 threads) |
 | B-37 | Faux « succès » des wrappers quand la réponse manque | Tous les wrappers de plugins (voir T-08 pour ce qui reste : table de timeouts, mocks hors runtime) | `tests/test_plugin_answers.py` |
-| B-31, B-32 | `pyflutter.yaml` réécrit sans ses commentaires ; `add` écrivait la version `any` et modifiait le `pubspec.yaml` du dépôt ; permissions ajoutées au manifeste du dépôt sans jamais être retirées ; gabarit pollué (« Pyshop », 11 permissions) | `core/runtime_project.py` (copie par projet), `core/config.py` (édition en texte), `cli/manifest_sync.py` (blocs générés), `plugins/catalog.py`, `cli/plugins_cmd.py` | `tests/test_project_runtime.py`, `tests/test_plugin_catalog.py` ; vérifié avec le vrai SDK Flutter |
+| B-31, B-32 | `afik.yaml` réécrit sans ses commentaires ; `add` écrivait la version `any` et modifiait le `pubspec.yaml` du dépôt ; permissions ajoutées au manifeste du dépôt sans jamais être retirées ; gabarit pollué (« Pyshop », 11 permissions) | `core/runtime_project.py` (copie par projet), `core/config.py` (édition en texte), `cli/manifest_sync.py` (blocs générés), `plugins/catalog.py`, `cli/plugins_cmd.py` | `tests/test_project_runtime.py`, `tests/test_plugin_catalog.py` ; vérifié avec le vrai SDK Flutter |
 | B-60 | `ffi_bridge.dart` importait `package:ffi` sans le déclarer (il arrivait par `path_provider`/`file_picker`) : le runtime de base ne compilait plus sans eux | `dart_runtime/pubspec.yaml` (`ffi: ^2.1.0`) | `flutter analyze` du runtime de base |
-| B-30 | `pyflutter.yaml` mal formé = crash ou silence | `core/config.py` | `TestConfigRobustness` |
+| B-30 | `afik.yaml` mal formé = crash ou silence | `core/config.py` | `TestConfigRobustness` |
 | B-32 | Titre non échappé dans le manifeste Android | `cli/manifest_sync.py` | `audit/repro_cli.py` |
 | B-33 | Plateforme du device devinée à partir de l'id | `cli/devices.py` | revue manuelle |
 | B-38 | SQL injectable + faux ids + double écriture | `plugins/sqflite.py` | `TestSqflite` |
@@ -73,14 +73,14 @@ python ../audit/repro_core.py                         # relance les repros
 | ID | Fait | Reste |
 |----|------|-------|
 | B-03 | Le build échoue si `cargo` échoue ; avertit qu'il n'y a pas d'interpréteur | L'embarquement lui-même → **partie C** |
-| B-37 | Fallback local limité au mode sans runtime ; wrappers stricts ; table de timeouts ; plugins « sécurité » refusés hors runtime (sauf `PYFLUTTER_ALLOW_INSECURE_MOCKS=1`) ; avertissement unique sur les simulations | **T-08 fait** (`tests/test_plugin_timeouts_offline.py`) |
+| B-37 | Fallback local limité au mode sans runtime ; wrappers stricts ; table de timeouts ; plugins « sécurité » refusés hors runtime (sauf `AFIK_ALLOW_INSECURE_MOCKS=1`) ; avertissement unique sur les simulations | **T-08 fait** (`tests/test_plugin_timeouts_offline.py`) |
 
 ### 1.3 Ordre de travail recommandé pour ce qui reste
 
 | Ordre | Ticket | Sujet | Taille |
 |------:|--------|-------|:------:|
 | 1 | T-01 ✅ | Refus par défaut des plugins sécurité + shims réels rangés dans le catalogue — **fait** | M |
-| 1b | T-20 ✅ | Catalogue de plugins installés à la demande (`pyflutter add`) — **fait** (reste la copie de travail par projet : T-14) | L |
+| 1b | T-20 ✅ | Catalogue de plugins installés à la demande (`afik add`) — **fait** (reste la copie de travail par projet : T-14) | L |
 | 2 | T-02 ✅ | Ordonnanceur de frames + thread d'UI unique (B-19, B-20) — **fait** | M |
 | 3 | T-03 ✅ | Cycle de vie des `State` : `dispose` (B-21) — **fait** | M |
 | 4 | T-04 ✅ | `FormKey` comme magasin de valeurs (B-27) — **fait** | S |
@@ -115,13 +115,13 @@ Chaque ticket est autonome. Les numéros `B-xx` renvoient au rapport initial (`a
 
 ## T-01 — ✅ FAIT — Plugins sécurité : refus par défaut + shims réels (B-06)
 
-> **Fait** : (1) les wrappers Python ne rapportent un succès que sur une réponse explicite ; (2) les shims Dart réels de `local_auth`, `permission_handler` et `flutter_secure_storage` sont écrits dans `dart_runtime/plugin_catalog/<paquet>/shim.dart` (avec un `plugin.yaml` qui décrit la dépendance et les réglages natifs) mais **ne sont pas compilés dans le runtime de base** : l'app n'embarque que les paquets que le projet a installés. Tant que le plugin n'est pas installé, l'appel échoue avec « Plugin "x" is not installed in this runtime. Install it with: pyflutter add x ». (3) La mécanique d'installation est le ticket **T-20**.
+> **Fait** : (1) les wrappers Python ne rapportent un succès que sur une réponse explicite ; (2) les shims Dart réels de `local_auth`, `permission_handler` et `flutter_secure_storage` sont écrits dans `dart_runtime/plugin_catalog/<paquet>/shim.dart` (avec un `plugin.yaml` qui décrit la dépendance et les réglages natifs) mais **ne sont pas compilés dans le runtime de base** : l'app n'embarque que les paquets que le projet a installés. Tant que le plugin n'est pas installé, l'appel échoue avec « Plugin "x" is not installed in this runtime. Install it with: afik add x ». (3) La mécanique d'installation est le ticket **T-20**.
 > `flutter pub get` et `flutter analyze` sont passés (via `tools/verify_catalog.py`). Reste à valider sur appareil (biométrie refusée → `False`, permission refusée → `DENIED`, secret relu après redémarrage). iOS : réglages de build `permission_handler` par permission ; Linux : `libsecret-1-dev` pour `flutter_secure_storage`. Le texte ci-dessous reste valable comme spécification des shims.
 
 **Pourquoi c'est prioritaire** : une application qui protège une action avec la biométrie, ou qui stocke un jeton, doit pouvoir faire confiance au résultat. Aujourd'hui les shims Dart refusent (c'est le comportement sûr), mais les **wrappers Python répondent « succès » par défaut** quand la réponse est absente.
 
 **Fichiers**
-- Python : `py_framework/pyflutter/plugins/local_auth.py`, `permission_handler.py`, `flutter_secure_storage.py` (+ `secure_storage.py` qui est un alias).
+- Python : `py_framework/afik/plugins/local_auth.py`, `permission_handler.py`, `flutter_secure_storage.py` (+ `secure_storage.py` qui est un alias).
 - Dart : `dart_runtime/lib/plugins/local_auth_shim.dart`, `permission_handler_shim.dart`, `secure_storage_shim.dart`, `dart_runtime/pubspec.yaml`, `dart_runtime/lib/main.dart` (enregistrement, déjà fait).
 - Natif : `dart_runtime/android/app/src/main/AndroidManifest.xml`, `dart_runtime/ios/Runner/Info.plist`, `dart_runtime/android/app/src/main/kotlin/.../MainActivity.kt` (local_auth exige `FlutterFragmentActivity` sur Android).
 
@@ -152,7 +152,7 @@ def _parse_status(res) -> PermissionStatus:
 Même principe pour `can_check_biometrics`, `is_device_supported`, `open_app_settings`, `contains_key`, `get_available_biometrics` (défaut `[]`, pas `["fingerprint"]`).
 
 **Problème B — brancher les vrais packages côté Dart**
-Logique : un shim = une classe qui implémente `PyFlutterPlugin.handleMethodCall(method, args)` et traduit vers l'API réelle du package, puis renvoie un résultat simple (`Map`/`List`/`String`/`bool`/`null`).
+Logique : un shim = une classe qui implémente `AfikPlugin.handleMethodCall(method, args)` et traduit vers l'API réelle du package, puis renvoie un résultat simple (`Map`/`List`/`String`/`bool`/`null`).
 Étapes :
 1. `cd dart_runtime && flutter pub add local_auth permission_handler flutter_secure_storage` (met à jour `pubspec.yaml` et `pubspec.lock`).
 2. Réécrire chaque shim. **Vérifier l'API de la version installée dans le README du package** (la signature de `authenticate` a changé entre versions de `local_auth`).
@@ -168,7 +168,7 @@ Squelette Dart de départ (à adapter à l'API exacte du package installé) :
 import 'package:permission_handler/permission_handler.dart';
 import 'plugin_registry.dart';
 
-class PermissionHandlerShim implements PyFlutterPlugin {
+class PermissionHandlerShim implements AfikPlugin {
   static const _map = <String, Permission>{
     'camera': Permission.camera,
     'microphone': Permission.microphone,
@@ -213,13 +213,13 @@ Le même schéma vaut pour `local_auth` (`LocalAuthentication().canCheckBiometri
 
 **Critère de fin** : aucun défaut « succès » dans les trois wrappers Python ; `flutter analyze` sans erreur ; test manuel sur appareil réel (biométrie refusée, permission refusée, secret écrit puis relu après redémarrage de l'app).
 
-**Pièges** : ne pas oublier d'ajouter les permissions à `pyflutter.yaml` (`biometrics`, `camera`…). Le fallback hors-ligne (`manager._dispatch_local_fallback`) reste « accordé » pour les tests : c'est traité en T-08.
+**Pièges** : ne pas oublier d'ajouter les permissions à `afik.yaml` (`biometrics`, `camera`…). Le fallback hors-ligne (`manager._dispatch_local_fallback`) reste « accordé » pour les tests : c'est traité en T-08.
 
 ---
 
 ## T-02 — ✅ FAIT — Ordonnanceur de frames + thread d'UI unique (B-19, B-20)
 
-> **Fait** : `core/scheduler.py` (`FrameScheduler`) ; le runner n'a plus de thread de callbacks ni de `_building` : les callbacks (postés par le thread de lecture du pont) puis un seul build par frame s'exécutent sur le thread « pyflutter-ui » ; `pf.run_on_ui(fn)` est public ; hot reload / hot restart sont postés sur ce thread. Écarts avec la spécification ci-dessous : `flush_updates()` s'appelle `FrameScheduler.run_pending()`, et `tree_lock` (RLock) reste en filet de sécurité autour du build. Tests : `tests/test_scheduler.py`. La spécification d'origine suit.
+> **Fait** : `core/scheduler.py` (`FrameScheduler`) ; le runner n'a plus de thread de callbacks ni de `_building` : les callbacks (postés par le thread de lecture du pont) puis un seul build par frame s'exécutent sur le thread « afik-ui » ; `pf.run_on_ui(fn)` est public ; hot reload / hot restart sont postés sur ce thread. Écarts avec la spécification ci-dessous : `flush_updates()` s'appelle `FrameScheduler.run_pending()`, et `tree_lock` (RLock) reste en filet de sécurité autour du build. Tests : `tests/test_scheduler.py`. La spécification d'origine suit.
 
 **Problème**
 - `pf.update()` → `runner.push_update()` reconstruit **et envoie** l'arbre **tout de suite, sur le thread appelant** (`cli/runner.py`, `push_update` / `_render_and_send`). 1 000 écritures de `Signal` = 1 000 rebuilds complets.
@@ -230,7 +230,7 @@ Le même schéma vaut pour `local_auth` (`LocalAuthentication().canCheckBiometri
 **Fichiers** : `cli/runner.py` (principal), `app.py` (`update`), éventuellement `core/state.py` (aucun changement attendu).
 
 **Algorithme**
-1. Ajouter à `PyFlutterRunner` : `self._dirty = threading.Event()`, `self._ui_queue = queue.Queue()` (tâches à exécuter sur le thread d'UI), `self._ui_thread`.
+1. Ajouter à `AfikRunner` : `self._dirty = threading.Event()`, `self._ui_queue = queue.Queue()` (tâches à exécuter sur le thread d'UI), `self._ui_thread`.
 2. `push_update()` devient `self._dirty.set()` (+ retour immédiat).
 3. Boucle du thread d'UI :
    ```
@@ -240,7 +240,7 @@ Le même schéma vaut pour `local_auth` (`LocalAuthentication().canCheckBiometri
        si dirty : dormir ~1/60 s (coalescence), puis dirty.clear(), puis _render_and_send()
    ```
 4. `_callback_worker` actuel est **remplacé** par ce thread : `_event_loop` met `("callback", event)` dans la file au lieu de `self._callback_queue`.
-5. Fournir `run_on_ui(fn)` (public, exposé dans `pyflutter/__init__.py`) pour les threads utilisateur qui doivent modifier l'état : `runner._ui_queue.put(fn); runner._dirty.set()`.
+5. Fournir `run_on_ui(fn)` (public, exposé dans `afik/__init__.py`) pour les threads utilisateur qui doivent modifier l'état : `runner._ui_queue.put(fn); runner._dirty.set()`.
 6. Fournir `flush_updates()` pour les tests et pour `hot_reload()` / `hot_restart()` : rend **synchrone** (`_render_and_send(force_full=True)` appelé depuis ces méthodes reste valable car elles tiennent déjà `tree_lock`).
 
 Code de départ (testé isolément : 1 000 demandes → 1 rendu) :
@@ -251,7 +251,7 @@ class _FrameScheduler:
         self._dirty = threading.Event()
         self._tasks: "queue.Queue[Callable[[], None]]" = queue.Queue()
         self._stop = False
-        self._thread = threading.Thread(target=self._loop, name="pyflutter-ui", daemon=True)
+        self._thread = threading.Thread(target=self._loop, name="afik-ui", daemon=True)
 
     def start(self): self._thread.start()
     def request_frame(self): self._dirty.set()
@@ -278,10 +278,10 @@ class _FrameScheduler:
 **Tests à écrire**
 - 1 000 appels `runner.push_update()` rapprochés → `session.send_tree` appelé **au plus 2 fois** (faux `session`).
 - Un callback qui fait `pf.update()` trois fois → un seul envoi.
-- `run_on_ui` exécute la fonction sur le thread nommé `pyflutter-ui`.
+- `run_on_ui` exécute la fonction sur le thread nommé `afik-ui`.
 - Test de non-régression : les 156 tests existants + `audit/repro_state.py` (section C).
 
-**Critère de fin** : plus aucun build exécuté hors du thread d'UI (ajouter un `assert threading.current_thread().name == "pyflutter-ui"` dans `_render_and_send` sous un flag debug).
+**Critère de fin** : plus aucun build exécuté hors du thread d'UI (ajouter un `assert threading.current_thread().name == "afik-ui"` dans `_render_and_send` sous un flag debug).
 
 **Pièges** : `hot_reload` charge le module sur le thread du clavier : il doit **poster** le rechargement sur le thread d'UI. `call_plugin(wait=True)` appelé **depuis** le thread d'UI bloque l'UI : acceptable pour de courts appels, mais voir T-08 (timeouts) ; la lecture des réponses reste sur `_event_thread`, donc pas de blocage mutuel.
 
@@ -313,7 +313,7 @@ def begin_frame() -> None:
     _frame_id += 1
 
 def sweep_states() -> None:
-    from pyflutter.core.navigation import Navigator
+    from afik.core.navigation import Navigator
     live_pages = {id(p) for p in Navigator._stack}
     for key, state in list(_state_registry.items()):
         if state._last_seen_frame == _frame_id:
@@ -462,13 +462,13 @@ def _same(a, b) -> bool:
 
 ## T-07 — ✅ FAIT — Arguments structurés côté Dart (B-39)
 
-> Implémenté autrement que le plan ci-dessous : les shims font `implements PyFlutterPlugin`, or une méthode par défaut n'est **pas héritée** avec `implements`. `plugin_registry.dart` ajoute donc l'interface optionnelle `StructuredPyFlutterPlugin.handleRawCall` (le registre l'appelle si le plugin l'implémente) et `pluginArgumentText` (JSON pour tout ce qui n'est pas une chaîne). Test Dart : `dart_runtime/test/plugin_registry_test.dart` (`flutter test`, passé avec le SDK 3.47.6).
+> Implémenté autrement que le plan ci-dessous : les shims font `implements AfikPlugin`, or une méthode par défaut n'est **pas héritée** avec `implements`. `plugin_registry.dart` ajoute donc l'interface optionnelle `StructuredAfikPlugin.handleRawCall` (le registre l'appelle si le plugin l'implémente) et `pluginArgumentText` (JSON pour tout ce qui n'est pas une chaîne). Test Dart : `dart_runtime/test/plugin_registry_test.dart` (`flutter test`, passé avec le SDK 3.47.6).
 
 **Problème** : `dart_runtime/lib/plugins/plugin_registry.dart::dispatch` convertit **tous** les arguments en `String` (`v?.toString()`). Une liste ou un dict devient `"{a: 1}"` (syntaxe Dart, pas du JSON) ; `hive.put` avec une valeur structurée est corrompue.
 
 **Logique non cassante** : ajouter une seconde méthode qui reçoit les arguments bruts ; par défaut elle appelle l'ancienne.
 ```dart
-abstract class PyFlutterPlugin {
+abstract class AfikPlugin {
   Future<dynamic> handleMethodCall(String method, Map<String, String> args);
 
   /// Override this when the plugin needs structured (list/map/number/bool) arguments.
@@ -489,7 +489,7 @@ Notez le choix : une valeur non-chaîne devient du **JSON** (`jsonEncode`), pas 
 
 ## T-08 — ✅ FAIT — Timeouts par plugin et mocks explicites (B-41, B-37)
 
-> Implémenté dans `plugins/manager.py` : `PLUGIN_TIMEOUTS` / `timeout_for` (entrée `(plugin, "*")` pour tout un plugin ; un `timeout=` explicite l'emporte ; les wrappers n'ont plus de valeurs en dur sauf `audioplayers`/`webview_flutter` qui laissent le choix à l'appelant), `cancel_pending_calls` (appelée par `runner.quit()` et à la fin de la lecture du pont), `OFFLINE_REFUSED` + `PYFLUTTER_ALLOW_INSECURE_MOCKS=1`, avertissement `[offline]` unique par plugin. Tests : `tests/test_plugin_timeouts_offline.py`. Le refus offline s'applique à **toutes** les méthodes de `local_auth`, `permission_handler` et `flutter_secure_storage` (pas seulement `authenticate`), car `isDeviceSupported → True` ou `checkPermission → granted` mentent aussi.
+> Implémenté dans `plugins/manager.py` : `PLUGIN_TIMEOUTS` / `timeout_for` (entrée `(plugin, "*")` pour tout un plugin ; un `timeout=` explicite l'emporte ; les wrappers n'ont plus de valeurs en dur sauf `audioplayers`/`webview_flutter` qui laissent le choix à l'appelant), `cancel_pending_calls` (appelée par `runner.quit()` et à la fin de la lecture du pont), `OFFLINE_REFUSED` + `AFIK_ALLOW_INSECURE_MOCKS=1`, avertissement `[offline]` unique par plugin. Tests : `tests/test_plugin_timeouts_offline.py`. Le refus offline s'applique à **toutes** les méthodes de `local_auth`, `permission_handler` et `flutter_secure_storage` (pas seulement `authenticate`), car `isDeviceSupported → True` ou `checkPermission → granted` mentent aussi.
 
 **Problème**
 - Le timeout par défaut de 3 s (5 s pour `MethodChannel`) est trop court pour les appels **interactifs** : sélecteur de fichier, caméra, authentification, demande de permission, partage.
@@ -513,8 +513,8 @@ Annulation : si `runner.quit()` est appelé pendant l'attente, réveiller tous l
 **Solution mocks explicites**
 1. Le fallback n'est actif que si `get_active_runner()` est `None` (c'est déjà le cas).
 2. Le **premier** appel d'un plugin simulé journalise un avertissement unique : `logger.warning("[offline] {} is simulated (no Flutter runtime connected)", plugin)`.
-3. Les plugins « sécurité » (`local_auth.authenticate`, `permission_handler.requestPermission/checkPermission`, `flutter_secure_storage.*`) **refusent** par défaut hors runtime : `PluginError("local_auth.authenticate unavailable offline")`, sauf si `PYFLUTTER_ALLOW_INSECURE_MOCKS=1`.
-4. Les tests existants qui attendent « granted »/« authenticated » (`tests/test_second_wave_plugins.py`) définissent cette variable dans un `setUpModule` : `os.environ["PYFLUTTER_ALLOW_INSECURE_MOCKS"] = "1"`.
+3. Les plugins « sécurité » (`local_auth.authenticate`, `permission_handler.requestPermission/checkPermission`, `flutter_secure_storage.*`) **refusent** par défaut hors runtime : `PluginError("local_auth.authenticate unavailable offline")`, sauf si `AFIK_ALLOW_INSECURE_MOCKS=1`.
+4. Les tests existants qui attendent « granted »/« authenticated » (`tests/test_second_wave_plugins.py`) définissent cette variable dans un `setUpModule` : `os.environ["AFIK_ALLOW_INSECURE_MOCKS"] = "1"`.
 
 **Tests** : table `PLUGIN_TIMEOUTS` appliquée (patch de `threading.Event.wait` pour lire la valeur) ; refus hors runtime sans la variable ; avertissement émis une seule fois ; réveil des appels en attente à la fermeture.
 
@@ -553,7 +553,7 @@ Annulation : si `runner.quit()` est appelé pendant l'attente, réveiller tous l
    `EventChannel.listen` enregistre `_event_listeners[self.name] = self` **avant** l'appel `call_plugin("__event_channel__", "listen", …)` et mémorise `on_error`.
 3. **Dart** : nouveau `lib/plugins/event_channel_shim.dart` enregistré sous le nom `__event_channel__` dans `BridgeConnectionScreen.initState` (comme `OverlayShim`, il reçoit une fonction `sendFrame(int type, Uint8List payload)`).
    ```dart
-   class EventChannelShim implements PyFlutterPlugin {
+   class EventChannelShim implements AfikPlugin {
      final void Function(int, Uint8List) sendFrame;
      final Map<String, StreamSubscription> _subs = {};
      EventChannelShim(this.sendFrame);
@@ -598,7 +598,7 @@ Annulation : si `runner.quit()` est appelé pendant l'attente, réveiller tous l
 
 ## T-10 — ✅ FAIT — Suppression de prop vs valeur vide, et rejet de patch (B-25)
 
-> Implémenté : `diff_snapshots` émet `remove` ; `main.dart::_handleTreePatch` conserve les valeurs vides, applique `remove`, et sur un id inconnu (ou un patch sans arbre) envoie le callback de resync `__pyflutter_resync__` — le mécanisme de B-08 est réutilisé tel quel, **sans nouvelle trame `0x0A` ni changement Rust** (le relais laisse déjà passer les événements de callback). Tests : `tests/test_patch_protocol.py` ; `flutter analyze` inchangé.
+> Implémenté : `diff_snapshots` émet `remove` ; `main.dart::_handleTreePatch` conserve les valeurs vides, applique `remove`, et sur un id inconnu (ou un patch sans arbre) envoie le callback de resync `__afik_resync__` — le mécanisme de B-08 est réutilisé tel quel, **sans nouvelle trame `0x0A` ni changement Rust** (le relais laisse déjà passer les événements de callback). Tests : `tests/test_patch_protocol.py` ; `flutter analyze` inchangé.
 
 **Problème 1** : `core/render.py::diff_snapshots` encode « prop supprimée » comme `""`. Une prop dont la nouvelle valeur est réellement vide (`TextField.value` effacé) est donc **confondue** avec une suppression, et Dart (`_handleTreePatch`) retire la clé dans les deux cas.
 **Problème 2** : un patch dont l'`id` est inconnu de Dart est ignoré **sans prévenir** Python (c'est la cause racine de B-07, corrigée seulement pour le cas des clés).
@@ -627,8 +627,8 @@ if changed or removed or cb_changed:
 ## T-11 — ✅ FAIT — Contrat de props partagé + validation (B-24, B-57, B-58)
 
 > **Fait.** *B-58* : Tooltip, CircularProgressIndicator, Positioned corrigés côté Dart, plus les écarts révélés par le contrôle : `BottomNavigationBar.background_color`, `DefaultTabController.initial_index`, `RichText.max_lines/overflow`, `DropdownButton.border_radius`, `CrossAxisAlignment.baseline` (que Python proposait mais que Dart ignorait), `setToolTip()` générique sur tout widget, `setBackgroundColor()` sur `Text`.
-> *B-57* : le contrat est `py_framework/pyflutter/contract/widgets.json` (dans le paquet, donc livré avec pip ; le `ir_spec/` racine ne contient que le `.proto`). `tools/gen_contract.py` en produit une première version à partir de l'AST (jamais écrasé sans `--force`) ; **le fichier est ensuite maintenu à la main** (enums, notes). `tools/check_contract.py` compare Python ↔ contrat ↔ Dart (regex sur les `case` de `buildFromNode`, les `Py*Widget`, les shims du catalogue) ; les écarts connus sont marqués `"dart": false` avec une note (alias `text`/`name`/`color`, props du Chewie configurées par RPC). Le test `tests/test_props_contract.py` lance ce contrôle. Limite : le générateur AST rate des props posées via des chemins indirects (`Text.text`, `ListTile.dense`…) ; la validation à l'exécution, activée dans toute la suite de tests, comble ces trous.
-> *B-24* : `core/contract.py` + `Props` (le dict `props` de chaque widget vérifie chaque affectation) ; callables / listes / dicts / tuples / sets → `TypeError` ; `Enum` → sa valeur ; prop inconnue ou valeur d'enum invalide → `ValueError` si `PYFLUTTER_STRICT_PROPS=1` (positionné par `tests/conftest.py`), sinon un avertissement unique par (widget, prop) ; `raw_props=` et les types hors contrat ne sont jamais vérifiés. **À faire plus tard** : étendre les enums aux autres props (une trentaine de widgets), puis ajouter `check_contract.py` à la CI (T-18).
+> *B-57* : le contrat est `py_framework/afik/contract/widgets.json` (dans le paquet, donc livré avec pip ; le `ir_spec/` racine ne contient que le `.proto`). `tools/gen_contract.py` en produit une première version à partir de l'AST (jamais écrasé sans `--force`) ; **le fichier est ensuite maintenu à la main** (enums, notes). `tools/check_contract.py` compare Python ↔ contrat ↔ Dart (regex sur les `case` de `buildFromNode`, les `Py*Widget`, les shims du catalogue) ; les écarts connus sont marqués `"dart": false` avec une note (alias `text`/`name`/`color`, props du Chewie configurées par RPC). Le test `tests/test_props_contract.py` lance ce contrôle. Limite : le générateur AST rate des props posées via des chemins indirects (`Text.text`, `ListTile.dense`…) ; la validation à l'exécution, activée dans toute la suite de tests, comble ces trous.
+> *B-24* : `core/contract.py` + `Props` (le dict `props` de chaque widget vérifie chaque affectation) ; callables / listes / dicts / tuples / sets → `TypeError` ; `Enum` → sa valeur ; prop inconnue ou valeur d'enum invalide → `ValueError` si `AFIK_STRICT_PROPS=1` (positionné par `tests/conftest.py`), sinon un avertissement unique par (widget, prop) ; `raw_props=` et les types hors contrat ne sont jamais vérifiés. **À faire plus tard** : étendre les enums aux autres props (une trentaine de widgets), puis ajouter `check_contract.py` à la CI (T-18).
 
 **Problème** : le protocole est « tout en chaînes » ; rien ne vérifie que Python et Dart parlent des mêmes noms de props. Résultat : des paramètres Python **acceptés mais ignorés** par Dart (confirmés dans `widget_builder.dart`) :
 
@@ -690,7 +690,7 @@ def _populate_props(self, props):
             v = v.value
         ...
 ```
-En mode strict (`PYFLUTTER_STRICT_PROPS=1`, activé dans les tests), vérifier aussi que `k` est dans le contrat du `widget_type`, et que les enums ont une valeur autorisée. Hors mode strict : simple `logger.warning` une fois par (widget, prop).
+En mode strict (`AFIK_STRICT_PROPS=1`, activé dans les tests), vérifier aussi que `k` est dans le contrat du `widget_type`, et que les enums ont une valeur autorisée. Hors mode strict : simple `logger.warning` une fois par (widget, prop).
 
 **Tests** : le contrat se charge ; un widget avec une prop inconnue lève en mode strict ; `Text(color=lambda: 1)` lève `TypeError`.
 
@@ -705,7 +705,7 @@ En mode strict (`PYFLUTTER_STRICT_PROPS=1`, activé dans les tests), vérifier a
 **À faire, dans cet ordre (un commit chacun)**
 1. **Garde de type** : ne retenir un candidat que s'il est une instance de `Widget` (`isinstance(x, Widget)`). Pour `app_bar`, accepter aussi `str` (c'est déjà géré plus bas).
 2. **Dépréciation** : `root`, `body`, `column`, `row`, `appbar`, `app_bar_widget`, `bottom_bar`, `fab` → avertissement unique « utilisez `self.layout` / `self.set_central_widget()` ». Vérifier d'abord l'usage dans les exemples : `grep -rn "self\.\(root\|body\|column\|row\|fab\|bottom_bar\) =" examples/ py_framework/`.
-3. **Collisions de noms (`text`, `value`, `count`, `clear`…)** : vérifier qu'aucun code du framework n'appelle ces méthodes sur un `Component` (`grep -rn "\.count()\|\.text()\|\.value()" py_framework/pyflutter`). S'il n'y en a pas, le « shadowing » par `self.count = 0` est **inoffensif** (l'attribut d'instance masque la méthode) : documenter, ne rien changer. S'il y en a, remplacer ces appels par `children`/`props` directs.
+3. **Collisions de noms (`text`, `value`, `count`, `clear`…)** : vérifier qu'aucun code du framework n'appelle ces méthodes sur un `Component` (`grep -rn "\.count()\|\.text()\|\.value()" py_framework/afik`). S'il n'y en a pas, le « shadowing » par `self.count = 0` est **inoffensif** (l'attribut d'instance masque la méthode) : documenter, ne rien changer. S'il y en a, remplacer ces appels par `children`/`props` directs.
 4. **Erreur claire** : quand `build()` n'est pas surchargé et qu'aucun layout n'existe, le message actuel (`NotImplementedError`) est bon ; ajouter le nom de la classe et un exemple de 3 lignes.
 
 **Test** : un `Component` avec `self.body = "texte"` et `self.layout = Column()` → l'arbre utilise `layout` ; `self.body` n'est plus pris.
@@ -725,7 +725,7 @@ Un commit par point.
 `duration < 100` → secondes sinon millisecondes : `duration=120` donne 120 ms. Règle : `Duration` ou `int/float` = **secondes** ; ajouter `duration_ms: Optional[int] = None` pour les millisecondes ; valeur par défaut `None` (créer `Duration(seconds=4)` dans la fonction, pas dans la signature).
 
 **B-34 — erreurs de démarrage** (`cli/runner.py`)
-- `PyFlutterRunner.__init__` appelle `find_bridge_binary` et lève `FileNotFoundError` (trace brute). Déplacer l'appel dans `start()`, entourer d'un `try/except FileNotFoundError` qui affiche : « pont introuvable : lancez `cargo build --manifest-path rust_bridge/Cargo.toml` » puis `sys.exit(1)`.
+- `AfikRunner.__init__` appelle `find_bridge_binary` et lève `FileNotFoundError` (trace brute). Déplacer l'appel dans `start()`, entourer d'un `try/except FileNotFoundError` qui affiche : « pont introuvable : lancez `cargo build --manifest-path rust_bridge/Cargo.toml` » puis `sys.exit(1)`.
 - `_build_and_tag_tree` écrit `debug_banner` dans `tree.props` **avant** résolution : si `build()` renvoie un `Component`, la prop est perdue. Résoudre d'abord : `tree = resolve_tree(tree)` puis poser la prop (`resolve_tree` est idempotent sur un arbre concret).
 
 **B-35 — gabarit de projet** (`cli/creator.py`)
@@ -737,7 +737,7 @@ Après `runner.start()` ajouter `return`/`sys.exit(0)`. Test : `main(["run", …
 
 **B-59 — hot reload qui ne recharge que le module d'entrée** (`cli/runner.py`)
 Algorithme :
-1. Avant `load_app_from_file`, supprimer de `sys.modules` tous les modules dont `__file__` est **sous le dossier du projet** (`entrypoint.parent`), hors `site-packages` et hors `pyflutter.*` ; appeler `importlib.invalidate_caches()`.
+1. Avant `load_app_from_file`, supprimer de `sys.modules` tous les modules dont `__file__` est **sous le dossier du projet** (`entrypoint.parent`), hors `site-packages` et hors `afik.*` ; appeler `importlib.invalidate_caches()`.
 2. Surveillance automatique (option `--watch`) : thread qui interroge `os.stat().st_mtime` des `*.py` du projet toutes les 500 ms et poste `hot_reload` sur le thread d'UI (T-02).
 ```python
 def _purge_project_modules(project_dir: Path) -> None:
@@ -753,27 +753,27 @@ def _purge_project_modules(project_dir: Path) -> None:
 
 ## T-14 — ✅ FAIT — Configuration par projet, dépendances Flutter, permissions (B-31, B-32)
 
-> **Fait** : `core/runtime_project.py` (`ProjectRuntime` : copie dans `<projet>/.pyflutter/runtime/`, rafraîchie quand le gabarit change, `build/` et `pubspec.lock` conservés), `pyflutter add/remove` d'un paquet sans shim passe par `dependencies.flutter` de `pyflutter.yaml` avec la **version résolue** (lue dans `pubspec.lock`), blocs générés `pyflutter:permissions` / `pyflutter:queries` dans le manifeste et le plist (une permission retirée disparaît), gabarit `dart_runtime/` redevenu neutre (test de garde), `plugins:` et `dependencies.flutter` édités en texte (commentaires conservés). Écarts avec la spécification ci-dessous : le fichier d'état est `.pyflutter-template.json` (empreinte + liste des fichiers) ; les réglages Android des plugins (activité, thème, minSdk, desugaring) étaient déjà réversibles depuis T-20. **Limite restante** : `PyFlutterConfig.save()` (utilisé à la création d'un projet ou pour d'autres clés) réécrit encore le fichier avec PyYAML ; seuls `plugins:` et `dependencies.flutter` sont édités en texte. La spécification d'origine suit.
+> **Fait** : `core/runtime_project.py` (`ProjectRuntime` : copie dans `<projet>/.afik/runtime/`, rafraîchie quand le gabarit change, `build/` et `pubspec.lock` conservés), `afik add/remove` d'un paquet sans shim passe par `dependencies.flutter` de `afik.yaml` avec la **version résolue** (lue dans `pubspec.lock`), blocs générés `afik:permissions` / `afik:queries` dans le manifeste et le plist (une permission retirée disparaît), gabarit `dart_runtime/` redevenu neutre (test de garde), `plugins:` et `dependencies.flutter` édités en texte (commentaires conservés). Écarts avec la spécification ci-dessous : le fichier d'état est `.afik-template.json` (empreinte + liste des fichiers) ; les réglages Android des plugins (activité, thème, minSdk, desugaring) étaient déjà réversibles depuis T-20. **Limite restante** : `AfikConfig.save()` (utilisé à la création d'un projet ou pour d'autres clés) réécrit encore le fichier avec PyYAML ; seuls `plugins:` et `dependencies.flutter` sont édités en texte. La spécification d'origine suit.
 
 **Problèmes**
-1. `PyFlutterConfig.save()` (`core/config.py`) réécrit le fichier à partir de 4 champs : commentaires et clés inconnues **perdus** à chaque `pyflutter add`.
+1. `AfikConfig.save()` (`core/config.py`) réécrit le fichier à partir de 4 champs : commentaires et clés inconnues **perdus** à chaque `afik add`.
 2. `add_flutter_dependency` écrit la version `any` alors que `flutter pub add` a résolu une vraie contrainte.
-3. `add_flutter_package` modifie le `pubspec.yaml` du **dépôt framework** (partagé) ; les `dependencies.flutter` du `pyflutter.yaml` d'un projet ne sont **jamais appliquées**.
+3. `add_flutter_package` modifie le `pubspec.yaml` du **dépôt framework** (partagé) ; les `dependencies.flutter` du `afik.yaml` d'un projet ne sont **jamais appliquées**.
 4. `manifest_sync` modifie les manifestes du **dépôt framework** et n'enlève jamais une permission retirée du yaml.
 
 **Solution — étapes dans cet ordre**
-1. **Préserver le yaml** : `save()` part de `copy.deepcopy(self.raw_config)`, ne remplace que `name/description/version/pyflutter.*/dependencies.flutter/permissions`, puis `yaml.dump(..., sort_keys=False)`. (Pour garder aussi les commentaires, utiliser `ruamel.yaml` en mode aller-retour : décision à prendre, dépendance supplémentaire.)
+1. **Préserver le yaml** : `save()` part de `copy.deepcopy(self.raw_config)`, ne remplace que `name/description/version/afik.*/dependencies.flutter/permissions`, puis `yaml.dump(..., sort_keys=False)`. (Pour garder aussi les commentaires, utiliser `ruamel.yaml` en mode aller-retour : décision à prendre, dépendance supplémentaire.)
 2. **Vraie version** : après `flutter pub add`, lire `dart_runtime/pubspec.yaml` (`yaml.safe_load`) et stocker `dependencies[package]` au lieu de `"any"`.
-3. **Copie de travail par projet** : `<projet>/.pyflutter/runtime/`.
-   - `ensure_runtime(project)` : copie `dart_runtime/` (sans `build/`, `.dart_tool/`) si le hash du gabarit a changé ; écrit le hash dans `.pyflutter/state.json`.
-   - Génère `pubspec.yaml` = dépendances du gabarit **+** `dependencies.flutter` du `pyflutter.yaml` ; si le hash du pubspec a changé → `flutter pub get`.
+3. **Copie de travail par projet** : `<projet>/.afik/runtime/`.
+   - `ensure_runtime(project)` : copie `dart_runtime/` (sans `build/`, `.dart_tool/`) si le hash du gabarit a changé ; écrit le hash dans `.afik/state.json`.
+   - Génère `pubspec.yaml` = dépendances du gabarit **+** `dependencies.flutter` du `afik.yaml` ; si le hash du pubspec a changé → `flutter pub get`.
    - `sync_platform_metadata` s'exécute sur **cette copie**.
-   - `PyFlutterRunner`/`PyFlutterBuilder` utilisent `runtime_dir` (cette copie) au lieu de `workspace_root/"dart_runtime"`.
+   - `AfikRunner`/`AfikBuilder` utilisent `runtime_dir` (cette copie) au lieu de `workspace_root/"dart_runtime"`.
 4. **Permissions retirables** : encadrer le contenu géré par des marqueurs.
    ```xml
-   <!-- pyflutter:begin -->
+   <!-- afik:begin -->
        <uses-permission android:name="android.permission.INTERNET"/>
-   <!-- pyflutter:end -->
+   <!-- afik:end -->
    ```
    À chaque synchronisation : supprimer le bloc existant (regex avec `re.DOTALL`), puis réinsérer le bloc complet après `<manifest …>`. Même principe dans `Info.plist` (les commentaires XML sont valides dans un plist). Ne jamais toucher aux lignes hors bloc.
 
@@ -849,7 +849,7 @@ Plan :
        if (dart.library.io) 'transport_io.dart'
        if (dart.library.js_interop) 'transport_web.dart';
    ```
-   `transport_io.dart` choisit TCP ou FFI selon `PYFLUTTER_STANDALONE` ; `transport_web.dart` utilise un WebSocket.
+   `transport_io.dart` choisit TCP ou FFI selon `AFIK_STANDALONE` ; `transport_web.dart` utilise un WebSocket.
 4. Côté pont : le relais Rust ne parle pas WebSocket. Deux options : (a) ajouter `tungstenite` au relais (dépendance à mesurer, voir partie C), (b) serveur WebSocket en Python (`asyncio`) uniquement pour le mode dev Web. **Décision à prendre avant de commencer.**
 5. Étape 1 seule (séparation sans WebSocket) suffit déjà à rendre le projet **compilable** pour Web avec un écran « transport indisponible ».
 
@@ -863,7 +863,7 @@ Plan :
 1. **Navigation correcte (rapide)**
    - `hot_restart()` (`cli/runner.py`) appelle `Navigator.reset()`.
    - Déplacer les effets de bord de `MaterialApp.__init__` (`Navigator.set_routes`, `set_initial_page`, `widgets.py` ~l.2210-2219) vers une méthode `_sync_navigator()` appelée par `resolve_tree` quand il rencontre un `MaterialApp`.
-   - **Bouton retour** — Dart : envelopper le `home` dans `PopScope(canPop: false, onPopInvokedWithResult: (didPop, _) { if (!didPop) sendEvent('__pyflutter_back__', {}); })`. Python : id réservé `__pyflutter_back__` traité dans le thread d'UI : `if Navigator.can_pop(): Navigator.pop() else: call_plugin("system", "exitApp", wait=False)` ; shim Dart `system` → `SystemNavigator.pop()`. (Vérifier l'API `PopScope` dans votre version de Flutter ≥ 3.12.)
+   - **Bouton retour** — Dart : envelopper le `home` dans `PopScope(canPop: false, onPopInvokedWithResult: (didPop, _) { if (!didPop) sendEvent('__afik_back__', {}); })`. Python : id réservé `__afik_back__` traité dans le thread d'UI : `if Navigator.can_pop(): Navigator.pop() else: call_plugin("system", "exitApp", wait=False)` ; shim Dart `system` → `SystemNavigator.pop()`. (Vérifier l'API `PopScope` dans votre version de Flutter ≥ 3.12.)
 2. **`AppContext`** : un objet regroupant `callbacks`, `pinned_callbacks`, `states`, `navigator`, `runner`, `storage_cache`. Une `ContextVar` `current_context()`. Les fonctions de module deviennent de minces délégués (`def invoke_callback(...): return current_context().callbacks.invoke(...)`), ce qui **ne casse aucun import existant**.
 3. **Tests** : fixture pytest qui crée un `AppContext` neuf par test ; supprimer ensuite les `clear_*()` manuels des `setUp`.
 
@@ -873,29 +873,29 @@ Plan :
 
 ## T-17 — Distribution pip réelle (B-53, B-54)
 
-**Problème** : `pip install` n'installe ni `dart_runtime/`, ni `rust_bridge/`, ni le binaire du pont. `find_workspace_root()` retombe sur `Path(__file__).parents[3]` (le parent de `site-packages`). Les noms divergent : `pyflutter` (pyproject) / `Flarix` (README).
+**Problème** : `pip install` n'installe ni `dart_runtime/`, ni `rust_bridge/`, ni le binaire du pont. `find_workspace_root()` retombe sur `Path(__file__).parents[3]` (le parent de `site-packages`). Les noms divergent : `afik` (pyproject) / `Afik` (README).
 
-**Décision de nommage d'abord** : un seul nom pour le paquet PyPI, le module Python et la CLI. Le renommage touche `pyproject.toml`, `README.md`, les imports (`import pyflutter as pf` reste possible si le module garde son nom).
+**Décision de nommage d'abord** : un seul nom pour le paquet PyPI, le module Python et la CLI. Le renommage touche `pyproject.toml`, `README.md`, les imports (`import afik as pf` reste possible si le module garde son nom).
 
 **Architecture cible**
-- Le paquet contient : `pyflutter/_bin/<plateforme>/pyflutter-bridge[.exe]` et `pyflutter/_runtime/dart_runtime.zip` (le gabarit Dart).
-- Un `RuntimeLocator` remplace `find_workspace_root` : ordre de recherche → variable `PYFLUTTER_HOME` → dépôt de développement (présence de `rust_bridge/Cargo.toml`) → données du paquet (`importlib.resources`) décompressées dans `~/.pyflutter/runtime/<version>/`.
+- Le paquet contient : `afik/_bin/<plateforme>/afik-bridge[.exe]` et `afik/_runtime/dart_runtime.zip` (le gabarit Dart).
+- Un `RuntimeLocator` remplace `find_workspace_root` : ordre de recherche → variable `AFIK_HOME` → dépôt de développement (présence de `rust_bridge/Cargo.toml`) → données du paquet (`importlib.resources`) décompressées dans `~/.afik/runtime/<version>/`.
 - Roues **par plateforme** (le binaire dépend de l'OS) : `cibuildwheel` ou `maturin` (`bindings = "bin"`). À valider par un spike d'une heure avant de s'engager : (a) `setuptools` + binaire copié dans `package-data` + roue marquée non-pure (`Root-Is-Purelib: false`), (b) `maturin`. Le choix (b) prépare aussi l'embarquement (partie C) car PyO3 se construit avec maturin.
-- `pyflutter doctor` : vérifie `flutter`, `cargo`, `adb`, le binaire du pont, la version du protocole.
+- `afik doctor` : vérifie `flutter`, `cargo`, `adb`, le binaire du pont, la version du protocole.
 
 **Cohérence des métadonnées (B-54)** — liste à cocher :
 - [ ] README : « Python 3.9 » → `>=3.10` (ou abaisser `requires-python` si on veut 3.9) ;
 - [ ] `requirements.txt` vs `pyproject.toml` : `pydantic` obligatoire d'un côté, optionnel de l'autre → aligner ;
 - [ ] ajouter le fichier `LICENSE` (le README et le badge y renvoient) ;
 - [ ] commande de test du README : `python -m unittest discover -s tests` → `python -m pytest -q` (à vérifier) ;
-- [ ] régénération du protobuf : documenter `python -m grpc_tools.protoc -I ir_spec --python_out=py_framework/pyflutter/generated ir_spec/widget.proto` et **épingler** `protobuf` à la version minimale indiquée en tête de `widget_pb2.py` (`head -12`) ;
-- [ ] retirer du README les chemins `d:/Projets/PYFLUTTER` et le `git clone flarix-ui/flarix`.
+- [ ] régénération du protobuf : documenter `python -m grpc_tools.protoc -I ir_spec --python_out=py_framework/afik/generated ir_spec/widget.proto` et **épingler** `protobuf` à la version minimale indiquée en tête de `widget_pb2.py` (`head -12`) ;
+- [ ] retirer du README les chemins `d:/Projets/AFIK` et le `git clone afik-ui/afik`.
 
 ---
 
 ## T-18 — ✅ FAIT — CI et qualité (B-55)
 
-> **Fait.** `ruff` (E, F, I ; `E501` ignoré) passe sur tout `py_framework` ; `cargo clippy --all-targets -- -D warnings` passe déjà sans modification ; `flutter analyze` ne signale plus rien (migration de `Radio`/`Switch`, Flutter ≥ 3.32 exigé par `pubspec.yaml`) ; la suite passe sur Python 3.10, 3.11, 3.12 et 3.13 (vérifié ici) et avec les plus anciennes dépendances déclarées (`protobuf 4.21.12`, `loguru 0.7.0`, `pyyaml 6.0`). `.github/workflows/ci.yml` : jobs `python` (3.10–3.13 Linux + 3.12 Windows/macOS), `minimum-versions`, `contract`, `rust` (clippy, tests, tests du relais avec `PYFLUTTER_REQUIRE_BRIDGE=1`), `dart` (analyze + test), `catalog` (`--together` à chaque fois, chaque plugin séparément chaque semaine). **Non vérifié** : l'exécution du workflow lui-même et la suite sous Windows/macOS (aucun des deux n'est disponible ici) ; le premier passage sur GitHub peut révéler des écarts de plateforme.
+> **Fait.** `ruff` (E, F, I ; `E501` ignoré) passe sur tout `py_framework` ; `cargo clippy --all-targets -- -D warnings` passe déjà sans modification ; `flutter analyze` ne signale plus rien (migration de `Radio`/`Switch`, Flutter ≥ 3.32 exigé par `pubspec.yaml`) ; la suite passe sur Python 3.10, 3.11, 3.12 et 3.13 (vérifié ici) et avec les plus anciennes dépendances déclarées (`protobuf 4.21.12`, `loguru 0.7.0`, `pyyaml 6.0`). `.github/workflows/ci.yml` : jobs `python` (3.10–3.13 Linux + 3.12 Windows/macOS), `minimum-versions`, `contract`, `rust` (clippy, tests, tests du relais avec `AFIK_REQUIRE_BRIDGE=1`), `dart` (analyze + test), `catalog` (`--together` à chaque fois, chaque plugin séparément chaque semaine). **Non vérifié** : l'exécution du workflow lui-même et la suite sous Windows/macOS (aucun des deux n'est disponible ici) ; le premier passage sur GitHub peut révéler des écarts de plateforme.
 
 Créer `.github/workflows/ci.yml` (texte complet, à adapter aux versions) :
 ```yaml
@@ -942,23 +942,23 @@ Fichiers qui disent le contraire de la réalité :
 - `dart_runtime/SETUP.md` : prétend que les dossiers plateforme et la compilation manquent ; décrit `bridgePort` en dur (corrigé).
 - `dart_runtime/lib/ir_codec.dart` (en-tête) : « NOT compiled/run ».
 - `ir_spec/widget.proto` : « no diffing in the POC ».
-- `README.md` : « production-ready », « 137/137 tests », « 1-to-1 avec pub.dev », « 100 % des plugins », chemins locaux, `pip install flarix`, Web/iOS comme cibles livrées.
+- `README.md` : « production-ready », « 137/137 tests », « 1-to-1 avec pub.dev », « 100 % des plugins », chemins locaux, `pip install afik`, Web/iOS comme cibles livrées.
 - `ROADMAP_RUN.md` : « 117 tests », « COMPLETED & VERIFIED ».
 Règle : décrire **ce qui marche aujourd'hui** (mode dev par socket), séparer clairement « fonctionne », « expérimental » (standalone), « prévu ».
 
 ---
 
-## T-20 — ✅ FAIT — Catalogue de plugins installés à la demande (`pyflutter add`)
+## T-20 — ✅ FAIT — Catalogue de plugins installés à la demande (`afik add`)
 
-> **Fait** : `pyflutter/plugins/catalog.py` (chargement, `requires`, rendu du registrant, bloc géré de `pubspec.yaml`, copie des shims, réglages Android avec retour exact à l'état initial, `scaffold_plugin`), `cli/plugins_cmd.py` (`add`, `remove`, `plugin list`, `plugin new`), `pyflutter.yaml: plugins:`, synchronisation automatique par `run` / `build` / `sync`, côté Dart `WidgetRegistry` + `installed_plugins.dart` généré. Les 22 entrées du catalogue (5 anciennes réelles + 3 sécurité + 14 anciennement simulées) passent `flutter pub get` + `flutter analyze` seules et **toutes ensemble** (`python tools/verify_catalog.py`). Écarts avec la spécification ci-dessous : chaque plugin a son dossier `lib/plugins/installed/<nom>/` (plusieurs fichiers possibles via `files:`), le shim expose `register()` (plugins **et** widgets), `plugin.yaml` accepte `requires`, `extra_packages`, `widgets`, `android.{permissions,min_sdk,desugaring,main_activity_base,launch_theme_parent}`. `hive`, désormais en Python pur, n'est pas dans le catalogue (la copie de travail par projet est faite : T-14). Conflits de versions entre plugins : le résolveur de Dart en a révélé plusieurs (`win32` 5 contre 6 entre `device_info_plus`, `share_plus`, `file_picker`, `flutter_secure_storage` et `syncfusion_flutter_pdfviewer`) ; ils sont réglés par des plages de versions et `tools/verify_catalog.py --together` doit être relancé à chaque ajout ou changement de contrainte. La spécification d'origine suit.
+> **Fait** : `afik/plugins/catalog.py` (chargement, `requires`, rendu du registrant, bloc géré de `pubspec.yaml`, copie des shims, réglages Android avec retour exact à l'état initial, `scaffold_plugin`), `cli/plugins_cmd.py` (`add`, `remove`, `plugin list`, `plugin new`), `afik.yaml: plugins:`, synchronisation automatique par `run` / `build` / `sync`, côté Dart `WidgetRegistry` + `installed_plugins.dart` généré. Les 22 entrées du catalogue (5 anciennes réelles + 3 sécurité + 14 anciennement simulées) passent `flutter pub get` + `flutter analyze` seules et **toutes ensemble** (`python tools/verify_catalog.py`). Écarts avec la spécification ci-dessous : chaque plugin a son dossier `lib/plugins/installed/<nom>/` (plusieurs fichiers possibles via `files:`), le shim expose `register()` (plugins **et** widgets), `plugin.yaml` accepte `requires`, `extra_packages`, `widgets`, `android.{permissions,min_sdk,desugaring,main_activity_base,launch_theme_parent}`. `hive`, désormais en Python pur, n'est pas dans le catalogue (la copie de travail par projet est faite : T-14). Conflits de versions entre plugins : le résolveur de Dart en a révélé plusieurs (`win32` 5 contre 6 entre `device_info_plus`, `share_plus`, `file_picker`, `flutter_secure_storage` et `syncfusion_flutter_pdfviewer`) ; ils sont réglés par des plages de versions et `tools/verify_catalog.py --together` doit être relancé à chaque ajout ou changement de contrainte. La spécification d'origine suit.
 
-**Le modèle voulu** : PyFlutter ne dépend pas de tous les paquets Flutter. Pour chaque paquet qu'on décide de supporter, on lit sa documentation, on **mappe ses classes, fonctions et méthodes en Python** (module `pyflutter.plugins.<paquet>`), et un petit shim Dart traduit l'appel vers la vraie API du paquet. L'utilisateur n'obtient ce paquet dans son application que s'il a lancé `pyflutter add <paquet>`. Cela garde l'app (et donc le runtime embarqué) la plus légère possible.
+**Le modèle voulu** : Afik ne dépend pas de tous les paquets Flutter. Pour chaque paquet qu'on décide de supporter, on lit sa documentation, on **mappe ses classes, fonctions et méthodes en Python** (module `afik.plugins.<paquet>`), et un petit shim Dart traduit l'appel vers la vraie API du paquet. L'utilisateur n'obtient ce paquet dans son application que s'il a lancé `afik add <paquet>`. Cela garde l'app (et donc le runtime embarqué) la plus légère possible.
 
-**Pourquoi un mécanisme est nécessaire** : Dart ne permet pas d'importer un paquet absent du `pubspec.yaml` (l'import est vérifié à la compilation). Le runtime de base ne doit donc contenir **aucun import** de paquet optionnel ; le code qui les référence est **généré** dans la copie de travail du projet (voir T-14) au moment de `pyflutter add`.
+**Pourquoi un mécanisme est nécessaire** : Dart ne permet pas d'importer un paquet absent du `pubspec.yaml` (l'import est vérifié à la compilation). Le runtime de base ne doit donc contenir **aucun import** de paquet optionnel ; le code qui les référence est **généré** dans la copie de travail du projet (voir T-14) au moment de `afik add`.
 
 **Fichiers**
 - Catalogue : `dart_runtime/plugin_catalog/<paquet>/{plugin.yaml, shim.dart}` (créé : 3 entrées).
-- Python : `py_framework/pyflutter/plugins/catalog.py` (nouveau), `plugins/manager.py` (`add_flutter_package`, `remove_flutter_package`), `cli/main.py`, `cli/manifest_sync.py`.
+- Python : `py_framework/afik/plugins/catalog.py` (nouveau), `plugins/manager.py` (`add_flutter_package`, `remove_flutter_package`), `cli/main.py`, `cli/manifest_sync.py`.
 - Dart de base : `dart_runtime/lib/main.dart` (appelle `registerInstalledPlugins()`), `dart_runtime/lib/plugins/installed_plugins.dart` (fichier **généré**, vide dans le gabarit).
 - Prérequis : T-14 (copie de travail du runtime par projet). Sans elle, on peut commencer en travaillant sur `dart_runtime/` directement.
 
@@ -970,20 +970,20 @@ constraint: ^2.3.0                # contrainte pubspec
 shim: shim.dart
 shim_class: LocalAuthShim
 registers: [local_auth]           # noms sous lesquels le shim est enregistré
-python_module: pyflutter.plugins.local_auth
+python_module: afik.plugins.local_auth
 android: { permissions: [biometrics], main_activity_base: FlutterFragmentActivity, launch_theme_parent: "...", min_sdk: 23 }
 ios:     { permissions: [face_id] }
 ```
 
-**Algorithme de `pyflutter add <nom>`**
+**Algorithme de `afik add <nom>`**
 1. Charger `catalog_entry(nom)` ; absent → étape 7 (paquet hors catalogue).
-2. Résoudre la copie de travail du projet (`<projet>/.pyflutter/runtime/`, T-14).
-3. `flutter pub add <package>:<constraint>` dans cette copie ; lire la version résolue dans son `pubspec.yaml` ; l'écrire dans `pyflutter.yaml` (`dependencies.flutter`).
+2. Résoudre la copie de travail du projet (`<projet>/.afik/runtime/`, T-14).
+3. `flutter pub add <package>:<constraint>` dans cette copie ; lire la version résolue dans son `pubspec.yaml` ; l'écrire dans `afik.yaml` (`dependencies.flutter`).
 4. Copier `shim.dart` vers `lib/plugins/installed/<nom>_shim.dart`.
 5. Régénérer `lib/plugins/installed_plugins.dart` à partir de **tous** les paquets installés :
    ```python
    def render_registrant(installed: list[CatalogEntry]) -> str:
-       lines = ["// GENERATED by pyflutter. Do not edit.", "import 'plugin_registry.dart';"]
+       lines = ["// GENERATED by afik. Do not edit.", "import 'plugin_registry.dart';"]
        lines += [f"import 'installed/{e.name}_shim.dart';" for e in installed]
        lines += ["", "void registerInstalledPlugins() {"]
        for e in installed:
@@ -992,28 +992,28 @@ ios:     { permissions: [face_id] }
        return "\n".join(lines)
    ```
 6. Appliquer les réglages natifs de l'entrée (permissions Android/iOS via les blocs balisés de T-14 ; `MainActivity`, thème, `minSdk` via des blocs balisés équivalents ; avertir pour ce qui reste manuel, ex. Podfile iOS).
-7. **Paquet hors catalogue** : `flutter pub add` seul, puis message : « Aucun shim fourni. Créez-en un : `pyflutter plugin new <paquet>` ».
+7. **Paquet hors catalogue** : `flutter pub add` seul, puis message : « Aucun shim fourni. Créez-en un : `afik plugin new <paquet>` ».
 
-`pyflutter remove <nom>` fait l'inverse (retire le shim, régénère le registrant, `flutter pub remove`, retire les blocs natifs).
+`afik remove <nom>` fait l'inverse (retire le shim, régénère le registrant, `flutter pub remove`, retire les blocs natifs).
 
-**Outil pour mapper un nouveau paquet : `pyflutter plugin new <paquet>`**
+**Outil pour mapper un nouveau paquet : `afik plugin new <paquet>`**
 Génère un squelette que l'on remplit en lisant la documentation du paquet :
 - `plugin_catalog/<paquet>/plugin.yaml` pré-rempli (nom, `package`, contrainte lue sur pub.dev) ;
 - `plugin_catalog/<paquet>/shim.dart` avec un `switch (method)` vide et un `default: throw UnsupportedError(...)` ;
-- `py_framework/pyflutter/plugins/<paquet>.py` avec une classe vide et un exemple d'appel `call_plugin("<paquet>", "<methode>", {...})` ;
+- `py_framework/afik/plugins/<paquet>.py` avec une classe vide et un exemple d'appel `call_plugin("<paquet>", "<methode>", {...})` ;
 - `py_framework/tests/test_plugin_<paquet>.py` avec le test de refus par défaut (réponse absente → échec, jamais succès).
 Règles de mapping à respecter (à écrire dans `plugin_catalog/README.md`) : une méthode Dart = une méthode Python en `snake_case` ; arguments structurés passés en JSON (T-07) ; résultat simple (`dict`/`list`/`str`/`bool`) ; **aucune valeur par défaut qui ressemble à un succès** ; durée d'attente explicite pour les appels interactifs (T-08).
 
-**Migration des paquets déjà présents** : `url_launcher`, `shared_preferences`, `path_provider`, `device_info_plus`, `file_picker` sont aujourd'hui des dépendances du `pubspec.yaml` de base. Les déplacer dans le catalogue (même procédure), et lister les plus courants dans le `pyflutter.yaml` du gabarit de `pyflutter create`. Résultat : le runtime de base ne contient que Flutter et le pont.
+**Migration des paquets déjà présents** : `url_launcher`, `shared_preferences`, `path_provider`, `device_info_plus`, `file_picker` sont aujourd'hui des dépendances du `pubspec.yaml` de base. Les déplacer dans le catalogue (même procédure), et lister les plus courants dans le `afik.yaml` du gabarit de `afik create`. Résultat : le runtime de base ne contient que Flutter et le pont.
 
 **Tests**
 - `catalog_entry("local_auth")` charge le YAML ; une entrée inconnue renvoie `None`.
 - `render_registrant([])` est un fichier Dart valide sans import ; avec 2 entrées il contient 2 imports et les enregistrements attendus (comparaison de texte).
 - `add` puis `remove` dans un dossier temporaire (avec un faux `flutter` dans le `PATH`) laisse le projet identique à l'état initial (idempotence).
 
-**Critère de fin** : `pyflutter add local_auth` dans un projet neuf produit une application qui compile (`flutter analyze` propre) et dont `local_auth` fonctionne ; sans l'avoir ajouté, l'appel Python lève `PluginError("Plugin \"local_auth\" is not installed ...")`.
+**Critère de fin** : `afik add local_auth` dans un projet neuf produit une application qui compile (`flutter analyze` propre) et dont `local_auth` fonctionne ; sans l'avoir ajouté, l'appel Python lève `PluginError("Plugin \"local_auth\" is not installed ...")`.
 
-**Pièges** : ne jamais éditer `lib/main.dart` à la main pour un plugin ; ne jamais importer un paquet optionnel depuis `lib/` de base ; le fichier généré est ignoré par git dans la copie de projet (`.pyflutter/` est déjà dans le `.gitignore` du gabarit).
+**Pièges** : ne jamais éditer `lib/main.dart` à la main pour un plugin ; ne jamais importer un paquet optionnel depuis `lib/` de base ; le fichier généré est ignoré par git dans la copie de projet (`.afik/` est déjà dans le `.gitignore` du gabarit).
 
 ---
 
@@ -1025,7 +1025,7 @@ Voir le tableau de la **section 1.1** (fichier, correction, test) ; les correcti
 
 # PARTIE C — Embarquer Python + Rust : protocole d'expérimentation (B-03, B-52)
 
-But : trouver **la combinaison la plus légère** qui exécute le code Python de l'utilisateur **dans le même processus** que l'application Flutter, sur Android, iOS et desktop, sans sous-processus ni socket (contrainte iOS de `PYFLUTTER_VISION.md` §3.4.1).
+But : trouver **la combinaison la plus légère** qui exécute le code Python de l'utilisateur **dans le même processus** que l'application Flutter, sur Android, iOS et desktop, sans sous-processus ni socket (contrainte iOS de `AFIK_VISION.md` §3.4.1).
 Règle : **on ne choisit pas sur des impressions, on mesure.** Chaque expérience produit une ligne du tableau de résultats (C.10).
 
 ## C.0 Ce que j'ai déjà mesuré dans votre code (données réelles)
@@ -1034,7 +1034,7 @@ Script : `python audit/embedding/stdlib_closure.py [--no-loguru]`.
 
 | Cas | Modules stdlib chargés | Source pure-Python | Bytecode `-OO` zippé (à livrer) |
 |-----|-----------------------:|-------------------:|-------------------------------:|
-| `import pyflutter` tel quel (avec `loguru`) | 127 | ≈ 2 044 Kio | **≈ 829 Kio** |
+| `import afik` tel quel (avec `loguru`) | 127 | ≈ 2 044 Kio | **≈ 829 Kio** |
 | même chose **sans** `loguru` | 72 | ≈ 1 206 Kio | **≈ 481 Kio** |
 
 À retenir :
@@ -1053,32 +1053,32 @@ class Transport(Protocol):
     def close(self) -> None: ...
 
 class SubprocessTransport:   # mode développement actuel (BridgeSession)
-class NativeTransport:       # mode embarqué : appelle le module natif `_pyflutter_native`
+class NativeTransport:       # mode embarqué : appelle le module natif `_afik_native`
 ```
 `call_plugin`, `BridgeSession.send_tree`, `runner._event_loop` passent par `Transport`. Le reste du framework ne sait plus si Rust est un sous-processus ou une bibliothèque.
 
 **P-2 — Runtime léger** (voir mesures ci-dessus) :
 1. imports paresseux de `subprocess`, `shutil`, `tempfile`, `socket`, `importlib` hôte ;
-2. `core/logger.py` : fournir un **logger interne minimal** (module `logging` ou fonctions vides) quand `loguru` est absent — c'est déjà le cas (`_StdLogger`) ; ajouter une variable `PYFLUTTER_EMBEDDED=1` qui force ce chemin **sans tenter d'importer loguru** ;
+2. `core/logger.py` : fournir un **logger interne minimal** (module `logging` ou fonctions vides) quand `loguru` est absent — c'est déjà le cas (`_StdLogger`) ; ajouter une variable `AFIK_EMBEDDED=1` qui force ce chemin **sans tenter d'importer loguru** ;
 3. `core/config.py` : n'importer `yaml` que dans `from_file` (déjà `try/except ImportError`) et ne jamais lire le yaml sur l'appareil (le builder le convertit en JSON dans les assets) ;
 4. encodage Protobuf sans la bibliothèque `google.protobuf` : soit en Rust (fonction `encode_tree` qui reçoit la structure Python), soit en Python pur (≈ 60 lignes : le Dart le fait déjà à la main dans `ir_codec.dart`) — **à mesurer** (taille du paquet `google/` contre quelques Kio de code).
 Critère : `python audit/embedding/stdlib_closure.py --no-loguru` ≤ **60 modules** et ≤ **400 Kio** zippés.
 
-**P-3 — Module natif `_pyflutter_native`** (Rust) : l'API que Python voit.
+**P-3 — Module natif `_afik_native`** (Rust) : l'API que Python voit.
 ```
 push_frame(msg_type: int, payload: bytes) -> None      # Python -> Dart
 set_receiver(callback: Callable[[int, bytes], None])   # Dart -> Python, appelé sur le thread Python
 start(app_dir: str, entrypoint: str) -> None
 ```
-Modèle de threads : Rust crée **un thread dédié « python »** qui initialise l'interpréteur, importe le point d'entrée, puis boucle : `attendre un message dans la file TO_PYTHON (GIL relâché)` → `appeler le récepteur Python`. Dart ne touche jamais l'interpréteur directement : il ne fait que `pyflutter_push_to_python(...)` (déjà présent dans `rust_bridge/src/lib.rs`) et sonder `pyflutter_poll_dart_frame`. Cela réutilise les files déjà corrigées (bornées, `OnceLock`).
+Modèle de threads : Rust crée **un thread dédié « python »** qui initialise l'interpréteur, importe le point d'entrée, puis boucle : `attendre un message dans la file TO_PYTHON (GIL relâché)` → `appeler le récepteur Python`. Dart ne touche jamais l'interpréteur directement : il ne fait que `afik_push_to_python(...)` (déjà présent dans `rust_bridge/src/lib.rs`) et sonder `afik_poll_dart_frame`. Cela réutilise les files déjà corrigées (bornées, `OnceLock`).
 
 ## C.2 Les candidats
 
 | Id | Candidat | Idée | Avantages | Risques / coût |
 |----|----------|------|-----------|----------------|
 | **A** | CPython 3.13, `libpython` partagée + stdlib zippée | Le plus proche de ce que fait Flet ([serious_python](https://pub.dev/documentation/serious_python/latest/)) | Compatibilité totale, extensions C tierces possibles (wheels Android/iOS) | Plus gros ; chargement des extensions depuis l'APK demande des astuces |
-| **A′** | CPython 3.13 **statique**, modules utiles compilés dedans, lié dans la lib Rust | Un seul `libpyflutter.so` ; LTO et `--gc-sections` sur l'ensemble | **Le plus léger avec CPython**, démarrage rapide, pas de fichiers `.so` séparés | Pas d'extensions C tierces (numpy…) ; build à maintenir |
-| **B** | RustPython (choix de `PYFLUTTER_VISION.md`) | Interpréteur 100 % Rust, pas de libpython | Une seule chaîne de build (cargo), intégration naturelle | **Compatibilité inconnue** avec `inspect`, `contextvars`, `sqlite3`, `threading` ; plus lent ; je n'ai pas pu vérifier son état actuel sur mobile → à mesurer, pas à supposer |
+| **A′** | CPython 3.13 **statique**, modules utiles compilés dedans, lié dans la lib Rust | Un seul `libafik.so` ; LTO et `--gc-sections` sur l'ensemble | **Le plus léger avec CPython**, démarrage rapide, pas de fichiers `.so` séparés | Pas d'extensions C tierces (numpy…) ; build à maintenir |
+| **B** | RustPython (choix de `AFIK_VISION.md`) | Interpréteur 100 % Rust, pas de libpython | Une seule chaîne de build (cargo), intégration naturelle | **Compatibilité inconnue** avec `inspect`, `contextvars`, `sqlite3`, `threading` ; plus lent ; je n'ai pas pu vérifier son état actuel sur mobile → à mesurer, pas à supposer |
 | **C** | MicroPython ou PocketPy | Interpréteurs minuscules | Taille plancher (quelques centaines de Kio) | Sous-ensemble du langage et de la stdlib : le framework (dataclasses, inspect, contextvars, typing) ne tournera pas sans réécriture ; **sert de témoin** |
 | **D** | `serious_python` tel quel | Référence | Prouve la faisabilité, permet de comparer les tailles | Plugin Dart externe ; ne remplace pas votre pont Rust |
 
@@ -1181,7 +1181,7 @@ Conclusion attendue dans `RESULTS.md` : « RustPython passe / ne passe pas, et v
 | 1 | P-1 (transport), P-2 (runtime léger) ; `stdlib_closure.py` sous le seuil |
 | 2 | Expériences A, A′ et B sur Android arm64 ; remplir le tableau C.10 |
 | 3 | Expériences C et D ; note de décision (1 page) ; si A′ gagne : script `tools/embed/build_python.sh` reproductible |
-| 4+ | Intégrer le gagnant dans `pyflutter build` : copie de la lib, assets, `PyConfig`, test de bout en bout sur appareil ; puis iOS et desktop |
+| 4+ | Intégrer le gagnant dans `afik build` : copie de la lib, assets, `PyConfig`, test de bout en bout sur appareil ; puis iOS et desktop |
 
 ## C.10 Tableau de résultats à remplir (`audit/embedding/RESULTS.md`)
 
@@ -1217,7 +1217,7 @@ Chaque ligne renvoie au ticket qui prépare le terrain ; les lignes sans ticket 
 | P1 | Navigation complète (retour système, routes nommées avec arguments, onglets imbriqués) | T-16 |
 | P1 | Écran d'erreur dans l'app (équivalent du « red screen ») et traces lisibles | à ouvrir : envoyer un `MSG_ERROR` Python→Dart qui affiche l'exception |
 | P1 | Validation des props, enums typés | T-11 |
-| P1 | Configuration par projet, `pyflutter doctor` | T-14, T-17 |
+| P1 | Configuration par projet, `afik doctor` | T-14, T-17 |
 | P1 | Tests d'intégration Python↔Rust↔Dart, CI | T-18, `tests/test_bridge_relay.py` comme modèle |
 | P2 | Listes paresseuses (`ListView.builder`) : aujourd'hui tous les éléments sont envoyés | à ouvrir : protocole `itemCount` + demande de plage `0x0B`, Dart ne construit que le visible |
 | P2 | Internationalisation, accessibilité (`Semantics`), focus/clavier | à ouvrir |

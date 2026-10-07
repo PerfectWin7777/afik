@@ -1,4 +1,4 @@
-"""Checks py_framework/pyflutter/contract/widgets.json against the Python widgets and the Dart builder.
+"""Checks py_framework/afik/contract/widgets.json against the Python widgets and the Dart builder.
 
     python tools/check_contract.py            # report, exit code 1 on a real inconsistency
     python tools/check_contract.py --verbose  # also list the advisory findings
@@ -31,7 +31,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import gen_contract  # noqa: E402
 
-CONTRACT = ROOT / "py_framework/pyflutter/contract/widgets.json"
+CONTRACT = ROOT / "py_framework/afik/contract/widgets.json"
 BUILDER = ROOT / "dart_runtime/lib/widgets/widget_builder.dart"
 DART_DIR = ROOT / "dart_runtime/lib"
 CATALOG = ROOT / "dart_runtime/plugin_catalog"

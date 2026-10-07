@@ -1,12 +1,12 @@
 """
-Tests for PyFlutter memory leak prevention, State Management,
+Tests for Afik memory leak prevention, State Management,
 single-pass component resolution, and callback garbage collection.
 """
 
 import unittest
 
-from pyflutter import Button, Column, Component, Signal, SignalBuilder, State, StatefulWidget, Text, TextField
-from pyflutter.core import render, state, widget_base
+from afik import Button, Column, Component, Signal, SignalBuilder, State, StatefulWidget, Text, TextField
+from afik.core import render, state, widget_base
 
 
 class TestMemoryAndStateManagement(unittest.TestCase):

@@ -1,0 +1,19 @@
+name: pyshop
+description: "PyShop — Modern E-Commerce Application showcasing Material 3 and PyQt-style OOP in Afik"
+version: 1.0.0
+
+# Afik project configuration
+afik:
+  entrypoint: main.py
+  port: 7879
+
+# Plugins from the catalog (dart_runtime/plugin_catalog), installed on demand.
+# `afik add <name>` edits this list; `afik run` and `build` apply it.
+plugins:
+  - url_launcher
+
+# Device permissions automatically mapped to Android / iOS
+permissions:
+  - internet
+  - phone
+  - email

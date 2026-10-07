@@ -28,7 +28,7 @@ use std::sync::{Arc, Mutex};
 use prost::Message;
 
 pub mod ir {
-    include!(concat!(env!("OUT_DIR"), "/pyflutter.ir.rs"));
+    include!(concat!(env!("OUT_DIR"), "/afik.ir.rs"));
 }
 
 const MSG_RENDER_TREE: u8 = 0x01;
@@ -41,7 +41,7 @@ const MSG_HELLO: u8 = 0x06;
 
 /// Callback id sent to Python when a Dart client (re)connects and the cached
 /// tree is no longer current, asking it to resend a full tree.
-const RESYNC_CALLBACK_ID: &str = "__pyflutter_resync__";
+const RESYNC_CALLBACK_ID: &str = "__afik_resync__";
 
 /// Largest frame accepted from any peer (protects against forged lengths).
 const MAX_FRAME_BYTES: usize = 64 * 1024 * 1024;

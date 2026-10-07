@@ -3,7 +3,7 @@ package: permission_handler
 constraint: ^13.0.2
 files: [shim.dart]
 registers: [permission_handler]
-python_module: pyflutter.plugins.permission_handler
+python_module: afik.plugins.permission_handler
 notes: >
-  Declare every permission the app asks for in pyflutter.yaml `permissions`; on iOS also
+  Declare every permission the app asks for in afik.yaml `permissions`; on iOS also
   enable it in the permission_handler build settings (see the package README).

@@ -23,7 +23,7 @@ this code. Expect to fix small mistakes.
 
 1. In a separate empty directory, run:
    ```
-   flutter create --project-name pyflutter_dart_runtime pyflutter_dart_runtime_scaffold
+   flutter create --project-name afik_dart_runtime afik_dart_runtime_scaffold
    ```
 2. Copy the generated platform folders (`android/`, `ios/`, `linux/`,
    `macos/`, `windows/`, `web/`, `.gitignore`, `analysis_options.yaml`)
@@ -38,7 +38,7 @@ this code. Expect to fix small mistakes.
    ```
    cd ../rust_bridge
    cargo build
-   ./target/debug/pyflutter-bridge --dart-port 7879
+   ./target/debug/afik-bridge --dart-port 7879
    ```
 6. In another terminal: `cd dart_runtime && flutter run` (pick an
    emulator or a connected device when prompted).
@@ -54,7 +54,7 @@ this code. Expect to fix small mistakes.
 - `bridgePort` is hardcoded to `7879` in `main.dart`
   (`_BridgeConnectionScreenState.bridgePort`) to match
   `examples/counter/test_relay.py`'s `PORT` constant. A real
-  `pyflutter run` CLI would pass this in, not hardcode it on either
+  `afik run` CLI would pass this in, not hardcode it on either
   side.
 - `TextField`'s `TextEditingController` is recreated on every incoming
   tree (every `setState` from a new `RenderTree`), which will reset

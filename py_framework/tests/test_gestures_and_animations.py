@@ -1,16 +1,16 @@
 """
-Unit test suite for PyFlutter Gestures, Touch Interactions, and Implicit Animations.
+Unit test suite for Afik Gestures, Touch Interactions, and Implicit Animations.
 """
 
 from __future__ import annotations
 
 import unittest
 
-from pyflutter.core.constants import Alignment, Curves, DismissDirection
-from pyflutter.core.render import render_tree_frame
-from pyflutter.core.style import Duration
-from pyflutter.core.widget_base import invoke_callback
-from pyflutter.widgets.animations import (
+from afik.core.constants import Alignment, Curves, DismissDirection
+from afik.core.render import render_tree_frame
+from afik.core.style import Duration
+from afik.core.widget_base import invoke_callback
+from afik.widgets.animations import (
     AnimatedAlign,
     AnimatedContainer,
     AnimatedCrossFade,
@@ -19,8 +19,8 @@ from pyflutter.widgets.animations import (
     AnimatedScale,
     Hero,
 )
-from pyflutter.widgets.gestures import Dismissible, GestureDetector, InkWell
-from pyflutter.widgets.widgets import Column, Container, Text
+from afik.widgets.gestures import Dismissible, GestureDetector, InkWell
+from afik.widgets.widgets import Column, Container, Text
 
 
 class TestGestures(unittest.TestCase):
@@ -175,7 +175,7 @@ class TestGesturesAndAnimationsSerialization(unittest.TestCase):
                 ),
                 on_tap=lambda: None,
             ),
-            Hero(tag="logo", child=Text("PyFlutter")),
+            Hero(tag="logo", child=Text("Afik")),
             Dismissible(
                 key="item_1",
                 child=Text("Dismiss me"),

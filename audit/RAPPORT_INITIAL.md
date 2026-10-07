@@ -1,6 +1,6 @@
 > Document historique : constats d'origine avec preuves. Le guide de correction à suivre est `AUDIT_BUGS.md` (racine du dépôt).
 
-# AUDIT PyFlutter / Flarix — bugs, erreurs de logique, manques
+# AUDIT Afik — bugs, erreurs de logique, manques
 
 Date : 2026-10-06 · Périmètre : `py_framework/`, `rust_bridge/`, `dart_runtime/`, CLI, exemples, README.
 
@@ -18,7 +18,7 @@ Repros (depuis la racine du dépôt, `pip install pytest protobuf loguru pyyaml`
 ## Statut des corrections (mis à jour)
 
 **Corrigés et couverts par des tests** (`py_framework/tests/test_audit_regressions.py`, `test_bridge_relay.py` — ce dernier lance le vrai binaire Rust) :
-B-01, B-02 (RPC non bloquant, erreurs explicites ; le fallback local n'est utilisé que sans runtime connecté), B-04 (`--release`/`--profile`, `remove_flutter_package`), B-05 (port transmis au Dart), B-07, B-08 (resync après reconnexion, un thread par client), B-09, B-10, B-11, B-12, B-13, B-14 (module nommé `pyflutter_app_<nom>`, classe conservée au hot reload), B-15, B-16 (jeton de session + limite de trame), B-30, B-32, B-33, B-38 (sqlite réel, identifiants validés, erreurs propagées), B-42, B-43, B-46, B-49, plus la fiabilité de la boucle d'événements (B-20 partiel : registre de callbacks verrouillé).
+B-01, B-02 (RPC non bloquant, erreurs explicites ; le fallback local n'est utilisé que sans runtime connecté), B-04 (`--release`/`--profile`, `remove_flutter_package`), B-05 (port transmis au Dart), B-07, B-08 (resync après reconnexion, un thread par client), B-09, B-10, B-11, B-12, B-13, B-14 (module nommé `afik_app_<nom>`, classe conservée au hot reload), B-15, B-16 (jeton de session + limite de trame), B-30, B-32, B-33, B-38 (sqlite réel, identifiants validés, erreurs propagées), B-42, B-43, B-46, B-49, plus la fiabilité de la boucle d'événements (B-20 partiel : registre de callbacks verrouillé).
 
 **Corrigés côté Dart/Rust mais non compilés ici** (pas de SDK Flutter ; `cargo build` OK) : B-05, B-43, B-46, B-49 et le handshake `hello` du client Dart. À vérifier avec `flutter run`.
 
@@ -26,7 +26,7 @@ B-01, B-02 (RPC non bloquant, erreurs explicites ; le fallback local n'est utili
 
 **Ouverts** : B-17, B-18, B-19, B-21 (dispose des `State` — le faire mal casserait l'état des pages empilées), B-22, B-23, B-24, B-27, B-29, B-31, B-34 à B-36, B-39 à B-41, B-44, B-45, B-47, B-48, B-50 à B-55, et toute la section 4.
 
-**Nouveau bug trouvé pendant les corrections (corrigé)** — B-56 🟠 [V] : `infer_call_site_key` (`core/state.py`) ignorait toute frame dont le **nom de fichier** finit par `state.py`, `widget_base.py` ou `render.py`. Un projet utilisateur avec un fichier `state.py` (très courant) donnait la **même clé** à tous les `StatefulComponent` d'une même ligne → états partagés. Le test se fait maintenant sur le nom de **module** (`pyflutter.*`).
+**Nouveau bug trouvé pendant les corrections (corrigé)** — B-56 🟠 [V] : `infer_call_site_key` (`core/state.py`) ignorait toute frame dont le **nom de fichier** finit par `state.py`, `widget_base.py` ou `render.py`. Un projet utilisateur avec un fichier `state.py` (très courant) donnait la **même clé** à tous les `StatefulComponent` d'une même ligne → états partagés. Le test se fait maintenant sur le nom de **module** (`afik.*`).
 
 ---
 
@@ -37,7 +37,7 @@ B-01, B-02 (RPC non bloquant, erreurs explicites ; le fallback local n'est utili
 | 1 | 🔴 | Tout appel plugin fait **depuis un callback** (clic bouton) bloque la boucle d'événements jusqu'au timeout, puis renvoie une **fausse valeur** (`authenticated: True`, `permission: granted`) [V] |
 | 2 | 🔴 | Une erreur renvoyée par Dart est **avalée** et remplacée par la donnée factice locale [V] |
 | 3 | 🔴 | Le build « standalone » est une façade : aucun interpréteur Python n'est embarqué, la lib Rust ne fait que deux files d'attente, le build affiche « succès » [L] |
-| 4 | 🔴 | `pyflutter build --release` construit **toujours en debug** ; `pyflutter remove` plante (`ImportError`) [V] |
+| 4 | 🔴 | `afik build --release` construit **toujours en debug** ; `afik remove` plante (`ImportError`) [V] |
 | 5 | 🔴 | `--port` / `port:` du yaml cassé : le Dart a `7879` en dur [L] |
 | 6 | 🟠 | Plugins « sécurité » factices côté Dart : `local_auth` renvoie toujours authentifié, `permission_handler` toujours accordé, `secure_storage` en RAM et en clair [L] |
 | 7 | 🟠 | Patch d'arbre incorrect pour les listes à `key` réordonnées → UI Dart périmée [V] |
@@ -61,22 +61,22 @@ B-01, B-02 (RPC non bloquant, erreurs explicites ; le fallback local n'est utili
 - `manager.py:64-72` : le `raise RuntimeError("Error in ...")` est levé **dans** le `try`, attrapé par `except Exception` (ligne 71, log en `debug`), puis le code continue vers `_dispatch_local_fallback`.
 - Preuve : Dart renvoie `error: "UnsupportedError: boom"` → l'appelant reçoit `{'authenticated': True}`.
 - Idem si `json.dumps(args)` échoue (argument non sérialisable) : l'exception est avalée et on obtient une fausse réponse.
-- Correctif : séparer « transport indisponible → fallback dev explicite » de « erreur du plugin → lever `PlatformException` ». Le fallback ne doit jamais être silencieux en production (flag explicite `PYFLUTTER_OFFLINE_MOCKS=1`, ou lever `PluginUnavailableError`).
+- Correctif : séparer « transport indisponible → fallback dev explicite » de « erreur du plugin → lever `PlatformException` ». Le fallback ne doit jamais être silencieux en production (flag explicite `AFIK_OFFLINE_MOCKS=1`, ou lever `PluginUnavailableError`).
 
 ### B-03 🔴 [L] Build standalone (APK/IPA/desktop) : non fonctionnel
-- `rust_bridge/src/lib.rs` ne contient que deux `VecDeque` ; **rien** n'embarque ni ne lance Python (`pyflutter_poll_python_frame` / `pyflutter_push_to_dart` n'ont aucun appelant). Aucun CPython/PyO3/Chaquopy/BeeWare.
+- `rust_bridge/src/lib.rs` ne contient que deux `VecDeque` ; **rien** n'embarque ni ne lance Python (`afik_poll_python_frame` / `afik_push_to_dart` n'ont aucun appelant). Aucun CPython/PyO3/Chaquopy/BeeWare.
 - `cli/builder.py:89-101` : `cargo build` pour l'**hôte** (pas de cible Android `aarch64-linux-android` via `cargo-ndk`, pas de `.so` copié dans `jniLibs`, pas de `.a` iOS). Un échec de `cargo` est un simple `warning` (ligne 100) puis le build continue.
 - `builder.py:72-86` copie `*.py` dans `dart_runtime/assets/app/` mais `pubspec.yaml` ne déclare **aucun** `assets:` → les fichiers ne sont pas empaquetés. Sous-dossiers/paquets/images utilisateur non copiés.
 - `flutter build` réussit → log `🎉 build completed successfully!` alors que l'app obtenue est un écran de chargement infini.
 - Le README (« Build APKs… zero-config », « production-ready ») est donc trompeur. Voir §4 pour ce qu'il faut réellement.
 
 ### B-04 🔴 [V] CLI : `--release` ignoré, `remove` cassé
-- `cli/main.py:139` : `--debug` a `default=True`, puis `main.py:246` `if args.debug or ...: is_release = False` **écrase toujours** `--release`. Repro : `main(["build","apk","--release"])` → `PyFlutterBuilder(release=False)`. Le mode `profile` accepté par `--mode` est aussi ignoré.
+- `cli/main.py:139` : `--debug` a `default=True`, puis `main.py:246` `if args.debug or ...: is_release = False` **écrase toujours** `--release`. Repro : `main(["build","apk","--release"])` → `AfikBuilder(release=False)`. Le mode `profile` accepté par `--mode` est aussi ignoré.
 - `cli/main.py:179` importe `remove_flutter_package` qui **n'existe pas** dans `plugins/manager.py` → `ImportError` (documenté dans le README comme commande).
 - `app.py:81-91` (`python main.py build …`) lit `sys.argv` à la main : tout script utilisateur dont le premier argument est `build` est détourné vers le build ; aucun autre argument (`--device`, `--port`) n'est lu.
 
 ### B-05 🔴 [L] Port configurable non honoré
-- `dart_runtime/lib/main.dart:213` : `static const int bridgePort = 7879`. Le runner passe `--dart-port <port>` à Rust (`runner.py:347`) et `adb reverse tcp:<port>`, mais Dart se connecte toujours à 7879. `pyflutter run -p 9000` ou `port:` dans le yaml ⇒ jamais de connexion. (`dart_runtime/SETUP.md` le reconnaît.) Correctif : `--dart-define=PYFLUTTER_PORT=…` passé par `_start_flutter`.
+- `dart_runtime/lib/main.dart:213` : `static const int bridgePort = 7879`. Le runner passe `--dart-port <port>` à Rust (`runner.py:347`) et `adb reverse tcp:<port>`, mais Dart se connecte toujours à 7879. `afik run -p 9000` ou `port:` dans le yaml ⇒ jamais de connexion. (`dart_runtime/SETUP.md` le reconnaît.) Correctif : `--dart-define=AFIK_PORT=…` passé par `_start_flutter`.
 
 ### B-06 🟠 [L] Plugins Dart factices présentés comme natifs (sécurité)
 - `lib/plugins/local_auth_shim.dart` : `authenticate` → toujours `{'authenticated': True}` (aucun appel au package `local_auth`).
@@ -131,7 +131,7 @@ B-01, B-02 (RPC non bloquant, erreurs explicites ; le fallback local n'est utili
 - Seul le module d'entrée est rechargé : un fichier importé (`from screens import home`) n'est pas rechargé (`importlib.reload` absent, pas de file watcher, `r` manuel uniquement). Le README liste « hot-reload daemon » en TODO mais annonce « hot reload » partout.
 
 ### B-15 🟠 [L] `ensure_port_free` tue un processus arbitraire
-- `runner.py:61-95` : si le port est occupé, `fuser -k <port>/tcp` (Linux/mac) ou `taskkill /F /PID` (Windows) **tue ce qui écoute dessus**, sans vérifier que c'est un pont PyFlutter. `7879` peut être n'importe quel service de l'utilisateur. De plus `fuser` est absent sur macOS et sur beaucoup d'images minimales (échec silencieux).
+- `runner.py:61-95` : si le port est occupé, `fuser -k <port>/tcp` (Linux/mac) ou `taskkill /F /PID` (Windows) **tue ce qui écoute dessus**, sans vérifier que c'est un pont Afik. `7879` peut être n'importe quel service de l'utilisateur. De plus `fuser` est absent sur macOS et sur beaucoup d'images minimales (échec silencieux).
 - Correctif : essayer de se connecter/handshaker, sinon choisir un autre port libre et le propager (cf. B-05).
 
 ### B-16 🟠 [L] Relais TCP sans authentification
@@ -159,11 +159,11 @@ B-01, B-02 (RPC non bloquant, erreurs explicites ; le fallback local n'est utili
 - **B-29 ⚪ [L]** Singletons globaux partout (`_active_runner`, `_callback_registry`, `_state_registry`, `Navigator`, `_local_storage_cache`) : une seule app par process, tests non isolés, `MaterialApp.__init__` **mute** le `Navigator` global à la construction (`widgets.py:~2205`) et `Navigator` n'est pas réinitialisé au hot restart (pages empilées conservées). Aucune gestion du bouton retour système Android (pas de `PopScope` côté Dart : le retour quitte l'app au lieu de dépiler la pile Python).
 
 ### Python — config / CLI / manifests
-- **B-30 🟠 [V]** `PyFlutterConfig.from_file` (`core/config.py`) plante : `dependencies:` vide (→ `AttributeError: NoneType`), fichier racine en liste, `port: abc` (`ValueError`). À l'inverse, un YAML invalide est **avalé** (`except Exception: data = {}`) → config vide sans avertissement : les permissions disparaissent silencieusement.
-- **B-31 🟡 [L]** `PyFlutterConfig.save()` réécrit le fichier à partir de 4 champs : commentaires et toute clé inconnue sont **perdus** à chaque `pyflutter add`. `add_flutter_package` écrit la version `any` et modifie le `pubspec.yaml` du dépôt framework (`manager.py:455-487`), pas celui du projet : les `dependencies.flutter` du `pyflutter.yaml` utilisateur ne sont **jamais** appliquées au runtime Dart (aucun code ne les lit pour générer le pubspec).
+- **B-30 🟠 [V]** `AfikConfig.from_file` (`core/config.py`) plante : `dependencies:` vide (→ `AttributeError: NoneType`), fichier racine en liste, `port: abc` (`ValueError`). À l'inverse, un YAML invalide est **avalé** (`except Exception: data = {}`) → config vide sans avertissement : les permissions disparaissent silencieusement.
+- **B-31 🟡 [L]** `AfikConfig.save()` réécrit le fichier à partir de 4 champs : commentaires et toute clé inconnue sont **perdus** à chaque `afik add`. `add_flutter_package` écrit la version `any` et modifie le `pubspec.yaml` du dépôt framework (`manager.py:455-487`), pas celui du projet : les `dependencies.flutter` du `afik.yaml` utilisateur ne sont **jamais** appliquées au runtime Dart (aucun code ne les lit pour générer le pubspec).
 - **B-32 🟠 [V]** `manifest_sync.py` : le titre n'est **pas échappé** → `name: "Tom & Jerry"` produit un `AndroidManifest.xml` invalide (repro : `INVALID XML`), et le build échoue. Permission inconnue/typo (`camara`) ignorée sans warning. Les permissions retirées du yaml ne sont jamais retirées du manifeste. Le fichier modifié est celui du **dépôt framework partagé**, pas d'une copie par projet. `if perm not in content` détecte aussi la permission dans un commentaire XML. Aucune des permissions n'est fournie pour les plateformes desktop.
 - **B-33 🟡 [L]** `devices.py:94-105` : si `-d <id>` est donné, la plateforme est **devinée** par `isdigit()` / `len > 10` / `startswith("1")` → un id commençant par « 1 » ou long est traité comme Android (adb reverse inutile, mauvais `targetPlatform`). `EOFError` à l'invite interactive → `sys.exit(0)` (succès silencieux).
-- **B-34 🟡 [L]** `runner.py` : `PyFlutterRunner.__init__` lève `FileNotFoundError` si le binaire Rust manque (`find_bridge_binary`), même avec `--attach` ; trace Python brute au lieu d'un message. `_build_and_tag_tree` (`runner.py:291-304`) écrit `debug_banner` dans `tree.props` **avant** la résolution : si `build()` renvoie un `Component`, la prop est perdue au `resolve_tree`.
+- **B-34 🟡 [L]** `runner.py` : `AfikRunner.__init__` lève `FileNotFoundError` si le binaire Rust manque (`find_bridge_binary`), même avec `--attach` ; trace Python brute au lieu d'un message. `_build_and_tag_tree` (`runner.py:291-304`) écrit `debug_banner` dans `tree.props` **avant** la résolution : si `build()` renvoie un `Component`, la prop est perdue au `resolve_tree`.
 - **B-35 ⚪ [L]** Modèle de projet (`cli/creator.py`) : le README généré annonce un raccourci `d` qui n'existe pas dans `_handle_key` ; `--description` avec des guillemets casse le YAML généré.
 - **B-36 ⚪ [L]** `cli/main.py` : `--debug` et `--release` ne sont pas exclusifs ; `run` tombe dans le `if args.command == "build"` suivant sans `return` (inoffensif mais fragile).
 
@@ -175,13 +175,13 @@ B-01, B-02 (RPC non bloquant, erreurs explicites ; le fallback local n'est utili
 - **B-41 ⚪ [L]** `call_plugin` timeout par défaut 3 s (5 s côté `MethodChannel`) : un `file_picker`/`camera`/`authenticate` interactif (secondes à minutes) expire toujours, puis renvoie le faux fallback.
 
 ### Rust (`rust_bridge/`)
-- **B-42 🟠 [L]** `lib.rs:27-28` : `static mut` + `&` sur statiques mutables (UB / lint `static_mut_refs`, erreur en édition 2024) ; remplacer par `OnceLock<Mutex<VecDeque>>`. `pyflutter_bridge_destroy` n'appelle pas `ensure_initialized`. Files **non bornées** (aucune contre-pression).
+- **B-42 🟠 [L]** `lib.rs:27-28` : `static mut` + `&` sur statiques mutables (UB / lint `static_mut_refs`, erreur en édition 2024) ; remplacer par `OnceLock<Mutex<VecDeque>>`. `afik_bridge_destroy` n'appelle pas `ensure_initialized`. Files **non bornées** (aucune contre-pression).
 - **B-43 🟠 [L]** `lib.rs:139` / `ffi_bridge.dart:186-188` : si une trame dépasse 2 Mio (arbre volumineux, images base64), `poll` renvoie `-1` **sans la dépiler** ; Dart fait `break` et recommence 8 ms plus tard → la file est **bloquée définitivement** (head-of-line). Le buffer n'est jamais agrandi.
 - **B-44 🟡 [L]** `main.rs` : un seul client Dart géré à la fois (voir B-08), `.unwrap()` sur `Mutex::lock` (panique en cascade si empoisonné), `panic!` au `bind` (message brut), `std::process::exit(0)` quand stdin se ferme sans vider le socket.
-- **B-45 🟡 [L]** `Cargo.toml` : `serde`/`serde_json` déclarés mais inutilisés ; `crate-type = ["cdylib","rlib"]` + binaire dans le même paquet ⇒ le `cargo build` dev produit aussi `pyflutter_bridge.dll/.so`.
+- **B-45 🟡 [L]** `Cargo.toml` : `serde`/`serde_json` déclarés mais inutilisés ; `crate-type = ["cdylib","rlib"]` + binaire dans le même paquet ⇒ le `cargo build` dev produit aussi `afik_bridge.dll/.so`.
 
 ### Dart (`dart_runtime/`)
-- **B-46 🟠 [L]** `ffi_bridge.dart:65-86` : en dev, si `libpyflutter_bridge.so/.dll` est trouvable (sur Windows : `../rust_bridge/target/debug/pyflutter_bridge.dll`, présent après un simple `cargo build`), `ffi.isAvailable` est vrai et `main.dart:~235` bascule en **mode FFI** : l'app n'essaie plus jamais le socket TCP et attend éternellement des trames qui ne viendront pas. Le mode doit être choisi par `PYFLUTTER_STANDALONE` seulement.
+- **B-46 🟠 [L]** `ffi_bridge.dart:65-86` : en dev, si `libafik_bridge.so/.dll` est trouvable (sur Windows : `../rust_bridge/target/debug/afik_bridge.dll`, présent après un simple `cargo build`), `ffi.isAvailable` est vrai et `main.dart:~235` bascule en **mode FFI** : l'app n'essaie plus jamais le socket TCP et attend éternellement des trames qui ne viendront pas. Le mode doit être choisi par `AFIK_STANDALONE` seulement.
 - **B-47 🟠 [L]** Le runtime importe `dart:io` **et** `dart:ffi` (`main.dart`, `ffi_bridge.dart`) : non compilable pour **Web** (`flutter build web` échoue), alors que le README liste Web comme cible. Pas de transport WebSocket.
 - **B-48 🟡 [L]** `_handleTreePatch` (`main.dart`) : `setState` reconstruit **tout** l'arbre de widgets à chaque patch (`buildFromNode(root)`) ; le « sub-millisecond diffing » économise des octets, pas du travail de rendu. `findNodeById` est O(n) par opération (O(n·m)). Un patch dont l'`id` est inconnu est ignoré sans log ni demande de resync (cf. B-07).
 - **B-49 🟡 [L]** `_handlePluginCall` : les erreurs d'appels à 3 champs (fire-and-forget) sont perdues ; `_sendPluginResponse` fait `jsonEncode(result)` — un résultat non sérialisable (ex. `Uint8List`, `DateTime`) lève hors `try` et **aucune réponse n'est envoyée** → côté Python, timeout + faux fallback (B-01).
@@ -190,7 +190,7 @@ B-01, B-02 (RPC non bloquant, erreurs explicites ; le fallback local n'est utili
 - **B-52 ⚪ [L]** Pas d'`android/app/src/main/jniLibs`, pas de lien statique iOS pour la lib Rust, aucune configuration `ios/` pour l'embarquement : le chemin « IPA » du CLI (`ipa`/`ios`) ne peut pas aboutir.
 
 ### Packaging / dépôt
-- **B-53 🔴 [L]** Le framework n'est **pas installable en dehors d'un clone du dépôt** : `pyproject.toml` n'embarque ni `dart_runtime/`, ni `rust_bridge/`, ni binaire du pont. `find_workspace_root()` retombe sur `Path(__file__).parents[3]` (le dossier parent de `site-packages` !). `pip install flarix` (annoncé) ne peut pas fonctionner ; le projet s'appelle `pyflutter` dans `pyproject.toml` et `Flarix` dans le README, `git clone flarix-ui/flarix` / chemins `d:/Projets/PYFLUTTER` en dur dans les liens du README.
+- **B-53 🔴 [L]** Le framework n'est **pas installable en dehors d'un clone du dépôt** : `pyproject.toml` n'embarque ni `dart_runtime/`, ni `rust_bridge/`, ni binaire du pont. `find_workspace_root()` retombe sur `Path(__file__).parents[3]` (le dossier parent de `site-packages` !). `pip install afik` (annoncé) ne peut pas fonctionner ; le projet s'appelle `afik` dans `pyproject.toml` et `Afik` dans le README, `git clone afik-ui/afik` / chemins `d:/Projets/AFIK` en dur dans les liens du README.
 - **B-54 🟡 [L]** Incohérences : README « Python 3.9 » vs `requires-python >=3.10` ; `pydantic` obligatoire dans `requirements.txt` mais optionnel dans `pyproject.toml` ; commande de test `python -m unittest discover -s tests` alors que les tests utilisent des imports de package (à vérifier) ; `generated/widget_pb2.py` committé sans commande de régénération ni contrainte de version `protobuf` correspondante ; pas de `LICENSE` alors que le README et le badge y renvoient.
 - **B-55 🟡 [L]** Pas de CI (`.github/` absent), pas de lint/typage (`ruff` en dev-dependency mais non configuré, `mypy`/`py.typed` absents), pas de tests Dart/Rust, pas de tests d'intégration bout-en-bout (le fake Dart client n'est pas dans la suite).
 
@@ -214,7 +214,7 @@ Classé par priorité. Ce sont des **manques**, pas des bugs ponctuels.
 9. **Navigation complète** : bouton retour système, routes nommées avec arguments, transitions, `WillPop`, deep links, onglets imbriqués ; état de navigation lié à l'app (pas un singleton global).
 10. **Gestion d'erreurs/diagnostic** : écran d'erreur dans l'app (équivalent du « red screen »), traces Python lisibles côté terminal, `logger` configurable sans toucher à loguru global, mode `--verbose` (B-13, B-34).
 11. **Validation des props** : widgets typés, enums réels (`MainAxisAlignment.CENTER` plutôt que chaînes libres), erreurs précoces et claires en Python au lieu de props ignorées côté Dart (B-24).
-12. **Configuration par projet** : copie de travail du runtime Dart par projet (pas de mutation du dépôt framework), génération du `pubspec.yaml` à partir de `pyflutter.yaml`, résolution des versions, `pyflutter doctor` (Flutter, Rust, adb, ports) (B-31, B-32).
+12. **Configuration par projet** : copie de travail du runtime Dart par projet (pas de mutation du dépôt framework), génération du `pubspec.yaml` à partir de `afik.yaml`, résolution des versions, `afik doctor` (Flutter, Rust, adb, ports) (B-31, B-32).
 13. **Plugins réels** : câbler les vrais packages (`local_auth`, `permission_handler`, `flutter_secure_storage`, `sqflite`, `camera`, `audioplayers`, `video_player`, `share_plus`, `webview_flutter`, `image_picker`…) dans `pubspec.yaml` + permissions plateforme ; flux d'événements Dart→Python (EventChannel, streams : connectivité, position, lecteur audio…) ; handlers d'appels entrants (B-06, B-39, B-40).
 14. **Tests sérieux** : tests d'intégration Python↔Rust↔Dart (au minimum avec un faux client Dart dans la suite), tests de propriétés sur le diff, tests de concurrence, golden tests des widgets, `flutter analyze`/`cargo clippy`/`ruff`/`mypy` en CI, matrice Python 3.10-3.13 × OS (B-55).
 
@@ -233,7 +233,7 @@ Classé par priorité. Ce sont des **manques**, pas des bugs ponctuels.
 - `Navigator.can_pop` / `current_page` existent (je l'avais cru manquant à la première lecture).
 - L'état `StatefulComponent` **est** conservé entre frames quand le widget est créé dans `app.build()` (vérifié sur 3 frames).
 - `Switch`/`Checkbox`/`Slider` convertissent bien les chaînes Dart en `bool`/`float` pour les handlers déclarés via `on_change`.
-- Les trois exemples (`counter`, `facebook_feed`, `pyshop`) et le modèle généré par `pyflutter create` se chargent et se résolvent en arbre sans erreur côté Python.
+- Les trois exemples (`counter`, `facebook_feed`, `pyshop`) et le modèle généré par `afik create` se chargent et se résolvent en arbre sans erreur côté Python.
 
 ## 6. Limites de cet audit
 

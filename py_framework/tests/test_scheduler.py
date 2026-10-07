@@ -10,11 +10,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import pyflutter as pf
-from pyflutter import app as app_module
-from pyflutter.cli.runner import PyFlutterRunner
-from pyflutter.core.scheduler import UI_THREAD_NAME, FrameScheduler
-from pyflutter.plugins import manager
+import afik as pf
+from afik import app as app_module
+from afik.cli.runner import AfikRunner
+from afik.core.scheduler import UI_THREAD_NAME, FrameScheduler
+from afik.plugins import manager
 
 
 def wait_until(predicate, timeout=2.0):
@@ -147,9 +147,9 @@ class Counter(pf.Component):
 
 class TestRunnerUsesTheUiThread(unittest.TestCase):
     def setUp(self):
-        with patch("pyflutter.cli.runner.find_bridge_binary", return_value=Path("bridge")), \
-             patch("pyflutter.cli.runner.atexit.register"):
-            self.runner = PyFlutterRunner(entrypoint=Path(__file__))
+        with patch("afik.cli.runner.find_bridge_binary", return_value=Path("bridge")), \
+             patch("afik.cli.runner.atexit.register"):
+            self.runner = AfikRunner(entrypoint=Path(__file__))
         self.session = FakeSession()
         self.runner.session = self.session
         self.runner.app = Counter()
@@ -176,7 +176,7 @@ class TestRunnerUsesTheUiThread(unittest.TestCase):
             pf.update()
             pf.update()
 
-        from pyflutter.core.widget_base import _register_callback
+        from afik.core.widget_base import _register_callback
         callback_id = _register_callback(handler)
         event = type("E", (), {"callback_id": callback_id, "event_data": {}})()
         self.runner.scheduler.post(lambda: self.runner._handle_callback_event(event))
@@ -186,7 +186,7 @@ class TestRunnerUsesTheUiThread(unittest.TestCase):
 
     def test_callbacks_and_builds_never_overlap(self):
         app = self.runner.app
-        from pyflutter.core.widget_base import _register_callback
+        from afik.core.widget_base import _register_callback
 
         def handler():
             app.inside_callback = True
@@ -232,7 +232,7 @@ class TestRunnerUsesTheUiThread(unittest.TestCase):
 
     def test_plugin_call_from_a_callback_gets_its_answer(self):
         answers = []
-        from pyflutter.core.widget_base import _register_callback
+        from afik.core.widget_base import _register_callback
 
         def handler():
             answers.append(manager.call_plugin("local_auth", "authenticate", {}, timeout=2.0))
@@ -246,7 +246,7 @@ class TestRunnerUsesTheUiThread(unittest.TestCase):
         self.assertLess(time.time() - start, 1.0)
 
     def test_resync_request_forces_a_full_tree(self):
-        from pyflutter.core.bridge import RESYNC_CALLBACK_ID
+        from afik.core.bridge import RESYNC_CALLBACK_ID
         event = type("E", (), {"callback_id": RESYNC_CALLBACK_ID, "event_data": {}})()
         self.runner.scheduler.post(lambda: self.runner._handle_callback_event(event))
         self.assertTrue(wait_until(lambda: self.session.sent))

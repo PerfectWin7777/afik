@@ -1,5 +1,5 @@
 """
-Unit tests for PyFlutter native plugins and RPC architecture.
+Unit tests for Afik native plugins and RPC architecture.
 Tests storage, path_provider, device_info, file_picker, and RPC dispatching.
 """
 
@@ -7,14 +7,14 @@ import json
 import threading
 import unittest
 
-from pyflutter.plugins import (
+from afik.plugins import (
     device_info,
     file_picker,
     path_provider,
     shared_preferences,
     storage,
 )
-from pyflutter.plugins.manager import (
+from afik.plugins.manager import (
     _pending_rpc_calls,
     _rpc_results,
     handle_plugin_response,

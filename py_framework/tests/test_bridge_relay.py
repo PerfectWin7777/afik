@@ -10,9 +10,9 @@ import time
 import unittest
 from pathlib import Path
 
-import pyflutter as pf
-from pyflutter.core.bridge import RESYNC_CALLBACK_ID, read_frame
-from pyflutter.core.render import (
+import afik as pf
+from afik.core.bridge import RESYNC_CALLBACK_ID, read_frame
+from afik.core.render import (
     MSG_CALLBACK_EVENT,
     MSG_RENDER_TREE,
     MSG_TREE_PATCH,
@@ -20,12 +20,12 @@ from pyflutter.core.render import (
     render_tree_frame,
     tree_patch_frame,
 )
-from pyflutter.generated import widget_pb2
+from afik.generated import widget_pb2
 
 ROOT = Path(__file__).resolve().parents[2]
 BINARY = next(
-    (p for p in (ROOT / "rust_bridge/target/debug/pyflutter-bridge",
-                 ROOT / "rust_bridge/target/release/pyflutter-bridge") if p.exists()),
+    (p for p in (ROOT / "rust_bridge/target/debug/afik-bridge",
+                 ROOT / "rust_bridge/target/release/afik-bridge") if p.exists()),
     None,
 )
 
@@ -40,16 +40,16 @@ def _read_socket_frame(sock: socket.socket):
     return read_frame(sock.makefile("rb"))
 
 
-# The CI job that builds the bridge sets PYFLUTTER_REQUIRE_BRIDGE=1: there, a missing binary is a
+# The CI job that builds the bridge sets AFIK_REQUIRE_BRIDGE=1: there, a missing binary is a
 # failure instead of a silent skip.
-REQUIRE_BRIDGE = os.environ.get("PYFLUTTER_REQUIRE_BRIDGE") == "1"
+REQUIRE_BRIDGE = os.environ.get("AFIK_REQUIRE_BRIDGE") == "1"
 
 
 @unittest.skipIf(BINARY is None and not REQUIRE_BRIDGE, "rust bridge binary not built")
 class TestRelay(unittest.TestCase):
     def setUp(self):
         if BINARY is None:
-            self.fail("PYFLUTTER_REQUIRE_BRIDGE=1 but rust_bridge/target/{debug,release}/pyflutter-bridge is missing")
+            self.fail("AFIK_REQUIRE_BRIDGE=1 but rust_bridge/target/{debug,release}/afik-bridge is missing")
         self.port = _free_port()
         self.proc = subprocess.Popen(
             [str(BINARY), "--dart-port", str(self.port), "--token", "s3cret"],

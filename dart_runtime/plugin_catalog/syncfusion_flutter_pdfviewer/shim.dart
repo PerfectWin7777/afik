@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:pyflutter_dart_runtime/ir_codec.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
-import 'package:pyflutter_dart_runtime/widgets/widget_registry.dart';
+import 'package:afik_dart_runtime/ir_codec.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/widgets/widget_registry.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 /// PDF viewer (syncfusion_flutter_pdfviewer). Syncfusion packages require a Syncfusion
@@ -73,7 +73,7 @@ class _PySfPdfViewerWidgetState extends State<PySfPdfViewerWidget> {
 }
 
 /// This plugin only provides the widget; there are no method calls to answer.
-class _NoMethods implements PyFlutterPlugin {
+class _NoMethods implements AfikPlugin {
   @override
   Future<dynamic> handleMethodCall(String method, Map<String, String> args) async {
     throw UnsupportedError('syncfusion_flutter_pdfviewer has no method "$method"; use the SfPdfViewer widget.');

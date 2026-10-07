@@ -1,13 +1,13 @@
 """
-Unit test suite for PyFlutter Reactive State Management (Signals, Computed, Effects, Batch, Watch, StatefulComponent).
+Unit test suite for Afik Reactive State Management (Signals, Computed, Effects, Batch, Watch, StatefulComponent).
 """
 
 from __future__ import annotations
 
 import unittest
 
-from pyflutter.core.render import render_tree_frame, resolve_widget
-from pyflutter.core.state import (
+from afik.core.render import render_tree_frame, resolve_widget
+from afik.core.state import (
     Computed,
     Effect,
     Signal,
@@ -19,7 +19,7 @@ from pyflutter.core.state import (
     batch,
     clear_state_registry,
 )
-from pyflutter.widgets.widgets import Button, Column, Text
+from afik.widgets.widgets import Button, Column, Text
 
 
 class TestSignal(unittest.TestCase):
@@ -48,12 +48,12 @@ class TestSignal(unittest.TestCase):
         unsub = sig.subscribe(lambda val: history.append(val))
 
         sig.value = "world"
-        sig.value = "pyflutter"
-        self.assertEqual(history, ["world", "pyflutter"])
+        sig.value = "afik"
+        self.assertEqual(history, ["world", "afik"])
 
         unsub()
         sig.value = "ignored"
-        self.assertEqual(history, ["world", "pyflutter"])
+        self.assertEqual(history, ["world", "afik"])
 
 
 class TestComputed(unittest.TestCase):

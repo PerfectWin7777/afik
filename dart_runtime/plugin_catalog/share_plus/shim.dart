@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// Native share sheet (share_plus).
@@ -9,7 +9,7 @@ import 'package:share_plus/share_plus.dart';
 /// `success` is true only when the platform reports that the user picked a target
 /// (`status == "success"`). When the platform cannot tell (`unavailable`) the status is
 /// returned and `success` stays false, so Python never assumes a share happened.
-class ShareShim implements PyFlutterPlugin {
+class ShareShim implements AfikPlugin {
   @override
   Future<dynamic> handleMethodCall(String method, Map<String, String> args) async {
     switch (method) {

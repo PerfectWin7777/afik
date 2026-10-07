@@ -5,8 +5,8 @@ from __future__ import annotations
 import gc
 import unittest
 
-import pyflutter as pf
-from pyflutter.core import widget_base as wb
+import afik as pf
+from afik.core import widget_base as wb
 
 
 def build(form_key, seen=None):

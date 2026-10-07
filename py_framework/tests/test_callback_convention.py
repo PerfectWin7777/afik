@@ -5,9 +5,9 @@ from __future__ import annotations
 import functools
 import unittest
 
-import pyflutter as pf
-from pyflutter.core import widget_base as wb
-from pyflutter.core.widget_base import _call_callable
+import afik as pf
+from afik.core import widget_base as wb
+from afik.core.widget_base import _call_callable
 
 
 def record(fn_factory, *args, **kwargs):

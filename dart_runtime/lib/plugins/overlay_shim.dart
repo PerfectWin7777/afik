@@ -4,7 +4,7 @@ import 'plugin_registry.dart';
 
 /// Native Flutter shim handling SnackBars, Alert Dialogs, and modal overlays
 /// requested asynchronously by the Python application.
-class OverlayShim implements PyFlutterPlugin {
+class OverlayShim implements AfikPlugin {
   final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey;
   final GlobalKey<NavigatorState> navigatorKey;
   final void Function(String callbackId, Map<String, String> data)? sendEvent;

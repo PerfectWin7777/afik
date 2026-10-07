@@ -5,8 +5,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-import pyflutter as pf
-from pyflutter.core import widget_base as wb
+import afik as pf
+from afik.core import widget_base as wb
 
 
 def texts(widget):
@@ -83,7 +83,7 @@ class TestDeprecatedAliases(unittest.TestCase):
                 super().__init__()
                 self.column = pf.Column([pf.Text("legacy")])
 
-        with patch("pyflutter.core.logger.logger.warning") as warning:
+        with patch("afik.core.logger.logger.warning") as warning:
             self.assertEqual(texts(Legacy().build()), ["legacy"])
             Legacy().build()
         self.assertEqual(warning.call_count, 1)
@@ -98,7 +98,7 @@ class TestDeprecatedAliases(unittest.TestCase):
                 self.layout = pf.Column([pf.Text("m")])
                 self.floating_action_button = pf.FloatingActionButton(pf.Icon("add"))
 
-        with patch("pyflutter.core.logger.logger.warning") as warning:
+        with patch("afik.core.logger.logger.warning") as warning:
             Modern().build()
         warning.assert_not_called()
 

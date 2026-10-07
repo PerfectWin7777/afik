@@ -1,19 +1,18 @@
-# PyFlutter
+# Afik
 
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](py_framework/pyproject.toml)
 [![Flutter](https://img.shields.io/badge/flutter-%3E%3D3.32-02569B?logo=flutter)](https://flutter.dev)
 [![Status](https://img.shields.io/badge/status-alpha-orange)]()
 
-**PyFlutter** lets Python developers describe a user interface in Python and have it rendered by Flutter's native engine.
+**Afik** lets Python developers describe a user interface in Python and have it rendered by Flutter's native engine.
 The Python application runs on your machine, a small Rust bridge relays messages, and a Flutter shell draws the widgets and calls native packages.
 
 > **Status: alpha, development mode only.** The full loop (Python → Rust bridge → Flutter shell → callbacks back to Python, with hot reload) works while you develop on a connected device or desktop.
 > Shipping a self-contained app that embeds Python is **not implemented yet** (see [What works today](#what-works-today)).
-> The project is called *PyFlutter* in the code and the CLI; a rename (*Flarix*) is under consideration.
 
 ---
 
-## Why PyFlutter?
+## Why Afik?
 
 - **Pythonic API**: `Component` / `StatefulComponent`, Signals, or Qt-style fluent widgets (`add_widget()`, `.clicked.connect()`).
 - **Flutter's real renderer**: Material 3 widgets drawn by Flutter, not re-implemented.
@@ -49,13 +48,13 @@ Native package calls travel the same way: Python sends `{plugin, method, args}`,
 
 | Area | State |
 |------|-------|
-| `pyflutter run` on Android / desktop devices with hot reload (`r`) and hot restart (`R`) | Works |
-| Material widgets, reactive state, forms, navigation stack, SnackBar / dialogs | Works (coverage is partial, see `PYFLUTTER_VISION.md`) |
+| `afik run` on Android / desktop devices with hot reload (`r`) and hot restart (`R`) | Works |
+| Material widgets, reactive state, forms, navigation stack, SnackBar / dialogs | Works (coverage is partial, see `AFIK_VISION.md`) |
 | Single UI thread: callbacks and builds never overlap, many updates cost one frame (`pf.run_on_ui` for your own threads) | Works |
 | Incremental tree patches, reconnection resync, session token on the local socket | Works |
-| Native packages (22 catalog plugins, see below) | Real shims calling the real Flutter packages; installed per project with `pyflutter add`. They compile (`flutter analyze`) individually and all together; they still need testing on devices |
+| Native packages (22 catalog plugins, see below) | Real shims calling the real Flutter packages; installed per project with `afik add`. They compile (`flutter analyze`) individually and all together; they still need testing on devices |
 | `hive` boxes and `sqflite` | Implemented in Python (JSON files, `sqlite3`), no Flutter package involved |
-| Standalone app that embeds Python (APK / IPA / desktop bundle) | **Not implemented**: `pyflutter build` compiles the Flutter shell, but no Python interpreter is embedded yet |
+| Standalone app that embeds Python (APK / IPA / desktop bundle) | **Not implemented**: `afik build` compiles the Flutter shell, but no Python interpreter is embedded yet |
 | Web and iOS | **Not supported yet** (the shell imports `dart:io` / `dart:ffi`; iOS needs the embedded runtime) |
 | Installation with `pip install` outside a repository clone | **Not available yet**: the CLI needs the `dart_runtime/` and `rust_bridge/` folders of this repository |
 
@@ -68,15 +67,15 @@ Native package calls travel the same way: Python sends `{plugin, method, args}`,
 ### 1. Installation
 
 ```bash
-git clone https://github.com/PerfectWin7777/pyflutter.git
-cd pyflutter/py_framework
+git clone https://github.com/PerfectWin7777/afik.git
+cd afik/py_framework
 pip install -e .
 ```
 
 ### 2. Create Your First App (`main.py`)
 
 ```python
-import pyflutter as pf
+import afik as pf
 
 class CounterApp(pf.Component):
     def __init__(self):
@@ -121,17 +120,17 @@ if __name__ == "__main__":
 
 ```bash
 # Run interactively with hot reload (needs the Rust bridge built once: see Requirements)
-python main.py            # or: pyflutter run main.py
+python main.py            # or: afik run main.py
 
 # Flutter shell build (does NOT embed Python yet)
-pyflutter build apk --release
-pyflutter build windows --release
+afik build apk --release
+afik build windows --release
 ```
 
 ### Requirements
 
 - Python 3.10+
-- Flutter SDK (3.32 or newer) in `PATH`, and a device, emulator or desktop target (`pyflutter devices`)
+- Flutter SDK (3.32 or newer) in `PATH`, and a device, emulator or desktop target (`afik devices`)
 - Rust toolchain and `protoc` to build the bridge once: `cargo build --manifest-path rust_bridge/Cargo.toml`
 - Android: Android SDK / NDK as required by Flutter
 
@@ -164,44 +163,44 @@ A `StatefulComponent` keeps its `State` between frames. The state is matched by 
 
 ## Native packages
 
-PyFlutter does **not** try to expose every pub.dev package automatically, and it does not put
+Afik does **not** try to expose every pub.dev package automatically, and it does not put
 every package in every app. The model is:
 
 1. Each supported package has an entry in [`dart_runtime/plugin_catalog/`](dart_runtime/plugin_catalog): a `plugin.yaml`
    (package, version, native settings) and a hand-written Dart shim that calls the real package API.
-2. A Python module `pyflutter.plugins.<package>` mirrors the package's classes and methods.
-3. A project lists the plugins it uses in `pyflutter.yaml` (`plugins:`); `pyflutter add <name>` edits that list and wires the
+2. A Python module `afik.plugins.<package>` mirrors the package's classes and methods.
+3. A project lists the plugins it uses in `afik.yaml` (`plugins:`); `afik add <name>` edits that list and wires the
    shim, the `pubspec.yaml` dependency and the native Android settings. Only those packages are compiled into the app.
 
 ```bash
-pyflutter plugin list                 # catalog and what this project uses
-pyflutter add local_auth              # install a catalog plugin
-pyflutter add some_other_package      # no shim yet: adds the Flutter dependency, then
-pyflutter plugin new some_other_package   # scaffolds the shim, Python module and test to fill from the package docs
-pyflutter remove local_auth
+afik plugin list                 # catalog and what this project uses
+afik add local_auth              # install a catalog plugin
+afik add some_other_package      # no shim yet: adds the Flutter dependency, then
+afik plugin new some_other_package   # scaffolds the shim, Python module and test to fill from the package docs
+afik remove local_auth
 ```
 
-Each project works on its own copy of the Flutter runtime, created in `<project>/.pyflutter/runtime/` the first time you
-`run`, `build` or `add` (add `.pyflutter/` to your `.gitignore`; `pyflutter create` does). `dart_runtime/` in this repository is only
-the template, so installing plugins or declaring permissions never touches it. `pyflutter.yaml` is the source of truth: `plugins:`,
+Each project works on its own copy of the Flutter runtime, created in `<project>/.afik/runtime/` the first time you
+`run`, `build` or `add` (add `.afik/` to your `.gitignore`; `afik create` does). `dart_runtime/` in this repository is only
+the template, so installing plugins or declaring permissions never touches it. `afik.yaml` is the source of truth: `plugins:`,
 `dependencies.flutter` (packages without a shim, saved with the version Flutter resolved) and `permissions:`. Removing a plugin or a
 permission removes it from the Android manifest and the iOS plist too.
 
-A plugin that is not installed fails with a clear error (`Plugin "x" is not installed in this runtime. Install it with: pyflutter add x`).
+A plugin that is not installed fails with a clear error (`Plugin "x" is not installed in this runtime. Install it with: afik add x`).
 When a Flutter runtime is connected, a plugin error or timeout raises `PluginError` / `PluginTimeoutError`; it is never
 replaced by simulated data, and a missing or malformed answer never reads as a success.
 
 | Plugin (pub.dev package) | Python module | Notes |
 |---|---|---|
-| `shared_preferences`, `path_provider`, `device_info_plus`, `url_launcher`, `file_picker` | `pyflutter.plugins.<name>` | Key-value storage, system folders, device info, links/phone/email, file and folder dialogs |
-| `connectivity_plus`, `share_plus`, `image_picker`, `audioplayers` | `pyflutter.plugins.<name>` | Network state, share sheet, gallery/camera picking, audio playback |
-| `flutter_local_notifications` | `pyflutter.plugins.flutter_local_notifications` | Show / cancel notifications (needs core library desugaring, applied automatically) |
-| `local_auth`, `permission_handler`, `flutter_secure_storage` | `pyflutter.plugins.<name>` | Biometrics, runtime permissions, encrypted storage |
-| `camera`, `video_player`, `chewie`, `webview_flutter` | `pyflutter.plugins.<name>` | Real widgets `CameraPreview`, `VideoPlayer`, `Chewie`, `WebView` |
-| `syncfusion_flutter_pdfviewer`, `pdfx`, `flutter_pdfview`, `printing` | `pyflutter.plugins.<name>` | PDF viewers (`SfPdfViewer`, `PdfView`, `PDFView`), page rendering, print and share. Syncfusion needs its own licence |
-| `hive`, `sqflite` | `pyflutter.plugins.hive`, `pyflutter.plugins.sqflite` | Pure Python (JSON boxes, `sqlite3`), no Flutter package |
+| `shared_preferences`, `path_provider`, `device_info_plus`, `url_launcher`, `file_picker` | `afik.plugins.<name>` | Key-value storage, system folders, device info, links/phone/email, file and folder dialogs |
+| `connectivity_plus`, `share_plus`, `image_picker`, `audioplayers` | `afik.plugins.<name>` | Network state, share sheet, gallery/camera picking, audio playback |
+| `flutter_local_notifications` | `afik.plugins.flutter_local_notifications` | Show / cancel notifications (needs core library desugaring, applied automatically) |
+| `local_auth`, `permission_handler`, `flutter_secure_storage` | `afik.plugins.<name>` | Biometrics, runtime permissions, encrypted storage |
+| `camera`, `video_player`, `chewie`, `webview_flutter` | `afik.plugins.<name>` | Real widgets `CameraPreview`, `VideoPlayer`, `Chewie`, `WebView` |
+| `syncfusion_flutter_pdfviewer`, `pdfx`, `flutter_pdfview`, `printing` | `afik.plugins.<name>` | PDF viewers (`SfPdfViewer`, `PdfView`, `PDFView`), page rendering, print and share. Syncfusion needs its own licence |
+| `hive`, `sqflite` | `afik.plugins.hive`, `afik.plugins.sqflite` | Pure Python (JSON boxes, `sqlite3`), no Flutter package |
 
-Without a connected Flutter runtime (unit tests, scripts) plugin calls use a small local simulation so code can be tested offline. The first call of each simulated plugin logs an `[offline] ... is simulated` warning, and the security plugins (`local_auth`, `permission_handler`, `flutter_secure_storage`) refuse instead of faking an answer unless `PYFLUTTER_ALLOW_INSECURE_MOCKS=1` is set (meant for tests). Calls that wait for a person (pickers, permission prompts, authentication, sharing) wait up to 120 s, the others 3 s.
+Without a connected Flutter runtime (unit tests, scripts) plugin calls use a small local simulation so code can be tested offline. The first call of each simulated plugin logs an `[offline] ... is simulated` warning, and the security plugins (`local_auth`, `permission_handler`, `flutter_secure_storage`) refuse instead of faking an answer unless `AFIK_ALLOW_INSECURE_MOCKS=1` is set (meant for tests). Calls that wait for a person (pickers, permission prompts, authentication, sharing) wait up to 120 s, the others 3 s.
 
 To check a catalog change: `python tools/verify_catalog.py` (needs the Flutter SDK) installs every plugin into a temporary copy of the
 runtime, runs `flutter pub get` and `flutter analyze`, then installs them all together to catch version conflicts.
@@ -212,15 +211,15 @@ runtime, runs `flutter pub get` and `flutter analyze`, then installs them all to
 
 | Command | Arguments / flags | Description |
 |---|---|---|
-| `pyflutter run` | `[entrypoint] [-d <device>] [-p <port>] [--attach]` | Run the app interactively on a device or desktop |
-| `pyflutter devices` | | List devices and emulators detected by Flutter |
-| `pyflutter build` | `[target] [--debug\|--release\|--profile] [--split-per-abi]` | Build the Flutter shell (default: `apk`, debug). No embedded Python yet |
-| `pyflutter create` | `<name>` | Scaffold a project |
-| `pyflutter init` | | Initialise a project in the current directory |
-| `pyflutter sync` | | Sync `pyflutter.yaml` permissions to the Android manifest and iOS plist |
-| `pyflutter add` | `<package>` | Install a catalog plugin (or add a Flutter package that has no shim yet) |
-| `pyflutter remove` | `<package>` | Remove a plugin / package |
-| `pyflutter plugin` | `list` \| `new <package>` | List the plugin catalog, or scaffold the mapping of a new package |
+| `afik run` | `[entrypoint] [-d <device>] [-p <port>] [--attach]` | Run the app interactively on a device or desktop |
+| `afik devices` | | List devices and emulators detected by Flutter |
+| `afik build` | `[target] [--debug\|--release\|--profile] [--split-per-abi]` | Build the Flutter shell (default: `apk`, debug). No embedded Python yet |
+| `afik create` | `<name>` | Scaffold a project |
+| `afik init` | | Initialise a project in the current directory |
+| `afik sync` | | Sync `afik.yaml` permissions to the Android manifest and iOS plist |
+| `afik add` | `<package>` | Install a catalog plugin (or add a Flutter package that has no shim yet) |
+| `afik remove` | `<package>` | Remove a plugin / package |
+| `afik plugin` | `list` \| `new <package>` | List the plugin catalog, or scaffold the mapping of a new package |
 
 Build targets: `apk`, `appbundle`, `windows`, `linux`, `macos`, `web`, `ipa` (`web` and `ipa` are not supported yet, see above).
 
@@ -235,7 +234,7 @@ cd py_framework && python -m pytest -q  # the Python test-suite (unknown widget 
 python tools/check_contract.py          # Python <-> contract <-> Dart props consistency
 ```
 
-The Rust relay tests (`tests/test_bridge_relay.py`) run the real bridge binary: build it first (`cd rust_bridge && cargo build`) or they are skipped; `PYFLUTTER_REQUIRE_BRIDGE=1` turns a missing binary into a failure. The Dart runtime has a small unit test (`cd dart_runtime && flutter test`) and must pass `flutter analyze`; `python tools/verify_catalog.py [--together]` installs the plugins of the catalog into a temporary runtime and analyses them (needs the Flutter SDK).
+The Rust relay tests (`tests/test_bridge_relay.py`) run the real bridge binary: build it first (`cd rust_bridge && cargo build`) or they are skipped; `AFIK_REQUIRE_BRIDGE=1` turns a missing binary into a failure. The Dart runtime has a small unit test (`cd dart_runtime && flutter test`) and must pass `flutter analyze`; `python tools/verify_catalog.py [--together]` installs the plugins of the catalog into a temporary runtime and analyses them (needs the Flutter SDK).
 
 The GitHub Actions workflow (`.github/workflows/ci.yml`) runs all of this: Python 3.10 to 3.13 on Linux (and 3.12 on Windows and macOS), the oldest supported dependencies, `cargo clippy -D warnings` and the relay tests, `flutter analyze` and `flutter test`, the contract check and the plugin catalog (every plugin, weekly).
 
@@ -247,8 +246,8 @@ The GitHub Actions workflow (`.github/workflows/ci.yml`) runs all of this: Pytho
 - [x] Material 3 widget catalog (partial coverage)
 - [x] Callback lifecycle (sweep, pinned one-shot callbacks), deterministic state keys
 - [x] Hot reload / hot restart, reconnection resync
-- [x] Packages on demand (`pyflutter add` with a plugin catalog)
-- [x] Per-project copy of the Flutter runtime (`<project>/.pyflutter/runtime/`)
+- [x] Packages on demand (`afik add` with a plugin catalog)
+- [x] Per-project copy of the Flutter runtime (`<project>/.afik/runtime/`)
 - [ ] Embedded Python interpreter for standalone builds
 - [ ] Pip distribution with a prebuilt bridge
 - [ ] Hot reload of every project module, file watcher

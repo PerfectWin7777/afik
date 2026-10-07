@@ -1,9 +1,9 @@
-name: pyflutter_dart_runtime
+name: afik_dart_runtime
 description: >
-  Minimal Flutter shell for the PyFlutter POC. Connects to the Rust
+  Minimal Flutter shell for the Afik POC. Connects to the Rust
   bridge's relay mode over a local TCP socket, renders whatever
   RenderTree it receives, and sends CallbackEvent back on taps.
-  See ../README.md and ../PYFLUTTER_VISION.md for context.
+  See ../README.md and ../AFIK_VISION.md for context.
 publish_to: 'none'
 version: 0.1.0
 
@@ -19,7 +19,7 @@ dependencies:
   # The core runtime has no external package on purpose: the Protobuf wire
   # format is hand-encoded in lib/ir_codec.dart, and every optional Flutter
   # package (url_launcher, camera, ...) is added per project by
-  # `pyflutter add <package>` (see plugin_catalog/).
+  # `afik add <package>` (see plugin_catalog/).
 
 dev_dependencies:
   flutter_test:

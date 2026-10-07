@@ -2,23 +2,23 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 
-/// Base interface that any native PyFlutter plugin shim must implement.
-abstract class PyFlutterPlugin {
+/// Base interface that any native Afik plugin shim must implement.
+abstract class AfikPlugin {
   Future<dynamic> handleMethodCall(String method, Map<String, String> args);
 }
 
 /// Optional interface for plugins that need structured arguments.
 ///
-/// [PyFlutterPlugin.handleMethodCall] receives every argument as a `String`: strings are passed
+/// [AfikPlugin.handleMethodCall] receives every argument as a `String`: strings are passed
 /// as they are, `null` becomes `''`, and any other value (number, bool, list, map) becomes its
 /// **JSON** text (`true`, `1.5`, `[1,2]`, `{"a":1}`), never Dart's `toString()` syntax.
 /// A plugin that wants the decoded values (a list, a nested map, a number) implements this
 /// interface too and reads them from [handleRawCall]; the registry then calls it instead.
-abstract class StructuredPyFlutterPlugin implements PyFlutterPlugin {
+abstract class StructuredAfikPlugin implements AfikPlugin {
   Future<dynamic> handleRawCall(String method, Map<String, dynamic> args);
 }
 
-/// The text form of an argument given to [PyFlutterPlugin.handleMethodCall].
+/// The text form of an argument given to [AfikPlugin.handleMethodCall].
 String pluginArgumentText(dynamic value) {
   if (value == null) return '';
   if (value is String) return value;
@@ -27,10 +27,10 @@ String pluginArgumentText(dynamic value) {
 
 /// Central registry for native Flutter plugins and universal MethodChannel dispatcher.
 class PluginRegistry {
-  static final Map<String, PyFlutterPlugin> _plugins = {};
+  static final Map<String, AfikPlugin> _plugins = {};
 
   /// Registers a plugin under a unique name (e.g. "url_launcher").
-  static void register(String name, PyFlutterPlugin plugin) {
+  static void register(String name, AfikPlugin plugin) {
     _plugins[name] = plugin;
   }
 
@@ -43,7 +43,7 @@ class PluginRegistry {
   ) async {
     final plugin = _plugins[pluginName];
     if (plugin != null) {
-      if (plugin is StructuredPyFlutterPlugin) {
+      if (plugin is StructuredAfikPlugin) {
         return await plugin.handleRawCall(method, rawArgs);
       }
       final Map<String, String> strArgs =
@@ -52,11 +52,11 @@ class PluginRegistry {
     }
 
     // Only the explicit generic channel call may reach an arbitrary MethodChannel.
-    // Any other name is a PyFlutter plugin that is not installed in this runtime.
+    // Any other name is a Afik plugin that is not installed in this runtime.
     if (pluginName != '__method_channel__') {
       throw UnsupportedError(
           'Plugin "$pluginName" is not installed in this runtime. '
-          'Install it with: pyflutter add $pluginName');
+          'Install it with: afik add $pluginName');
     }
     return await _dispatchToMethodChannel(pluginName, method, rawArgs);
   }

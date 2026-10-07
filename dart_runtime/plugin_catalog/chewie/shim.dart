@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
-import 'package:pyflutter_dart_runtime/ir_codec.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
-import 'package:pyflutter_dart_runtime/widgets/widget_registry.dart';
+import 'package:afik_dart_runtime/ir_codec.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/widgets/widget_registry.dart';
 
 import '../video_player/shim.dart';
 
@@ -14,7 +14,7 @@ class ChewieRegistry {
 }
 
 /// Chewie playback UI (chewie) on top of the video_player plugin.
-class ChewieShim implements PyFlutterPlugin {
+class ChewieShim implements AfikPlugin {
   ChewieController _get(Map<String, String> args) {
     final id = args['controllerId'] ?? '';
     final controller = ChewieRegistry.controllers[id];

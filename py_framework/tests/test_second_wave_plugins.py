@@ -12,8 +12,8 @@ Unit tests for the second wave of essential Flutter packages:
 import os
 import unittest
 
-import pyflutter as pf
-from pyflutter.plugins import (
+import afik as pf
+from afik.plugins import (
     chewie,
     flutter_local_notifications,
     flutter_secure_storage,
@@ -26,20 +26,20 @@ from pyflutter.plugins import (
     video_player,
 )
 
-_previous_mock_setting = os.environ.get("PYFLUTTER_ALLOW_INSECURE_MOCKS")
+_previous_mock_setting = os.environ.get("AFIK_ALLOW_INSECURE_MOCKS")
 
 
 def setUpModule():
     # These tests exercise the offline simulation of the security plugins, which is refused
     # by default (see tests/test_plugin_timeouts_offline.py).
-    os.environ["PYFLUTTER_ALLOW_INSECURE_MOCKS"] = "1"
+    os.environ["AFIK_ALLOW_INSECURE_MOCKS"] = "1"
 
 
 def tearDownModule():
     if _previous_mock_setting is None:
-        os.environ.pop("PYFLUTTER_ALLOW_INSECURE_MOCKS", None)
+        os.environ.pop("AFIK_ALLOW_INSECURE_MOCKS", None)
     else:
-        os.environ["PYFLUTTER_ALLOW_INSECURE_MOCKS"] = _previous_mock_setting
+        os.environ["AFIK_ALLOW_INSECURE_MOCKS"] = _previous_mock_setting
 
 
 class TestChewiePluginAndWidget(unittest.TestCase):

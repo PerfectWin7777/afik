@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-import pyflutter as pf
-from pyflutter.core.render import assign_node_ids, diff_snapshots, resolve_tree, widget_to_snapshot
+import afik as pf
+from afik.core.render import assign_node_ids, diff_snapshots, resolve_tree, widget_to_snapshot
 
 
 def snap(widget):

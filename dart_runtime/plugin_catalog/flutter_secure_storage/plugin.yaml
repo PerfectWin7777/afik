@@ -3,7 +3,7 @@ package: flutter_secure_storage
 constraint: '>=10.3.4 <12.0.0'
 files: [shim.dart]
 registers: [flutter_secure_storage, secure_storage]
-python_module: pyflutter.plugins.flutter_secure_storage
+python_module: afik.plugins.flutter_secure_storage
 android:
   min_sdk: 23
 notes: Linux builds need libsecret-1-dev.

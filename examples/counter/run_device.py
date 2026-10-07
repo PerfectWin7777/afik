@@ -1,5 +1,5 @@
 """
-Runs the PyFlutter counter app interactively on a connected device or desktop.
+Runs the Afik counter app interactively on a connected device or desktop.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from pathlib import Path
 # Add py_framework to path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "py_framework"))
 
-from pyflutter import run
+from afik import run
 from main import App
 
 

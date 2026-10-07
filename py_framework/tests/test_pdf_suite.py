@@ -1,5 +1,5 @@
 """
-Unit tests for PyFlutter PDF Suite:
+Unit tests for Afik PDF Suite:
 - syncfusion_flutter_pdfviewer (SfPdfViewer, PdfViewerController)
 - pdfx (PdfDocument, PdfView, PdfViewPinch)
 - printing (Printing layout, print, share)
@@ -8,8 +8,8 @@ Unit tests for PyFlutter PDF Suite:
 
 import unittest
 
-import pyflutter as pf
-from pyflutter.plugins import (
+import afik as pf
+from afik.plugins import (
     flutter_pdfview,
     pdf,
     pdfx,

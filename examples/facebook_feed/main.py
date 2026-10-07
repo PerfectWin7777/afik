@@ -1,5 +1,5 @@
 """
-PyFlutter / Flarix Example: Social Feed (Facebook style).
+Afik Example: Social Feed (Facebook style).
 Demonstrates Pythonic, Object-Oriented component architecture:
 - Domain data modeling with @dataclass
 - Reusable UI components (inheriting from Component)
@@ -21,7 +21,7 @@ _framework_path = _repo_root / "py_framework"
 if _framework_path.exists() and str(_framework_path) not in sys.path:
     sys.path.insert(0, str(_framework_path))
 
-from pyflutter import (
+from afik import (
     AppBar,
     BottomNavigationBar,
     BottomNavigationBarItem,
@@ -50,8 +50,8 @@ from pyflutter import (
     run,
     show_snack_bar,
 )
-from pyflutter.core.logger import logger
-from pyflutter.plugins import share_plus
+from afik.core.logger import logger
+from afik.plugins import share_plus
 
 
 @dataclass
@@ -258,7 +258,7 @@ class SocialFeedApp(Component):
                 author="Tony Dev",
                 time_ago="À l'instant",
                 avatar_url="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100",
-                text="🚀 Flarix avec une vraie architecture POO Pythonique !\nComposants réutilisables, Dataclasses, modificateurs et typage complet.",
+                text="🚀 Afik avec une vraie architecture POO Pythonique !\nComposants réutilisables, Dataclasses, modificateurs et typage complet.",
                 image_url="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600",
                 likes_count=42,
                 comments_count=14,
@@ -300,7 +300,7 @@ class SocialFeedApp(Component):
             author="Tony Dev",
             time_ago="À l'instant",
             avatar_url="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100",
-            text="✨ Nouvelle publication créée en direct via Flarix !",
+            text="✨ Nouvelle publication créée en direct via Afik !",
             image_url="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600",
             likes_count=0,
             comments_count=0,
@@ -330,7 +330,7 @@ class SocialFeedApp(Component):
         ]
 
         app_bar = AppBar(
-            title=Text("Flarix Social", font_size=20, font_weight=FontWeight.BOLD, color=Colors.WHITE),
+            title=Text("Afik Social", font_size=20, font_weight=FontWeight.BOLD, color=Colors.WHITE),
             background_color=Colors.BLUE,
             elevation=1,
             actions=[

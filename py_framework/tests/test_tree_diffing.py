@@ -1,12 +1,12 @@
 """
-Unit tests for PyFlutter Tree Diffing and Granular Patch generation.
+Unit tests for Afik Tree Diffing and Granular Patch generation.
 Validates O(N) recursive tree diffing, node ID addressing, and patch formatting.
 """
 
 import unittest
 
-from pyflutter import Button, Column, Container, Row, Text
-from pyflutter.core.render import (
+from afik import Button, Column, Container, Row, Text
+from afik.core.render import (
     MSG_TREE_PATCH,
     assign_node_ids,
     diff_snapshots,

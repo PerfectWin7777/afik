@@ -5,4 +5,4 @@ files: [shim.dart]
 requires: [video_player]
 registers: [chewie]
 widgets: [Chewie]
-python_module: pyflutter.plugins.chewie
+python_module: afik.plugins.chewie

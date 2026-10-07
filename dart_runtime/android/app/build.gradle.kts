@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.pyflutter_dart_runtime"
+    namespace = "com.example.afik_dart_runtime"
     compileSdk = flutter.compileSdkVersion
     // Auto-detect the highest installed NDK version to automatically satisfy plugin requirements
     val ndkFolder = file("${android.sdkDirectory}/ndk")
@@ -31,7 +31,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.pyflutter_dart_runtime"
+        applicationId = "com.example.afik_dart_runtime"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

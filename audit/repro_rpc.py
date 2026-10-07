@@ -1,12 +1,12 @@
 import sys, threading, time, struct, json, queue
 import pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "py_framework"))
-import pyflutter as pf
-from pyflutter.core import widget_base as wb
-from pyflutter.core.render import MSG_CALLBACK_EVENT, MSG_PLUGIN_RESPONSE
-from pyflutter.generated import widget_pb2
-from pyflutter.cli.runner import PyFlutterRunner
-from pyflutter import app as appmod
-from pyflutter.plugins import manager
+import afik as pf
+from afik.core import widget_base as wb
+from afik.core.render import MSG_CALLBACK_EVENT, MSG_PLUGIN_RESPONSE
+from afik.generated import widget_pb2
+from afik.cli.runner import AfikRunner
+from afik import app as appmod
+from afik.plugins import manager
 
 class FakeStdin:
     """Emulates the Rust bridge + a well-behaved Dart: replies to every plugin call immediately."""
@@ -30,7 +30,7 @@ class FakeSession:
 
 def run(mode, via_callback):
     sess=FakeSession(mode)
-    r = PyFlutterRunner.__new__(PyFlutterRunner)
+    r = AfikRunner.__new__(AfikRunner)
     r.session=sess; r.is_running=True; r.tree_lock=threading.RLock(); r._event_thread=None; r._force_full_next_frame=False; r.app=type("A",(),{"build":lambda s: pf.Text("x")})(); r.debug_banner=None
     appmod.set_active_runner(r)
     result={}
@@ -46,7 +46,7 @@ def run(mode, via_callback):
         ev = widget_pb2.CallbackEvent(callback_id=cid)
         sess.inbox.put((MSG_CALLBACK_EVENT, ev))
         r.is_running=True
-        from pyflutter.core.scheduler import FrameScheduler
+        from afik.core.scheduler import FrameScheduler
         r.scheduler = FrameScheduler(lambda: None); r.scheduler.start()
         th=threading.Thread(target=r._event_loop, daemon=True); r._event_thread=th; th.start()
         time.sleep(1.0)

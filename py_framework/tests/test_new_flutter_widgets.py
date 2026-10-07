@@ -7,7 +7,7 @@ AlertDialog, SimpleDialog.
 
 import unittest
 
-from pyflutter import (
+from afik import (
     AlertDialog,
     Button,
     CircleAvatar,
@@ -24,8 +24,8 @@ from pyflutter import (
     TextSpan,
     Tooltip,
 )
-from pyflutter.core.render import render_tree_frame
-from pyflutter.core.widget_base import invoke_callback
+from afik.core.render import render_tree_frame
+from afik.core.widget_base import invoke_callback
 
 
 class TestNewFlutterWidgets(unittest.TestCase):

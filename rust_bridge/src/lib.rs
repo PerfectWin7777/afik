@@ -1,4 +1,4 @@
-//! PyFlutter Native FFI Bridge Library.
+//! Afik Native FFI Bridge Library.
 //! Exposes a high-performance C ABI interface for in-memory bidirectional
 //! communication between Flutter (via `dart:ffi`) and Python in standalone APK/app releases.
 
@@ -7,7 +7,7 @@ use std::os::raw::{c_char, c_int};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 pub mod ir {
-    include!(concat!(env!("OUT_DIR"), "/pyflutter.ir.rs"));
+    include!(concat!(env!("OUT_DIR"), "/afik.ir.rs"));
 }
 
 pub const MSG_RENDER_TREE: u8 = 0x01;
@@ -97,14 +97,14 @@ fn poll(
 
 /// Returns the native bridge version string.
 #[no_mangle]
-pub extern "C" fn pyflutter_bridge_version() -> *const c_char {
+pub extern "C" fn afik_bridge_version() -> *const c_char {
     static VERSION: &str = "0.1.0\0";
     VERSION.as_ptr() as *const c_char
 }
 
 /// Initializes the in-process standalone bridge runtime.
 #[no_mangle]
-pub extern "C" fn pyflutter_bridge_init(
+pub extern "C" fn afik_bridge_init(
     _app_dir: *const c_char,
     _entrypoint: *const c_char,
 ) -> c_int {
@@ -115,14 +115,14 @@ pub extern "C" fn pyflutter_bridge_init(
 /// Pushes a message frame into the queue destined for Dart.
 /// Called from embedded Python/Rust runtime.
 #[no_mangle]
-pub extern "C" fn pyflutter_push_to_dart(msg_type: u8, data: *const u8, len: usize) -> c_int {
+pub extern "C" fn afik_push_to_dart(msg_type: u8, data: *const u8, len: usize) -> c_int {
     push(to_dart(), msg_type, data, len)
 }
 
 /// Pushes a message frame from Dart into the queue destined for Python.
 /// Called from `dart:ffi`.
 #[no_mangle]
-pub extern "C" fn pyflutter_push_to_python(msg_type: u8, data: *const u8, len: usize) -> c_int {
+pub extern "C" fn afik_push_to_python(msg_type: u8, data: *const u8, len: usize) -> c_int {
     push(to_python(), msg_type, data, len)
 }
 
@@ -134,7 +134,7 @@ pub extern "C" fn pyflutter_push_to_python(msg_type: u8, data: *const u8, len: u
 ///  -1 if the buffer was too small
 ///  -2 on lock or memory error
 #[no_mangle]
-pub extern "C" fn pyflutter_poll_dart_frame(
+pub extern "C" fn afik_poll_dart_frame(
     out_buf: *mut u8,
     max_len: usize,
     out_type: *mut u8,
@@ -145,7 +145,7 @@ pub extern "C" fn pyflutter_poll_dart_frame(
 
 /// Polls the next pending frame destined for Python.
 #[no_mangle]
-pub extern "C" fn pyflutter_poll_python_frame(
+pub extern "C" fn afik_poll_python_frame(
     out_buf: *mut u8,
     max_len: usize,
     out_type: *mut u8,
@@ -156,7 +156,7 @@ pub extern "C" fn pyflutter_poll_python_frame(
 
 /// Cleans up and clears all in-memory queues.
 #[no_mangle]
-pub extern "C" fn pyflutter_bridge_destroy() -> c_int {
+pub extern "C" fn afik_bridge_destroy() -> c_int {
     lock(to_dart()).clear();
     lock(to_python()).clear();
     0

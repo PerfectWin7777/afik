@@ -1748,7 +1748,7 @@ Widget buildFromNode(
       final factory = WidgetRegistry.lookup(node.type);
       widget = factory != null
           ? factory(node, sendEvent)
-          : Text('[unknown widget: ${node.type}] - is the plugin installed? (pyflutter add <plugin>)');
+          : Text('[unknown widget: ${node.type}] - is the plugin installed? (afik add <plugin>)');
       break;
 
 

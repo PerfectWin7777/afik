@@ -8,7 +8,7 @@ fake_dart_client (manual protobuf decode/encode) -> back through the
 socket -> BridgeSession -> real Python callback invoked.
 
 Usage:
-    python test_relay.py /path/to/pyflutter-bridge
+    python test_relay.py /path/to/afik-bridge
 """
 
 import subprocess
@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "py_framework"))
 
-from pyflutter.core.bridge import BridgeSession  # noqa: E402
+from afik.core.bridge import BridgeSession  # noqa: E402
 from main import App  # noqa: E402
 
 PORT = 7879
@@ -26,7 +26,7 @@ PORT = 7879
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python test_relay.py /path/to/pyflutter-bridge")
+        print("Usage: python test_relay.py /path/to/afik-bridge")
         sys.exit(1)
 
     bridge_binary = sys.argv[1]
@@ -54,7 +54,7 @@ def main():
             sys.exit(1)
 
         print(f"[python] received callback event: callback_id={event.callback_id}")
-        from pyflutter.core.widget_base import invoke_callback
+        from afik.core.widget_base import invoke_callback
         invoke_callback(event.callback_id, dict(event.event_data))
 
         print(f"[python] final count: {app.count}")

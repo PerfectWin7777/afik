@@ -1,5 +1,5 @@
 [package]
-name = "pyflutter-bridge"
+name = "afik-bridge"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,11 +10,11 @@ prost = "0.12"
 prost-build = "0.12"
 
 [lib]
-name = "pyflutter_bridge"
+name = "afik_bridge"
 crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
 
 [[bin]]
-name = "pyflutter-bridge"
+name = "afik-bridge"
 path = "src/main.rs"
 

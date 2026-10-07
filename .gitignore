@@ -1,4 +1,4 @@
-# Git ignore file for PyFlutter repository
+# Git ignore file for Afik repository
 
 # Python
 .venv/
@@ -38,5 +38,5 @@ dart_runtime/.metadata
 .DS_Store
 Thumbs.db
 
-# Per-project Flutter runtime copies created by pyflutter run/build/add
-.pyflutter/
+# Per-project Flutter runtime copies created by afik run/build/add
+.afik/

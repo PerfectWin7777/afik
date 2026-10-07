@@ -96,7 +96,7 @@ jobs:
       - name: Relay tests against the real binary
         working-directory: py_framework
         env:
-          PYFLUTTER_REQUIRE_BRIDGE: "1"
+          AFIK_REQUIRE_BRIDGE: "1"
         run: python -m pytest -q tests/test_bridge_relay.py
 
   dart:

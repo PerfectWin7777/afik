@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyflutter"
+name = "afik"
 version = "0.1.0"
 description = "High-performance Python to Flutter bridge with static UI compilation and embedded runtime"
 requires-python = ">=3.10"
@@ -21,19 +21,19 @@ dev = [
 ]
 
 [project.scripts]
-pyflutter = "pyflutter.cli.main:main"
+afik = "afik.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pyflutter*"]
+include = ["afik*"]
 
 [tool.setuptools.package-data]
-pyflutter = ["contract/*.json"]
+afik = ["contract/*.json"]
 
 [tool.ruff]
 line-length = 120
 target-version = "py310"
-extend-exclude = ["pyflutter/generated"]
+extend-exclude = ["afik/generated"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
@@ -45,7 +45,7 @@ ignore = ["E501"]
 "tests/*" = ["E731"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["pyflutter"]
+known-first-party = ["afik"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

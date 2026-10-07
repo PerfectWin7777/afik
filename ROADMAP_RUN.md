@@ -1,4 +1,4 @@
-# PyFlutter Maturity Roadmap & Execution Plan
+# Afik Maturity Roadmap & Execution Plan
 
 Date: 2026-10-03  
 Status: **COMPLETED & VERIFIED** (117 unit tests passing in 0.233s, 0 Dart analyze warnings)
@@ -8,7 +8,7 @@ Status: **COMPLETED & VERIFIED** (117 unit tests passing in 0.233s, 0 Dart analy
 ## Pillar 1: Tree Diffing & Optimized Hot Reload (`r` vs `R`)
 - [x] Add `TreeDiff` / `Patch` representation in Python and Rust/Dart bridge (`MSG_TREE_PATCH = 0x04`)
 - [x] Assign stable keys / structural node IDs (`_nid` structural path + explicit `key`)
-- [x] Implement recursive node diffing algorithm in `pyflutter/core/render.py` (`diff_snapshots()`, O(N) prop diffs, child inserts/removals)
+- [x] Implement recursive node diffing algorithm in `afik/core/render.py` (`diff_snapshots()`, O(N) prop diffs, child inserts/removals)
 - [x] Separate `r` (Hot Reload: preserve Python app state / signals, re-execute `build()`, send micro-patch) from `R` (Hot Restart: clear state, rebuild root tree)
 - [x] Update `dart_runtime` to support applying granular patches directly to `WidgetNode`s in-place without re-evaluating the entire tree (`findNodeById`, `_handleTreePatch`)
 

@@ -1,12 +1,12 @@
 """
-Unit tests for the PyQt/PySide OOP paradigm in PyFlutter.
+Unit tests for the PyQt/PySide OOP paradigm in Afik.
 Validates imperative layout assembly, QtSignal connections, mutators/getters,
 Slider support, smart Component.build() resolution, and Protobuf IR serialization.
 """
 
 import unittest
 
-from pyflutter import (
+from afik import (
     Button,
     Checkbox,
     Column,
@@ -19,7 +19,7 @@ from pyflutter import (
     Text,
     TextField,
 )
-from pyflutter.core.widget_base import _callback_registry, invoke_callback
+from afik.core.widget_base import _callback_registry, invoke_callback
 
 
 class TestPyQtLayoutAssembly(unittest.TestCase):
@@ -86,7 +86,7 @@ class TestQtSignalSystem(unittest.TestCase):
         btn.clicked.connect(on_click)
         btn.clicked.connect(on_click_2)
 
-        # Verify callback registered in PyFlutter engine
+        # Verify callback registered in Afik engine
         self.assertTrue(btn.callback_id)
         self.assertIn(btn.callback_id, _callback_registry)
 
@@ -287,7 +287,7 @@ class TestMaterialAppReactiveRootAndCallbacks(unittest.TestCase):
     """Tests reactive MaterialApp root updates and custom callback registration."""
 
     def test_material_app_root_update(self):
-        from pyflutter import MaterialApp
+        from afik import MaterialApp
 
         scaffold1 = Scaffold(body=Text("Tab 0"))
         app1 = MaterialApp(scaffold1)
@@ -299,7 +299,7 @@ class TestMaterialAppReactiveRootAndCallbacks(unittest.TestCase):
         self.assertEqual(app2.children[0].children[0].props.get("value"), "Tab 1")
 
     def test_register_callback_custom_id_and_single_execution(self):
-        from pyflutter.core.widget_base import _call_callable, _register_callback
+        from afik.core.widget_base import _call_callable, _register_callback
 
         # Multi-signature test
         cid = _register_callback("custom_id_123", lambda: "ok")

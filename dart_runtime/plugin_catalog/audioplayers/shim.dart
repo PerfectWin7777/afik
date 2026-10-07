@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
 /// Audio playback (audioplayers). One AudioPlayer per `playerId`.
 ///
 /// `url` may be an http(s) URL, a local file path, or `asset:<path>` for a bundled asset.
-class AudioPlayersShim implements PyFlutterPlugin {
+class AudioPlayersShim implements AfikPlugin {
   final Map<String, AudioPlayer> _players = {};
 
   AudioPlayer _player(Map<String, String> args) {

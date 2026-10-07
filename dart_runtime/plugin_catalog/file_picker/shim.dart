@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
 /// Real native file selection dialogs using Flutter's file_picker package.
-class FilePickerShim implements PyFlutterPlugin {
+class FilePickerShim implements AfikPlugin {
   @override
   Future<dynamic> handleMethodCall(String method, Map<String, String> args) async {
     switch (method) {

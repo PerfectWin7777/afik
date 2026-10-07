@@ -1,8 +1,8 @@
 import 'package:url_launcher/url_launcher.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
 /// Native dispatch shim for the Flutter url_launcher package.
-class UrlLauncherShim extends PyFlutterPlugin {
+class UrlLauncherShim extends AfikPlugin {
   @override
   Future<dynamic> handleMethodCall(String method, Map<String, String> args) async {
     switch (method) {

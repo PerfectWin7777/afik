@@ -1,4 +1,4 @@
-// PyFlutter Dart Runtime Shell
+// Afik Dart Runtime Shell
 // Connects to the Rust bridge's relay mode over a local TCP socket,
 // decodes incoming Protobuf RenderTree frames, and renders native Flutter widgets.
 
@@ -20,31 +20,31 @@ import 'widgets/widget_builder.dart';
 
 
 /// Callback id that asks Python for the full tree (see the Rust bridge and the runner).
-const String resyncCallbackId = '__pyflutter_resync__';
+const String resyncCallbackId = '__afik_resync__';
 
 void main() {
-  // Plugins installed with `pyflutter add` (generated file, empty by default)
+  // Plugins installed with `afik add` (generated file, empty by default)
   registerInstalledPlugins();
 
 
 
 
-  runApp(const PyFlutterShellApp());
+  runApp(const AfikShellApp());
 }
 
-class PyFlutterShellApp extends StatefulWidget {
-  const PyFlutterShellApp({super.key});
+class AfikShellApp extends StatefulWidget {
+  const AfikShellApp({super.key});
 
   @override
-  State<PyFlutterShellApp> createState() => _PyFlutterShellAppState();
+  State<AfikShellApp> createState() => _AfikShellAppState();
 }
 
-class _PyFlutterShellAppState extends State<PyFlutterShellApp> {
+class _AfikShellAppState extends State<AfikShellApp> {
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
-  String _title = 'PyFlutter';
+  String _title = 'Afik';
   bool _showDebugBanner = false;
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = const Color(0xFF1877F2);
@@ -162,12 +162,12 @@ class BridgeConnectionScreen extends StatefulWidget {
 }
 
 class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
-  // Set by `pyflutter run` through --dart-define=PYFLUTTER_PORT=<port>.
+  // Set by `afik run` through --dart-define=AFIK_PORT=<port>.
   static const int bridgePort =
-      int.fromEnvironment('PYFLUTTER_PORT', defaultValue: 7879);
-  // Shared secret handed over by `pyflutter run`; empty when attaching manually.
+      int.fromEnvironment('AFIK_PORT', defaultValue: 7879);
+  // Shared secret handed over by `afik run`; empty when attaching manually.
   static const String bridgeToken =
-      String.fromEnvironment('PYFLUTTER_TOKEN', defaultValue: '');
+      String.fromEnvironment('AFIK_TOKEN', defaultValue: '');
 
   Socket? _socket;
   late final FrameBuffer _frameBuffer;
@@ -195,13 +195,13 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
   }
 
   void _initBridge() {
-    final ffi = PyFlutterFFIBridge();
+    final ffi = AfikFFIBridge();
     const bool isExplicitStandalone =
-        bool.fromEnvironment('PYFLUTTER_STANDALONE', defaultValue: false);
+        bool.fromEnvironment('AFIK_STANDALONE', defaultValue: false);
 
     // The in-process FFI transport is only used by standalone builds. Probing
     // for the native library in development would hijack the TCP relay as soon
-    // as `cargo build` has produced pyflutter_bridge.{so,dll}.
+    // as `cargo build` has produced afik_bridge.{so,dll}.
     if (isExplicitStandalone) {
       final success = ffi.init();
       if (success) {
@@ -392,7 +392,7 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
     }
     final payload = Uint8List.fromList(body);
     if (_isFFIMode) {
-      PyFlutterFFIBridge().pushToPython(msgPluginResponse, payload);
+      AfikFFIBridge().pushToPython(msgPluginResponse, payload);
     } else {
       final socket = _socket;
       if (socket != null) {
@@ -404,7 +404,7 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
   void _sendCallbackEvent(String callbackId, Map<String, String> eventData) {
     final encoded = encodeCallbackEvent(callbackId, eventData);
     if (_isFFIMode) {
-      PyFlutterFFIBridge().pushToPython(msgCallbackEvent, encoded);
+      AfikFFIBridge().pushToPython(msgCallbackEvent, encoded);
     } else {
       final socket = _socket;
       if (socket != null) {
@@ -432,7 +432,7 @@ class _BridgeConnectionScreenState extends State<BridgeConnectionScreen> {
             children: [
               const CircularProgressIndicator(),
               const SizedBox(height: 16),
-              Text('PyFlutter ($_status)'),
+              Text('Afik ($_status)'),
             ],
           ),
         ),

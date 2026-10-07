@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:image_picker/image_picker.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
 /// Gallery / camera media picking (image_picker).
 ///
 /// A cancelled pick answers `null`; the file itself is never faked.
-class ImagePickerShim implements PyFlutterPlugin {
+class ImagePickerShim implements AfikPlugin {
   final ImagePicker _picker = ImagePicker();
 
   @override

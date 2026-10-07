@@ -1,9 +1,9 @@
 import sys, threading, time, struct, json, io
 import pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "py_framework"))
-import pyflutter as pf
-from pyflutter.core.render import *
-from pyflutter.core import widget_base as wb
-from pyflutter.core import state as st
+import afik as pf
+from afik.core.render import *
+from afik.core import widget_base as wb
+from afik.core import state as st
 
 print("== A. cached imperative layout freezes child Components")
 class Badge(pf.Component):
@@ -49,15 +49,15 @@ resolve_tree(pf.Column([]))          # next frame: D is gone from the tree
 print("after widget removed from tree, dispose called?", bool(disposed), "registry:", len(st._state_registry))
 
 print("== C. build() that writes a Signal / set_state deadlocks tree_lock")
-from pyflutter.cli.runner import PyFlutterRunner
-from pyflutter import app as appmod
+from afik.cli.runner import AfikRunner
+from afik import app as appmod
 class FakeSession:
     process = object()
     def send_tree(self, tree, force_full=False, resolved=False):
         resolve_tree(tree)
-runner = PyFlutterRunner.__new__(PyFlutterRunner)
+runner = AfikRunner.__new__(AfikRunner)
 runner.tree_lock = threading.RLock(); runner.session = FakeSession(); runner.debug_banner=None; runner.is_running=True
-from pyflutter.core.scheduler import FrameScheduler
+from afik.core.scheduler import FrameScheduler
 runner.scheduler = FrameScheduler(lambda: None); runner._force_full_next_frame = False
 sig = pf.Signal(0)
 class InitSetsState(pf.State):

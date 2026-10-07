@@ -3,13 +3,13 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:printing/printing.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
 
 /// System print dialog and PDF sharing (printing).
 ///
 /// `printed` / `completed` / `shared` are true only when the platform reports that the
 /// user went through with it (the dialog was not cancelled).
-class PrintingShim implements PyFlutterPlugin {
+class PrintingShim implements AfikPlugin {
   Future<Uint8List> _read(Map<String, String> args) async {
     final path = args['path'] ?? '';
     final file = File(path);

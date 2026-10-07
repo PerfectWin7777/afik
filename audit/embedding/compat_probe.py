@@ -1,4 +1,4 @@
-"""Interpreter compatibility probe for the PyFlutter runtime.
+"""Interpreter compatibility probe for the Afik runtime.
 
 Run it with every candidate interpreter (CPython build, RustPython, MicroPython...):
 

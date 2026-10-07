@@ -1,11 +1,11 @@
 import sys, threading, time
 import pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "py_framework"))
-import pyflutter as pf
-from pyflutter.core.render import *
-from pyflutter.core import widget_base as wb
+import afik as pf
+from afik.core.render import *
+from afik.core import widget_base as wb
 
 print("== 1. Navigator.can_pop / current_page exist?")
-from pyflutter.core.navigation import Navigator
+from afik.core.navigation import Navigator
 print("can_pop", hasattr(Navigator, "can_pop"), "current_page", hasattr(Navigator, "current_page"))
 try:
     m = pf.MaterialApp(home=pf.Text("x")); print(m.children)
@@ -40,8 +40,8 @@ for i in range(50):
 print("listeners on signal after 50 frames:", len(sig._listeners))
 
 print("== 6. overlay callback swept at next send")
-from pyflutter.plugins.overlay import show_snack_bar
-from pyflutter.core.widget_base import _callback_registry
+from afik.plugins.overlay import show_snack_bar
+from afik.core.widget_base import _callback_registry
 called=[]
 show_snack_bar("hi", action="undo", on_action=lambda: called.append(1))
 ids=[k for k in _callback_registry if k.startswith("cb_snackbar")]
@@ -51,7 +51,7 @@ wb.sweep_stale_callbacks(wb.collect_active_callback_ids(concrete))
 print("after one frame sweep still registered:", [k for k in _callback_registry if k.startswith("cb_snackbar")])
 
 print("== 7. loguru braces in error message")
-from pyflutter.core.logger import logger
+from afik.core.logger import logger
 try:
     logger.error("Error inside callback x: {'a': 1}", exc_info=True)
     print("no crash")
@@ -65,21 +65,21 @@ logger.error("Error in TextEditingController listener: %s", "boom")
 
 print("== 8. config crashes")
 import tempfile, pathlib
-from pyflutter.core.config import PyFlutterConfig
-for txt in ["dependencies:\npermissions:\n", "- a\n- b\n", "pyflutter:\n  port: abc\n", "name: [unclosed\n"]:
-    p = pathlib.Path(tempfile.mkdtemp())/"pyflutter.yaml"; p.write_text(txt)
+from afik.core.config import AfikConfig
+for txt in ["dependencies:\npermissions:\n", "- a\n- b\n", "afik:\n  port: abc\n", "name: [unclosed\n"]:
+    p = pathlib.Path(tempfile.mkdtemp())/"afik.yaml"; p.write_text(txt)
     try:
-        c = PyFlutterConfig.from_file(p); print(repr(txt[:20]), "->", c.name, c.permissions)
+        c = AfikConfig.from_file(p); print(repr(txt[:20]), "->", c.name, c.permissions)
     except Exception as e: print(repr(txt[:20]), "CRASH", type(e).__name__, e)
 
 print("== 9. CLI build --release")
-import pyflutter.cli.main as m
+import afik.cli.main as m
 captured={}
-import pyflutter.cli.builder as bld
+import afik.cli.builder as bld
 class FB:
     def __init__(self, **kw): captured.update(kw)
     def build(self): return True
-bld.PyFlutterBuilder = FB
+bld.AfikBuilder = FB
 try: m.main(["build","apk","--release"])
 except SystemExit: pass
 print(captured)

@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package pyflutter.ir;
+package afik.ir;
 
 // A single node in the widget tree. Generic on purpose (see
-// PYFLUTTER_VISION.md section 3.2): adding a new widget type or
+// AFIK_VISION.md section 3.2): adding a new widget type or
 // property does not require touching this schema.
 message Widget {
   // Widget kind, e.g. "Text", "Button", "Column", "Row", "Container",

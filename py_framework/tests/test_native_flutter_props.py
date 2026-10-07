@@ -1,5 +1,5 @@
 """
-Unit tests for Native Flutter Widgets & Properties parity in PyFlutter.
+Unit tests for Native Flutter Widgets & Properties parity in Afik.
 Validates:
 - ListTile, FloatingActionButton, Badge, Chip, ActionChip, VerticalDivider
 - Column/Row main_axis_size
@@ -12,7 +12,7 @@ Validates:
 
 import unittest
 
-from pyflutter import (
+from afik import (
     ActionChip,
     Alignment,
     AppBar,
@@ -35,7 +35,7 @@ from pyflutter import (
     TextField,
     VerticalDivider,
 )
-from pyflutter.core.widget_base import invoke_callback
+from afik.core.widget_base import invoke_callback
 
 
 class TestNativeFlutterWidgetsAndProps(unittest.TestCase):

@@ -8,10 +8,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from pyflutter.cli import manifest_sync
-from pyflutter.core.config import PyFlutterConfig, replace_flutter_dependencies_block, replace_plugins_block
-from pyflutter.core.runtime_project import ProjectRuntime
-from pyflutter.plugins import catalog
+from afik.cli import manifest_sync
+from afik.core.config import AfikConfig, replace_flutter_dependencies_block, replace_plugins_block
+from afik.core.runtime_project import ProjectRuntime
+from afik.plugins import catalog
 
 REAL_RUNTIME = Path(__file__).resolve().parents[2] / "dart_runtime"
 MANIFEST = "android/app/src/main/AndroidManifest.xml"
@@ -54,7 +54,7 @@ class TestProjectRuntimeCopy(unittest.TestCase):
 
     def test_nothing_is_created_until_ensure(self):
         self.assertFalse(self.runtime.exists)
-        self.assertFalse((self.project / ".pyflutter").exists())
+        self.assertFalse((self.project / ".afik").exists())
 
     def test_copy_has_the_runtime_but_not_the_catalog_or_build_output(self):
         self.assertTrue(self.runtime.ensure())
@@ -104,15 +104,15 @@ class TestProjectRuntimeCopy(unittest.TestCase):
         self.assertFalse((other.runtime_dir / "lib/plugins/installed/local_auth").exists())
 
     def test_project_dir_comes_from_the_config_file(self):
-        (self.project / "pyflutter.yaml").write_text("name: x\n")
-        config = PyFlutterConfig.find_and_load(self.project)
+        (self.project / "afik.yaml").write_text("name: x\n")
+        config = AfikConfig.find_and_load(self.project)
         runtime = ProjectRuntime.for_config(config, self.template, fallback_dir=Path("/elsewhere"))
         self.assertEqual(runtime.project_dir, self.project.resolve())
 
     def test_prepare_runtime_end_to_end(self):
-        (self.project / "pyflutter.yaml").write_text(
+        (self.project / "afik.yaml").write_text(
             "name: demo_app\npermissions:\n  - camera\nplugins:\n  - local_auth\n  - url_launcher\n", encoding="utf-8")
-        config = PyFlutterConfig.find_and_load(self.project)
+        config = AfikConfig.find_and_load(self.project)
         runtime = ProjectRuntime.for_config(config, self.template)
         result = catalog.prepare_runtime(runtime, config, run_pub_get=False)
         self.assertEqual(result.plugins, ["local_auth", "url_launcher"])
@@ -176,7 +176,7 @@ class TestManagedNativeBlocks(unittest.TestCase):
         self.assertNotIn("NSFaceIDUsageDescription", self.plist.read_text(encoding="utf-8"))
         import plistlib
         plistlib.loads(self.plist.read_bytes())                                 # still a valid plist
-        manifest_sync.sync_ios_plist(self.plist, [], "pyflutter_dart_runtime")
+        manifest_sync.sync_ios_plist(self.plist, [], "afik_dart_runtime")
         self.assertEqual(self.plist.read_text(encoding="utf-8"), self.original_plist)
 
     def test_unknown_permission_is_reported_not_written(self):
@@ -247,11 +247,11 @@ class TestFlutterDependenciesBlockEdit(unittest.TestCase):
     def test_config_keeps_comments_when_a_package_is_added(self):
         d = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, d, ignore_errors=True)
-        (d / "pyflutter.yaml").write_text("# top\nname: x\npermissions:\n  - internet\n", encoding="utf-8")
-        config = PyFlutterConfig.find_and_load(d)
+        (d / "afik.yaml").write_text("# top\nname: x\npermissions:\n  - internet\n", encoding="utf-8")
+        config = AfikConfig.find_and_load(d)
         config.add_flutter_dependency("intl", "^0.20.3")
-        text = (d / "pyflutter.yaml").read_text(encoding="utf-8")
+        text = (d / "afik.yaml").read_text(encoding="utf-8")
         self.assertIn("# top", text)
         self.assertNotIn("description:", text)          # no defaults injected into an existing file
         config.remove_flutter_dependency("intl")
-        self.assertEqual((d / "pyflutter.yaml").read_text(encoding="utf-8"), "# top\nname: x\npermissions:\n  - internet\n")
+        self.assertEqual((d / "afik.yaml").read_text(encoding="utf-8"), "# top\nname: x\npermissions:\n  - internet\n")

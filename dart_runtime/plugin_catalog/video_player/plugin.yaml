@@ -4,6 +4,6 @@ constraint: ^2.9.0
 files: [shim.dart]
 registers: [video_player]
 widgets: [VideoPlayer]
-python_module: pyflutter.plugins.video_player
+python_module: afik.plugins.video_player
 android:
   permissions: [internet]

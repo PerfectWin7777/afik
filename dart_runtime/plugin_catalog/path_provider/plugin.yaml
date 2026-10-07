@@ -3,4 +3,4 @@ package: path_provider
 constraint: ^2.1.5
 files: [shim.dart]
 registers: [path_provider]
-python_module: pyflutter.plugins.path_provider
+python_module: afik.plugins.path_provider

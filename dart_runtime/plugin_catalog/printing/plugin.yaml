@@ -3,4 +3,4 @@ package: printing
 constraint: ^5.13.0
 files: [shim.dart]
 registers: [printing, pdf]
-python_module: pyflutter.plugins.printing
+python_module: afik.plugins.printing

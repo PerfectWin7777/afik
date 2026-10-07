@@ -1,7 +1,7 @@
 """Checks that every plugin of the catalog installs and analyses cleanly.
 
 For each plugin (or the ones named on the command line) the script copies dart_runtime/ to
-a temporary folder, installs the plugin there exactly like `pyflutter add` does, runs
+a temporary folder, installs the plugin there exactly like `afik add` does, runs
 `flutter pub get` and `flutter analyze`, and reports analyzer errors and warnings.
 
     python tools/verify_catalog.py                 # all plugins, one at a time + all together
@@ -22,14 +22,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "py_framework"))
 
-from pyflutter.plugins import catalog  # noqa: E402
+from afik.plugins import catalog  # noqa: E402
 
 RUNTIME = ROOT / "dart_runtime"
 IGNORE = shutil.ignore_patterns("build", ".dart_tool", "installed", ".flutter-plugins*", "*.iml")
 
 
 def verify(names: list[str]) -> tuple[bool, str]:
-    work = Path(tempfile.mkdtemp(prefix="pyflutter_verify_"))
+    work = Path(tempfile.mkdtemp(prefix="afik_verify_"))
     try:
         target = work / "dart_runtime"
         shutil.copytree(RUNTIME, target, ignore=IGNORE)

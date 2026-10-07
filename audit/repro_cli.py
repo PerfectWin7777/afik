@@ -1,9 +1,9 @@
 import sys, tempfile, pathlib, re, importlib
 import pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "py_framework"))
-import pyflutter as pf
-from pyflutter.cli.creator import create_project
-from pyflutter.cli.runner import load_app_from_file
-from pyflutter.core.render import resolve_tree, assign_node_ids, widget_to_snapshot
+import afik as pf
+from afik.cli.creator import create_project
+from afik.cli.runner import load_app_from_file
+from afik.core.render import resolve_tree, assign_node_ids, widget_to_snapshot
 d = pathlib.Path(tempfile.mkdtemp())/"my_app"
 create_project(d, "my_app")
 mod, app = load_app_from_file(d/"main.py")
@@ -20,7 +20,7 @@ for ex in ["counter","facebook_feed","pyshop"]:
         print(ex, "FAIL", type(e).__name__, e)
 
 print("== manifest sync with '&' in name")
-from pyflutter.cli.manifest_sync import sync_android_manifest, sync_ios_plist
+from afik.cli.manifest_sync import sync_android_manifest, sync_ios_plist
 mf = pathlib.Path(tempfile.mkdtemp())/"AndroidManifest.xml"
 mf.write_text('<manifest xmlns:android="x">\n<application android:label="a" android:name="b"/>\n</manifest>')
 sync_android_manifest(mf, ["internet","camara"], "Tom & Jerry")
@@ -31,7 +31,7 @@ except Exception as e: print("INVALID XML:", e)
 
 print("== entrypoint discovery picks alphabetically-first zero-arg MainWindow")
 src = '''
-import pyflutter as pf
+import afik as pf
 class AboutPage(pf.MainWindow):
     def build(self): return pf.Text("about")
 class HomePage(pf.MainWindow):
@@ -44,7 +44,7 @@ m,a = load_app_from_file(f); print("bare discovery ->", type(a).__name__)
 m,a = load_app_from_file(f, prefer_class="HomePage"); print("hot-reload with prefer_class=HomePage ->", type(a).__name__)
 
 print("== module-name shadowing: entrypoint called json.py / random.py")
-f2 = pathlib.Path(tempfile.mkdtemp())/"random.py"; f2.write_text("import pyflutter as pf\nclass App:\n    def build(self): return pf.Text('x')\n")
+f2 = pathlib.Path(tempfile.mkdtemp())/"random.py"; f2.write_text("import afik as pf\nclass App:\n    def build(self): return pf.Text('x')\n")
 import random as stdrandom
 load_app_from_file(f2)
 import sys as _s

@@ -4,4 +4,4 @@ constraint: ^2.9.0
 files: [shim.dart]
 registers: [pdfx]
 widgets: [PdfView, PdfViewPinch]
-python_module: pyflutter.plugins.pdfx
+python_module: afik.plugins.pdfx

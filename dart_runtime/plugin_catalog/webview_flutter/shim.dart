@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:pyflutter_dart_runtime/ir_codec.dart';
-import 'package:pyflutter_dart_runtime/plugins/plugin_registry.dart';
-import 'package:pyflutter_dart_runtime/widgets/widget_registry.dart';
+import 'package:afik_dart_runtime/ir_codec.dart';
+import 'package:afik_dart_runtime/plugins/plugin_registry.dart';
+import 'package:afik_dart_runtime/widgets/widget_registry.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// Web view controllers keyed by the `view_id` used from Python.
@@ -21,7 +21,7 @@ class WebViewRegistry {
 }
 
 /// Embedded browser (webview_flutter).
-class WebViewShim implements PyFlutterPlugin {
+class WebViewShim implements AfikPlugin {
   WebViewController _controller(Map<String, String> args) =>
       WebViewRegistry.obtain(args['viewId'] ?? 'default');
 

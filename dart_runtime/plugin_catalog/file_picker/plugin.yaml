@@ -3,4 +3,4 @@ package: file_picker
 constraint: ^13.0.0
 files: [shim.dart]
 registers: [file_picker]
-python_module: pyflutter.plugins.file_picker
+python_module: afik.plugins.file_picker

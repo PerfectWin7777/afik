@@ -1,6 +1,6 @@
 {
-    "name": "pyflutter_dart_runtime",
-    "short_name": "pyflutter_dart_runtime",
+    "name": "afik_dart_runtime",
+    "short_name": "afik_dart_runtime",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

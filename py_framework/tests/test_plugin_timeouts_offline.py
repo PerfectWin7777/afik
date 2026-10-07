@@ -8,7 +8,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from pyflutter.plugins import manager
+from afik.plugins import manager
 from tests.test_audit_regressions import _FakeRunner  # silent / error / ok fake bridge
 
 
@@ -46,14 +46,14 @@ class TestTimeoutTable(unittest.TestCase):
 
 class TestOfflineSimulation(unittest.TestCase):
     def setUp(self):
-        self._env = os.environ.pop("PYFLUTTER_ALLOW_INSECURE_MOCKS", None)
+        self._env = os.environ.pop("AFIK_ALLOW_INSECURE_MOCKS", None)
         manager._offline_warned.clear()
 
     def tearDown(self):
         if self._env is not None:
-            os.environ["PYFLUTTER_ALLOW_INSECURE_MOCKS"] = self._env
+            os.environ["AFIK_ALLOW_INSECURE_MOCKS"] = self._env
         else:
-            os.environ.pop("PYFLUTTER_ALLOW_INSECURE_MOCKS", None)
+            os.environ.pop("AFIK_ALLOW_INSECURE_MOCKS", None)
 
     def _offline(self):
         return patch.object(manager, "get_active_runner", return_value=None)
@@ -69,7 +69,7 @@ class TestOfflineSimulation(unittest.TestCase):
                     manager.call_plugin(plugin, method, {})
 
     def test_the_environment_variable_allows_the_simulation(self):
-        os.environ["PYFLUTTER_ALLOW_INSECURE_MOCKS"] = "1"
+        os.environ["AFIK_ALLOW_INSECURE_MOCKS"] = "1"
         with self._offline():
             self.assertEqual(manager.call_plugin("local_auth", "authenticate", {}), {"authenticated": True})
 
